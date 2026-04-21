@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "892662575098",
+    "project_id": "snakeclassic-c2b64",
+    "storage_bucket": "snakeclassic-c2b64.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:892662575098:android:eb1df6d7837a1f3817be43",
+        "android_client_info": {
+          "package_name": "com.retrogames.snake_classic"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "892662575098-4vsgmgadubaurm2o04pe25anq7r9nhto.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.retrogames.snake_classic",
+            "certificate_hash": "7cb73f2ae065682fe9dc22aa79e32792f657e2c8"
+          }
+        },
+        {
+          "client_id": "892662575098-afc0t0kusf022bd0dl21lccbfvef6og4.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAfMgAXUXR0w0ZhG65ndyv9nCRfBrBftuU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "892662575098-afc0t0kusf022bd0dl21lccbfvef6og4.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "892662575098-66vdv6aeni9sj7vsqom1ceh4urafivq4.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.retrogames.snakeClassic"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
