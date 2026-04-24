@@ -5,7 +5,7 @@ class AnalyticsService {
   factory AnalyticsService() => _instance;
 
   final FirebaseAnalytics _analytics = FirebaseAnalytics.instance;
-  
+
   AnalyticsService._();
 
   FirebaseAnalyticsObserver getObserver() {
@@ -84,5 +84,72 @@ class AnalyticsService {
 
   Future<void> logUserLogin(String loginMethod) async {
     await _analytics.logLogin(loginMethod: loginMethod);
+  }
+
+  Future<void> logTutorialStarted() async {
+    await _analytics.logEvent(name: 'tutorial_started');
+  }
+
+  Future<void> logTutorialCompleted() async {
+    await _analytics.logEvent(name: 'tutorial_completed');
+  }
+
+  Future<void> logStreakReward({
+    required int streak,
+    required int coins,
+    required double multiplier,
+  }) async {
+    await _analytics.logEvent(
+      name: 'streak_reward_granted',
+      parameters: {
+        'streak': streak,
+        'coins': coins,
+        'multiplier_x100': (multiplier * 100).round(),
+      },
+    );
+  }
+
+  Future<void> logTutorialSkipped() async {
+    await _analytics.logEvent(name: 'tutorial_skipped');
+  }
+
+  Future<void> logTutorialCheckpoint(int step) async {
+    await _analytics.logEvent(
+      name: 'tutorial_checkpoint',
+      parameters: {'step': step},
+    );
+  }
+
+  Future<void> logTutorialRetry() async {
+    await _analytics.logEvent(name: 'tutorial_retry');
+  }
+
+  // ── Experiment telemetry ──────────────────────────────────────
+  Future<void> logExperimentAssigned({
+    required String experimentKey,
+    required int variant,
+  }) async {
+    await _analytics.logEvent(
+      name: 'experiment_assigned',
+      parameters: {
+        'experiment': experimentKey,
+        'variant': variant,
+      },
+    );
+  }
+
+  Future<void> logExperimentConversion({
+    required String experimentKey,
+    required int variant,
+    required String event,
+  }) async {
+    await _analytics.logEvent(
+      name: 'experiment_conversion',
+      parameters: {
+        'experiment': experimentKey,
+        'variant': variant,
+        'event': event,
+      },
+    );
   }
 }

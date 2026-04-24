@@ -39,7 +39,8 @@ class NotificationService {
           id: 1,
           channelKey: 'daily_reminder',
           title: '🐍 Don\'t Miss Today\'s Special Event!',
-          body: 'A new daily challenge is waiting for you with extra rewards. Come play now!',
+          body:
+              'A new daily challenge is waiting for you with extra rewards. Come play now!',
           notificationLayout: NotificationLayout.Default,
           category: NotificationCategory.Reminder,
         ),
@@ -76,7 +77,8 @@ class NotificationService {
           id: 2,
           channelKey: 'daily_reminder',
           title: '🏆 Almost There!',
-          body: 'You\'re 80% done with quest: "$questTitle". Finish it for big rewards!',
+          body:
+              'You\'re 80% done with quest: "$questTitle". Finish it for big rewards!',
           notificationLayout: NotificationLayout.Default,
           category: NotificationCategory.Progress,
         ),
@@ -88,5 +90,39 @@ class NotificationService {
 
   Future<void> cancelAll() async {
     await AwesomeNotifications().cancelAll();
+  }
+
+  /// Schedules a one-shot "streak at risk" notification ~20 hours from now.
+  /// Call this every time the player successfully plays and their streak increases.
+  Future<void> scheduleStreakReminder(int currentStreak) async {
+    final isAllowed = await AwesomeNotifications().isNotificationAllowed();
+    if (!isAllowed) return;
+
+    // Cancel previous streak reminder before scheduling a new one.
+    await AwesomeNotifications().cancel(42);
+
+    final fireAt = DateTime.now().add(const Duration(hours: 20));
+    final body = currentStreak >= 7
+        ? '🔥 You have a $currentStreak day streak! Don\'t let it die. One quick game is all it takes.'
+        : '🐍 Your $currentStreak day streak needs you today. Jump in before midnight!';
+
+    try {
+      await AwesomeNotifications().createNotification(
+        content: NotificationContent(
+          id: 42,
+          channelKey: 'daily_reminder',
+          title: '⚡ Streak at Risk!',
+          body: body,
+          notificationLayout: NotificationLayout.Default,
+          category: NotificationCategory.Reminder,
+        ),
+        actionButtons: [
+          NotificationActionButton(key: 'PLAY', label: 'PLAY NOW'),
+        ],
+        schedule: NotificationCalendar.fromDate(date: fireAt),
+      );
+    } catch (e) {
+      debugPrint('Could not schedule streak reminder: $e');
+    }
   }
 }

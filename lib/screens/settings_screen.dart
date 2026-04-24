@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../core/constants/app_colors.dart';
+import '../core/enums/haptic_intensity.dart';
 import '../core/enums/theme_type.dart';
 import '../providers/settings_provider.dart';
 import '../services/auth_service.dart';
@@ -11,20 +12,28 @@ class SettingsScreen extends StatelessWidget {
 
   AppThemeColors _colors(ThemeType t) {
     switch (t) {
-      case ThemeType.retro:  return AppThemeColors.retro;
-      case ThemeType.neon:   return AppThemeColors.neon;
-      case ThemeType.nature: return AppThemeColors.nature;
-      case ThemeType.arcade: return AppThemeColors.arcade;
-      case ThemeType.cyber: return AppThemeColors.cyber;
-      case ThemeType.volcano: return AppThemeColors.volcano;
+      case ThemeType.retro:
+        return AppThemeColors.retro;
+      case ThemeType.neon:
+        return AppThemeColors.neon;
+      case ThemeType.nature:
+        return AppThemeColors.nature;
+      case ThemeType.arcade:
+        return AppThemeColors.arcade;
+      case ThemeType.cyber:
+        return AppThemeColors.cyber;
+      case ThemeType.volcano:
+        return AppThemeColors.volcano;
+      case ThemeType.ice:
+        return AppThemeColors.ice;
     }
   }
 
-  @override
   Widget build(BuildContext context) {
     final settings = context.watch<SettingsProvider>();
     final colors = _colors(settings.theme);
-    final font = settings.theme == ThemeType.retro ? 'PressStart2P' : 'Orbitron';
+    final font =
+        settings.theme == ThemeType.retro ? 'PressStart2P' : 'Orbitron';
 
     return Scaffold(
       backgroundColor: colors.background,
@@ -42,6 +51,11 @@ class SettingsScreen extends StatelessWidget {
                 children: [
                   // Account section
                   _SectionLabel(title: 'ACCOUNT', colors: colors, font: font),
+                  const SizedBox(height: 10),
+                  _SettingsHero(colors: colors, font: font)
+                      .animate()
+                      .fadeIn(duration: 300.ms)
+                      .slideY(begin: 0.08, end: 0),
                   const SizedBox(height: 10),
                   Consumer<AuthService>(
                     builder: (context, auth, _) {
@@ -79,7 +93,8 @@ class SettingsScreen extends StatelessWidget {
                         font: font,
                         onTap: () => settings.setDifficulty(e.value),
                       )
-                          .animate(delay: Duration(milliseconds: 80 + e.key * 40))
+                          .animate(
+                              delay: Duration(milliseconds: 80 + e.key * 40))
                           .fadeIn()
                           .slideX(begin: 0.05, end: 0),
                     );
@@ -175,6 +190,21 @@ class _SectionLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: colors.buttonBorder.withOpacity(0.9),
+            boxShadow: [
+              BoxShadow(
+                color: colors.buttonBorder.withOpacity(0.35),
+                blurRadius: 8,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 8),
         Text(
           title,
           style: TextStyle(
@@ -203,11 +233,90 @@ class _SectionLabel extends StatelessWidget {
   }
 }
 
+class _SettingsHero extends StatelessWidget {
+  final AppThemeColors colors;
+  final String font;
+  const _SettingsHero({required this.colors, required this.font});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            colors.buttonBorder.withOpacity(0.28),
+            colors.accent.withOpacity(0.14),
+            colors.hudBg.withOpacity(0.65),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: colors.buttonBorder.withOpacity(0.35)),
+        boxShadow: [
+          BoxShadow(
+            color: colors.buttonBorder.withOpacity(0.12),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: colors.hudBg.withOpacity(0.8),
+              border: Border.all(color: colors.buttonBorder.withOpacity(0.45)),
+            ),
+            child: const Center(
+              child: Text('🎮', style: TextStyle(fontSize: 20)),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'CONTROL YOUR EXPERIENCE',
+                  style: TextStyle(
+                    fontFamily: font,
+                    fontSize: 10,
+                    letterSpacing: 1.2,
+                    fontWeight: FontWeight.w700,
+                    color: colors.accent,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Tune visuals, difficulty, and controls for your perfect run.',
+                  style: TextStyle(
+                    fontFamily: 'Orbitron',
+                    fontSize: 10,
+                    color: colors.text.withOpacity(0.75),
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _AccountCard extends StatelessWidget {
   final AuthService auth;
   final AppThemeColors colors;
   final String font;
-  const _AccountCard({required this.auth, required this.colors, required this.font});
+  const _AccountCard(
+      {required this.auth, required this.colors, required this.font});
 
   @override
   Widget build(BuildContext context) {
@@ -305,7 +414,8 @@ class _IconBtn extends StatelessWidget {
   final IconData icon;
   final Color color;
   final VoidCallback onTap;
-  const _IconBtn({required this.icon, required this.color, required this.onTap});
+  const _IconBtn(
+      {required this.icon, required this.color, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -374,81 +484,93 @@ class _ThemeSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: ThemeType.values.map((t) {
-        final sel = t == settings.theme;
-        final themeColors = _themeColors(t);
-        return Expanded(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: GestureDetector(
-              onTap: () => settings.setTheme(t),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 220),
-                curve: Curves.easeOutCubic,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                decoration: BoxDecoration(
-                  gradient: sel
-                      ? LinearGradient(
-                          colors: [
-                            themeColors.withOpacity(0.3),
-                            themeColors.withOpacity(0.1),
-                          ],
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                        )
-                      : null,
-                  color: sel ? null : colors.hudBg.withOpacity(0.4),
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(
-                    color: sel
-                        ? themeColors.withOpacity(0.8)
-                        : colors.buttonBorder.withOpacity(0.15),
-                    width: sel ? 2 : 1,
-                  ),
-                  boxShadow: sel
-                      ? [
-                          BoxShadow(
-                            color: themeColors.withOpacity(0.2),
-                            blurRadius: 16,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const spacing = 8.0;
+        final itemWidth = (constraints.maxWidth - spacing * 2) / 3;
+        return Wrap(
+          spacing: spacing,
+          runSpacing: spacing,
+          children: ThemeType.values.map((t) {
+            final sel = t == settings.theme;
+            final themeColors = _themeColors(t);
+            return SizedBox(
+              width: itemWidth,
+              child: GestureDetector(
+                onTap: () => settings.setTheme(t),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 220),
+                  curve: Curves.easeOutCubic,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  decoration: BoxDecoration(
+                    gradient: sel
+                        ? LinearGradient(
+                            colors: [
+                              themeColors.withOpacity(0.3),
+                              themeColors.withOpacity(0.1),
+                            ],
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
                           )
-                        ]
-                      : [],
-                ),
-                child: Column(
-                  children: [
-                    Text(t.icon, style: const TextStyle(fontSize: 26)),
-                    const SizedBox(height: 8),
-                    Text(
-                      t.displayName,
-                      style: TextStyle(
-                        fontFamily: 'Orbitron',
-                        fontSize: 8,
-                        color: sel
-                            ? colors.text
-                            : colors.text.withOpacity(0.35),
-                        fontWeight:
-                            sel ? FontWeight.bold : FontWeight.normal,
-                      ),
+                        : null,
+                    color: sel ? null : colors.hudBg.withOpacity(0.42),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: sel
+                          ? themeColors.withOpacity(0.9)
+                          : colors.buttonBorder.withOpacity(0.15),
+                      width: sel ? 2 : 1,
                     ),
-                  ],
+                    boxShadow: sel
+                        ? [
+                            BoxShadow(
+                              color: themeColors.withOpacity(0.25),
+                              blurRadius: 14,
+                            )
+                          ]
+                        : [],
+                  ),
+                  child: Column(
+                    children: [
+                      Text(t.icon, style: const TextStyle(fontSize: 24)),
+                      const SizedBox(height: 6),
+                      Text(
+                        t.displayName,
+                        style: TextStyle(
+                          fontFamily: 'Orbitron',
+                          fontSize: 8,
+                          color:
+                              sel ? colors.text : colors.text.withOpacity(0.42),
+                          fontWeight: sel ? FontWeight.bold : FontWeight.normal,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ),
+            );
+          }).toList(),
         );
-      }).toList(),
+      },
     );
   }
 
   Color _themeColors(ThemeType t) {
     switch (t) {
-      case ThemeType.retro:  return const Color(0xFF8BAC0F);
-      case ThemeType.neon:   return const Color(0xFF00E5FF);
-      case ThemeType.nature: return const Color(0xFF66FF99);
-      case ThemeType.arcade: return const Color(0xFFFFD700);
-      case ThemeType.cyber: return const Color(0xFF00FF41);
-      case ThemeType.volcano: return const Color(0xFFFF4500);
+      case ThemeType.retro:
+        return const Color(0xFF8BAC0F);
+      case ThemeType.neon:
+        return const Color(0xFF00E5FF);
+      case ThemeType.nature:
+        return const Color(0xFF66FF99);
+      case ThemeType.arcade:
+        return const Color(0xFFFFD700);
+      case ThemeType.cyber:
+        return const Color(0xFF00FF41);
+      case ThemeType.volcano:
+        return const Color(0xFFFF4500);
+      case ThemeType.ice:
+        return const Color(0xFF7FEFFF);
     }
   }
 }
@@ -469,19 +591,27 @@ class _DifficultyTile extends StatelessWidget {
 
   Color get _diffColor {
     switch (d) {
-      case Difficulty.easy:   return const Color(0xFF66BB6A);
-      case Difficulty.normal: return const Color(0xFFFFA726);
-      case Difficulty.hard:   return const Color(0xFFEF5350);
-      case Difficulty.insane: return const Color(0xFFAB47BC);
+      case Difficulty.easy:
+        return const Color(0xFF66BB6A);
+      case Difficulty.normal:
+        return const Color(0xFFFFA726);
+      case Difficulty.hard:
+        return const Color(0xFFEF5350);
+      case Difficulty.insane:
+        return const Color(0xFFAB47BC);
     }
   }
 
   String get _diffIcon {
     switch (d) {
-      case Difficulty.easy:   return '🟢';
-      case Difficulty.normal: return '🟡';
-      case Difficulty.hard:   return '🔴';
-      case Difficulty.insane: return '💀';
+      case Difficulty.easy:
+        return '🟢';
+      case Difficulty.normal:
+        return '🟡';
+      case Difficulty.hard:
+        return '🔴';
+      case Difficulty.insane:
+        return '💀';
     }
   }
 
@@ -505,7 +635,9 @@ class _DifficultyTile extends StatelessWidget {
           color: sel ? null : colors.hudBg.withOpacity(0.4),
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
-            color: sel ? _diffColor.withOpacity(0.6) : colors.buttonBorder.withOpacity(0.15),
+            color: sel
+                ? _diffColor.withOpacity(0.6)
+                : colors.buttonBorder.withOpacity(0.15),
             width: sel ? 2 : 1,
           ),
           boxShadow: sel
@@ -562,8 +694,7 @@ class _DifficultyTile extends StatelessWidget {
             ),
             if (sel) ...[
               const SizedBox(width: 10),
-              Icon(Icons.check_circle_rounded,
-                  color: _diffColor, size: 22),
+              Icon(Icons.check_circle_rounded, color: _diffColor, size: 22),
             ],
           ],
         ),
@@ -577,13 +708,37 @@ class _OptionsCard extends StatelessWidget {
   final AppThemeColors colors;
   const _OptionsCard({required this.settings, required this.colors});
 
+  String _hapticLabel(HapticIntensity intensity) {
+    switch (intensity) {
+      case HapticIntensity.light:
+        return 'Light';
+      case HapticIntensity.medium:
+        return 'Medium';
+      case HapticIntensity.strong:
+        return 'Strong';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: colors.hudBg.withOpacity(0.4),
+        gradient: LinearGradient(
+          colors: [
+            colors.hudBg.withOpacity(0.55),
+            colors.hudBg.withOpacity(0.38),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
         borderRadius: BorderRadius.circular(22),
         border: Border.all(color: colors.buttonBorder.withOpacity(0.15)),
+        boxShadow: [
+          BoxShadow(
+            color: colors.buttonBorder.withOpacity(0.08),
+            blurRadius: 18,
+          ),
+        ],
       ),
       child: Column(
         children: [
@@ -617,7 +772,102 @@ class _OptionsCard extends StatelessWidget {
             colors: colors,
             onChanged: (_) => settings.toggleJoystick(),
             isFirst: false,
-            isLast: true,
+            isLast: false,
+          ),
+          _Divider(colors: colors),
+          _ToggleTile(
+            label: 'Reduced Motion',
+            subtitle: settings.reducedMotion
+                ? 'Minimize transitions and effects'
+                : 'Use full motion effects',
+            icon: '🎞️',
+            value: settings.reducedMotion,
+            colors: colors,
+            onChanged: (_) => settings.toggleReducedMotion(),
+            isFirst: false,
+            isLast: false,
+          ),
+          _Divider(colors: colors),
+          _ToggleTile(
+            label: 'Pre-Run Twist Prompt',
+            subtitle: settings.showRunModifierPrompt
+                ? 'Show random modifier before each run'
+                : 'Start runs instantly without the prompt',
+            icon: '🎲',
+            value: settings.showRunModifierPrompt,
+            colors: colors,
+            onChanged: (_) => settings.toggleRunModifierPrompt(),
+            isFirst: false,
+            isLast: false,
+          ),
+          _Divider(colors: colors),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Font Scale',
+                  style: TextStyle(
+                    fontFamily: 'Orbitron',
+                    fontSize: 12,
+                    color: colors.text.withOpacity(0.9),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Slider(
+                  value: settings.fontScale,
+                  min: 0.9,
+                  max: 1.35,
+                  divisions: 9,
+                  activeColor: colors.buttonBorder,
+                  inactiveColor: colors.background.withOpacity(0.5),
+                  label: '${(settings.fontScale * 100).round()}%',
+                  onChanged: settings.setFontScale,
+                ),
+              ],
+            ),
+          ),
+          _Divider(colors: colors),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+            child: Row(
+              children: [
+                Text(
+                  'Haptics',
+                  style: TextStyle(
+                    fontFamily: 'Orbitron',
+                    fontSize: 12,
+                    color: colors.text.withOpacity(0.9),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const Spacer(),
+                Wrap(
+                  spacing: 6,
+                  children: HapticIntensity.values.map((intensity) {
+                    final selected = settings.hapticIntensity == intensity;
+                    return ChoiceChip(
+                      label: Text(_hapticLabel(intensity)),
+                      selected: selected,
+                      onSelected: (_) => settings.setHapticIntensity(intensity),
+                      selectedColor: colors.buttonBorder.withOpacity(0.25),
+                      backgroundColor: colors.background.withOpacity(0.4),
+                      labelStyle: TextStyle(
+                        fontFamily: 'Orbitron',
+                        fontSize: 10,
+                        color: selected
+                            ? colors.text
+                            : colors.text.withOpacity(0.5),
+                        fontWeight:
+                            selected ? FontWeight.bold : FontWeight.normal,
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -662,17 +912,26 @@ class _ToggleTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
         children: [
           Container(
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: colors.buttonBorder.withOpacity(0.1),
+              gradient: LinearGradient(
+                colors: [
+                  colors.buttonBorder.withOpacity(0.16),
+                  colors.buttonBorder.withOpacity(0.08),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
               borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: colors.buttonBorder.withOpacity(0.2)),
             ),
-            child: Center(child: Text(icon, style: const TextStyle(fontSize: 20))),
+            child:
+                Center(child: Text(icon, style: const TextStyle(fontSize: 20))),
           ),
           const SizedBox(width: 14),
           Expanded(

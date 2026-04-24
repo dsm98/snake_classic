@@ -1,4 +1,3 @@
-
 enum QuestType {
   playGames,
   eatGoldenApples,
@@ -7,6 +6,10 @@ enum QuestType {
   timePlayed,
   collectPowerUps,
   reachLength,
+  // Safari quest types
+  catchPrey,
+  discoverBiomes,
+  huntStreak,
 }
 
 class DailyQuest {
@@ -35,15 +38,15 @@ class DailyQuest {
   double get progress => (currentAmount / goalAmount).clamp(0.0, 1.0);
 
   Map<String, dynamic> toJson() => {
-    'id': id,
-    'type': type.name,
-    'title': title,
-    'description': description,
-    'goalAmount': goalAmount,
-    'coinReward': coinReward,
-    'currentAmount': currentAmount,
-    'isWeekly': isWeekly,
-  };
+        'id': id,
+        'type': type.name,
+        'title': title,
+        'description': description,
+        'goalAmount': goalAmount,
+        'coinReward': coinReward,
+        'currentAmount': currentAmount,
+        'isWeekly': isWeekly,
+      };
 
   factory DailyQuest.fromJson(Map<String, dynamic> json) {
     return DailyQuest(

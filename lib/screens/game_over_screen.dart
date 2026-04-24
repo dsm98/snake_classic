@@ -12,6 +12,7 @@ import '../services/storage_service.dart';
 import '../services/audio_service.dart';
 import 'home_screen.dart';
 import 'game_screen.dart';
+import 'safari_journal_screen.dart';
 import '../core/models/campaign_level.dart';
 import '../core/models/daily_event.dart';
 
@@ -27,6 +28,14 @@ class GameOverScreen extends StatefulWidget {
   final bool isCampaignWon;
   final CampaignLevel? campaignLevel;
   final DailyEvent? dailyEvent;
+  // Reward breakdown
+  final int coinsEarned;
+  final double streakMultiplier;
+  final int streakBonusCoins;
+  final int questCoins;
+  final bool rankLeveledUp;
+  final int newRankLevel;
+  final int campaignStars; // 0-3, set when isCampaignWon
 
   const GameOverScreen({
     super.key,
@@ -41,6 +50,13 @@ class GameOverScreen extends StatefulWidget {
     this.isCampaignWon = false,
     this.campaignLevel,
     this.dailyEvent,
+    this.coinsEarned = 0,
+    this.streakMultiplier = 1.0,
+    this.streakBonusCoins = 0,
+    this.questCoins = 0,
+    this.rankLeveledUp = false,
+    this.newRankLevel = 0,
+    this.campaignStars = 0,
   });
 
   @override
@@ -57,12 +73,20 @@ class _GameOverScreenState extends State<GameOverScreen>
 
   AppThemeColors get colors {
     switch (widget.themeType) {
-      case ThemeType.retro:  return AppThemeColors.retro;
-      case ThemeType.neon:   return AppThemeColors.neon;
-      case ThemeType.nature: return AppThemeColors.nature;
-      case ThemeType.arcade: return AppThemeColors.arcade;
-      case ThemeType.cyber: return AppThemeColors.cyber;
-      case ThemeType.volcano: return AppThemeColors.volcano;
+      case ThemeType.retro:
+        return AppThemeColors.retro;
+      case ThemeType.neon:
+        return AppThemeColors.neon;
+      case ThemeType.nature:
+        return AppThemeColors.nature;
+      case ThemeType.arcade:
+        return AppThemeColors.arcade;
+      case ThemeType.cyber:
+        return AppThemeColors.cyber;
+      case ThemeType.volcano:
+        return AppThemeColors.volcano;
+      case ThemeType.ice:
+        return AppThemeColors.ice;
     }
   }
 
@@ -73,14 +97,18 @@ class _GameOverScreenState extends State<GameOverScreen>
   void initState() {
     super.initState();
 
+    final reducedMotion = StorageService().reducedMotion;
+
     _particleController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 4),
-    )..repeat();
+    );
+    if (!reducedMotion) _particleController.repeat();
 
     _countController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1200),
+      duration:
+          reducedMotion ? Duration.zero : const Duration(milliseconds: 1200),
     );
 
     // Animate score counter
@@ -130,13 +158,14 @@ class _GameOverScreenState extends State<GameOverScreen>
 
   void _doNextLevel() {
     if (widget.campaignLevel == null) return;
-    final nextIndex = widget.campaignLevel!.index; // campaignLevel index is 1-based usually? wait. 
+    final nextIndex = widget
+        .campaignLevel!.index; // campaignLevel index is 1-based usually? wait.
     // let's check index in CampaignLevel.all
     // Index starts at 1 in the model.
     if (nextIndex >= CampaignLevel.all.length) return;
-    
+
     final nextLevel = CampaignLevel.all[nextIndex];
-    
+
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         pageBuilder: (c, a1, a2) => GameScreen(
@@ -175,12 +204,14 @@ class _GameOverScreenState extends State<GameOverScreen>
       final image = await _screenshotController.capture();
       if (image != null) {
         final directory = await getApplicationDocumentsDirectory();
-        final imagePath = await File('${directory.path}/score_share.png').create();
+        final imagePath =
+            await File('${directory.path}/score_share.png').create();
         await imagePath.writeAsBytes(image);
-        await Share.shareXFiles([XFile(imagePath.path)], text: 'Beat my score in Snake Classic Reborn! 🐍');
+        await Share.shareXFiles([XFile(imagePath.path)],
+            text: 'Beat my score in Snake Classic Reborn! 🐍');
       }
     } catch (e) {
-       debugPrint('Share error: $e');
+      debugPrint('Share error: $e');
     } finally {
       if (mounted) setState(() => _isSharing = false);
     }
@@ -189,168 +220,285 @@ class _GameOverScreenState extends State<GameOverScreen>
   @override
   Widget build(BuildContext context) {
     final storage = StorageService();
+    final accent = widget.isHighScore ? Colors.amber : colors.buttonBorder;
 
     return Scaffold(
       backgroundColor: colors.background,
       body: Stack(
         children: [
-          // Background particles
+          // Subtle celebration particles for high score
           if (widget.isHighScore)
             Positioned.fill(
               child: AnimatedBuilder(
                 animation: _particleController,
-                builder: (context, _) => CustomPaint(
+                builder: (_, __) => CustomPaint(
                   painter:
                       _CelebrationPainter(_particleController.value, colors),
                 ),
               ),
             ),
 
-          // Background gradient
-          Positioned.fill(
+          // Top glow — larger, more dramatic
+          Positioned(
+            top: -60,
+            left: -40,
+            right: -40,
             child: Container(
+              height: 300,
               decoration: BoxDecoration(
                 gradient: RadialGradient(
-                  center: Alignment.topCenter,
-                  radius: 1.5,
-                  colors: [
-                    colors.hudBg.withOpacity(0.3),
-                    colors.background,
-                  ],
+                  colors: [accent.withOpacity(0.28), Colors.transparent],
+                  radius: 0.75,
                 ),
               ),
             ),
           ),
 
           SafeArea(
-            child: Center(
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+            child: Column(
+              children: [
+                // ── Top bar: share icon ──────────────────────────────
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      const SizedBox(height: 20),
-
-                      // ── GAME OVER title ──────────────────────────────
-                      _GameOverTitle(
-                        colors: colors,
-                        fontFamily: _fontFamily,
-                        isHighScore: widget.isHighScore,
-                        isCampaignWon: widget.isCampaignWon,
-                      ),
-
-                      const SizedBox(height: 24),
-
-                      // ── Score showcase ───────────────────────────────
-                      Screenshot(
-                        controller: _screenshotController,
-                        child: Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: colors.background, // Background for the screenshot
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: _ScoreShowcase(
-                            displayScore: _displayScore,
-                            realScore: widget.score,
-                            snakeLength: widget.snakeLength,
-                            mode: widget.mode,
-                            difficulty: widget.difficulty,
-                            colors: colors,
-                            fontFamily: _fontFamily,
-                            isHighScore: widget.isHighScore,
+                      GestureDetector(
+                        onTap: _isSharing ? null : _shareScore,
+                        child: AnimatedOpacity(
+                          opacity: _isSharing ? 0.4 : 1.0,
+                          duration: const Duration(milliseconds: 200),
+                          child: Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: colors.hudBg.withOpacity(0.5),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                  color: colors.buttonBorder.withOpacity(0.2)),
+                            ),
+                            child: const Text('📤',
+                                style: TextStyle(fontSize: 18)),
                           ),
                         ),
-                      ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.2, end: 0),
-
-                      const SizedBox(height: 16),
-
-                      // ── XP Card ───────────────────────────────────────
-                      _XpCard(
-                        xpEarned: widget.xpEarned,
-                        storage: storage,
-                        colors: colors,
-                        fontFamily: _fontFamily,
-                      ).animate().fadeIn(delay: 500.ms).slideY(begin: 0.2, end: 0),
-
-                      // ── Streak ────────────────────────────────────────
-                      if (storage.dailyStreak > 1) ...[
-                        const SizedBox(height: 12),
-                        _StreakCard(
-                          streak: storage.dailyStreak,
-                          colors: colors,
-                          fontFamily: _fontFamily,
-                        ).animate().fadeIn(delay: 650.ms),
-                      ],
-
-                      // ── Near Miss ─────────────────────────────────────
-                      if (!widget.isHighScore && !widget.isCampaignWon) ...[
-                        const SizedBox(height: 12),
-                        _NearMissCard(
-                          score: widget.score,
-                          snakeLength: widget.snakeLength,
-                          storage: storage,
-                          colors: colors,
-                          fontFamily: _fontFamily,
-                        ).animate().fadeIn(delay: 700.ms).slideY(begin: 0.15, end: 0),
-                      ],
-
-                      const SizedBox(height: 28),
-
-                      // ── Action buttons ────────────────────────────────
-                      if (widget.isCampaignWon && widget.campaignLevel != null && widget.campaignLevel!.index < CampaignLevel.all.length) ...[
-                        _ActionButton(
-                          label: 'NEXT LEVEL',
-                          icon: '⏭️',
-                          isPrimary: true,
-                          colors: colors,
-                          font: _fontFamily,
-                          onTap: _doNextLevel,
-                        ).animate().fadeIn(delay: 720.ms).slideY(begin: 0.1, end: 0),
-                        const SizedBox(height: 12),
-                      ],
-
-                      _ActionButton(
-                        label: 'PLAY AGAIN',
-                        icon: '🔄',
-                        isPrimary: !widget.isCampaignWon,
-                        colors: colors,
-                        font: _fontFamily,
-                        onTap: _doRestart,
-                      ).animate().fadeIn(delay: 750.ms).slideY(begin: 0.1, end: 0),
-
-                      const SizedBox(height: 12),
-
-                      _ActionButton(
-                        label: _isSharing ? 'PREPARING...' : 'SHARE SCORE',
-                        icon: '📤',
-                        isPrimary: false,
-                        colors: colors,
-                        font: _fontFamily,
-                        onTap: _isSharing ? null : () => _shareScore(),
-                      ).animate().fadeIn(delay: 800.ms).slideY(begin: 0.1, end: 0),
-
-                      const SizedBox(height: 12),
-
-                      _ActionButton(
-                        label: 'MAIN MENU',
-                        icon: '🏠',
-                        isPrimary: false,
-                        colors: colors,
-                        font: _fontFamily,
-                        onTap: () => Navigator.of(context).pushAndRemoveUntil(
-                          MaterialPageRoute(builder: (_) => const HomeScreen()),
-                          (route) => false,
-                        ),
-                      ).animate().fadeIn(delay: 850.ms).slideY(begin: 0.1, end: 0),
-
-                      const SizedBox(height: 30),
+                      ).animate().fadeIn(delay: 900.ms),
                     ],
                   ),
                 ),
-              ),
+
+                Expanded(
+                  child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Column(
+                        children: [
+                          const SizedBox(height: 16),
+
+                          // ── Status label ─────────────────────────────
+                          Text(
+                            widget.isCampaignWon
+                                ? 'VICTORY'
+                                : widget.isHighScore
+                                    ? 'NEW BEST'
+                                    : 'GAME OVER',
+                            style: TextStyle(
+                              fontFamily: _fontFamily,
+                              fontSize: 13,
+                              letterSpacing: 5,
+                              color: accent.withOpacity(0.85),
+                            ),
+                          )
+                              .animate()
+                              .fadeIn(duration: 400.ms)
+                              .slideY(begin: -0.3, end: 0),
+
+                          const SizedBox(height: 12),
+
+                          // ── Attractive share card (screenshot target) ──
+                          Screenshot(
+                            controller: _screenshotController,
+                            child: _ShareCard(
+                              score: _displayScore,
+                              mode: widget.mode,
+                              difficulty: widget.difficulty,
+                              snakeLength: widget.snakeLength,
+                              bestScore: storage.bestScore,
+                              isHighScore: widget.isHighScore,
+                              themeType: widget.themeType,
+                              colors: colors,
+                              fontFamily: _fontFamily,
+                            ),
+                          )
+                              .animate()
+                              .fadeIn(delay: 350.ms)
+                              .slideY(begin: 0.15, end: 0),
+
+                          const SizedBox(height: 20),
+
+                          // ── XP + Coins reward pills ──────────────────
+                          Row(
+                            children: [
+                              if (widget.xpEarned > 0)
+                                Expanded(
+                                  child: _RewardPill(
+                                    icon: storage.rankEmoji,
+                                    label: '+${widget.xpEarned} XP',
+                                    sublabel: storage.rankTitle,
+                                    color: Colors.greenAccent.shade400,
+                                    progress: storage.rankProgress,
+                                    progressColor: Colors.greenAccent,
+                                    bgColor:
+                                        Colors.greenAccent.withOpacity(0.08),
+                                    borderColor:
+                                        Colors.greenAccent.withOpacity(0.25),
+                                  ),
+                                ),
+                              if (widget.xpEarned > 0 && widget.coinsEarned > 0)
+                                const SizedBox(width: 10),
+                              if (widget.coinsEarned > 0)
+                                Expanded(
+                                  child: _RewardPill(
+                                    icon: '💰',
+                                    label: '+${widget.coinsEarned}',
+                                    sublabel: widget.streakMultiplier > 1.0
+                                        ? '×${widget.streakMultiplier.toStringAsFixed(1)} streak'
+                                        : 'coins',
+                                    color: Colors.amber,
+                                    progress: null,
+                                    progressColor: Colors.amber,
+                                    bgColor: Colors.amber.withOpacity(0.08),
+                                    borderColor: Colors.amber.withOpacity(0.25),
+                                  ),
+                                ),
+                            ],
+                          )
+                              .animate()
+                              .fadeIn(delay: 480.ms)
+                              .slideY(begin: 0.2, end: 0),
+
+                          // ── Safari summary ───────────────────────────
+                          if (widget.mode == GameMode.explore) ...[
+                            const SizedBox(height: 14),
+                            _SafariSummaryCard(
+                                    colors: colors, fontFamily: _fontFamily)
+                                .animate()
+                                .fadeIn(delay: 510.ms)
+                                .slideY(begin: 0.15, end: 0),
+                          ],
+
+                          // ── Campaign star rating ─────────────────────
+                          if (widget.isCampaignWon &&
+                              widget.campaignLevel != null) ...[
+                            const SizedBox(height: 14),
+                            _CampaignStarCard(
+                              level: widget.campaignLevel!,
+                              starsEarned: widget.campaignStars,
+                              colors: colors,
+                              fontFamily: _fontFamily,
+                            ).animate().fadeIn(delay: 505.ms).scale(
+                                  begin: const Offset(0.85, 0.85),
+                                  end: const Offset(1, 1),
+                                  duration: 500.ms,
+                                  delay: 505.ms,
+                                  curve: Curves.easeOutBack,
+                                ),
+                          ],
+
+                          // ── Rank-up banner ───────────────────────────
+                          if (widget.rankLeveledUp) ...[
+                            const SizedBox(height: 14),
+                            _RankUpBanner(
+                              newRankLevel: widget.newRankLevel,
+                              colors: colors,
+                              fontFamily: _fontFamily,
+                            ).animate().fadeIn(delay: 520.ms).scale(
+                                begin: const Offset(0.8, 0.8),
+                                end: const Offset(1, 1),
+                                duration: 400.ms,
+                                delay: 520.ms,
+                                curve: Curves.easeOutBack),
+                          ],
+
+                          const SizedBox(height: 32),
+
+                          // ── Primary action ───────────────────────────
+                          if (widget.isCampaignWon &&
+                              widget.campaignLevel != null &&
+                              widget.campaignLevel!.index <
+                                  CampaignLevel.all.length) ...[
+                            _ActionButton(
+                              label: 'NEXT LEVEL',
+                              icon: '⏭️',
+                              isPrimary: true,
+                              colors: colors,
+                              font: _fontFamily,
+                              onTap: _doNextLevel,
+                            )
+                                .animate()
+                                .fadeIn(delay: 600.ms)
+                                .slideY(begin: 0.1, end: 0),
+                            const SizedBox(height: 10),
+                          ],
+
+                          _ActionButton(
+                            label: 'PLAY AGAIN',
+                            icon: '🔄',
+                            isPrimary: !widget.isCampaignWon,
+                            colors: colors,
+                            font: _fontFamily,
+                            onTap: _doRestart,
+                          )
+                              .animate()
+                              .fadeIn(delay: 650.ms)
+                              .slideY(begin: 0.1, end: 0),
+
+                          const SizedBox(height: 10),
+
+                          // ── Home ─────────────────────────────────────
+                          _ActionButton(
+                            label: 'MAIN MENU',
+                            icon: '🏠',
+                            isPrimary: false,
+                            colors: colors,
+                            font: _fontFamily,
+                            onTap: () =>
+                                Navigator.of(context).pushAndRemoveUntil(
+                              MaterialPageRoute(
+                                  builder: (_) => const HomeScreen()),
+                              (r) => false,
+                            ),
+                          )
+                              .animate()
+                              .fadeIn(delay: 750.ms)
+                              .slideY(begin: 0.1, end: 0),
+
+                          if (widget.mode == GameMode.explore) ...[
+                            const SizedBox(height: 10),
+                            _ActionButton(
+                              label: 'SAFARI JOURNAL',
+                              icon: '📖',
+                              isPrimary: false,
+                              colors: colors,
+                              font: _fontFamily,
+                              onTap: () => Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => SafariJournalScreen(
+                                      themeType: widget.themeType),
+                                ),
+                              ),
+                            )
+                                .animate()
+                                .fadeIn(delay: 820.ms)
+                                .slideY(begin: 0.1, end: 0),
+                          ],
+
+                          const SizedBox(height: 24),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -361,204 +509,296 @@ class _GameOverScreenState extends State<GameOverScreen>
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _GameOverTitle extends StatelessWidget {
-  final AppThemeColors colors;
-  final String fontFamily;
-  final bool isHighScore;
-  final bool isCampaignWon;
-  const _GameOverTitle(
-      {required this.colors,
-      required this.fontFamily,
-      required this.isHighScore,
-      this.isCampaignWon = false});
+// ─────────────────────────────────────────────────────────────────────────────
+// Attractive share card (captured as screenshot for sharing)
+// ─────────────────────────────────────────────────────────────────────────────
 
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        ShaderMask(
-          shaderCallback: (bounds) => LinearGradient(
-            colors: isCampaignWon ? [Colors.green.shade300, Colors.green.shade600] : [Colors.red.shade300, Colors.red.shade600],
-          ).createShader(bounds),
-          child: Text(
-            isCampaignWon ? 'VICTORY!' : 'GAME OVER',
-            style: TextStyle(
-              fontFamily: fontFamily,
-              fontSize: 28,
-              color: Colors.white,
-              letterSpacing: 4,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        )
-            .animate()
-            .scale(
-                begin: const Offset(0.4, 0.4),
-                end: const Offset(1, 1),
-                curve: Curves.elasticOut,
-                duration: 700.ms)
-            .shake(delay: 750.ms),
-
-        if (isHighScore) ...[
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(colors: [
-                Color(0xFFFFD700),
-                Color(0xFFFF8C00),
-              ]),
-              borderRadius: BorderRadius.circular(30),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.amber.withOpacity(0.4),
-                  blurRadius: 20,
-                  spreadRadius: 2,
-                ),
-              ],
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text('🏆', style: TextStyle(fontSize: 16)),
-                const SizedBox(width: 8),
-                Text(
-                  'NEW HIGH SCORE!',
-                  style: TextStyle(
-                    fontFamily: fontFamily,
-                    fontSize: 11,
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    shadows: [
-                      Shadow(
-                          color: Colors.black.withOpacity(0.3), blurRadius: 4)
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          )
-              .animate()
-              .fadeIn(delay: 500.ms)
-              .shimmer(delay: 600.ms, duration: 1500.ms),
-        ],
-      ],
-    );
-  }
-}
-
-class _ScoreShowcase extends StatelessWidget {
-  final int displayScore;
-  final int realScore;
-  final int snakeLength;
+class _ShareCard extends StatelessWidget {
+  final int score;
   final GameMode mode;
   final Difficulty difficulty;
+  final int snakeLength;
+  final int bestScore;
+  final bool isHighScore;
+  final ThemeType themeType;
   final AppThemeColors colors;
   final String fontFamily;
-  final bool isHighScore;
 
-  const _ScoreShowcase({
-    required this.displayScore,
-    required this.realScore,
-    required this.snakeLength,
+  const _ShareCard({
+    required this.score,
     required this.mode,
     required this.difficulty,
+    required this.snakeLength,
+    required this.bestScore,
+    required this.isHighScore,
+    required this.themeType,
     required this.colors,
     required this.fontFamily,
-    required this.isHighScore,
   });
 
   @override
   Widget build(BuildContext context) {
+    // Share card always uses a dark, self-contained look so it looks great
+    // when saved/shared regardless of current theme brightness.
+    final cardBg =
+        Color.lerp(colors.background, const Color(0xFF050505), 0.55)!;
+    final cardBorder = colors.buttonBorder.withOpacity(0.55);
+    final scoreGradient = isHighScore
+        ? const [Color(0xFFFFD700), Color(0xFFFF6B00)]
+        : [colors.accent, colors.text];
+    final labelColor = colors.text.withOpacity(0.55);
+
+    String themeLabel() {
+      switch (themeType) {
+        case ThemeType.retro:
+          return 'CLASSIC';
+        case ThemeType.neon:
+          return 'NEON';
+        case ThemeType.nature:
+          return 'NATURE';
+        case ThemeType.arcade:
+          return 'ARCADE';
+        case ThemeType.cyber:
+          return 'CYBER';
+        case ThemeType.volcano:
+          return 'VOLCANO';
+        case ThemeType.ice:
+          return 'ICE';
+      }
+    }
+
+    String diffLabel() {
+      switch (difficulty) {
+        case Difficulty.easy:
+          return 'EASY';
+        case Difficulty.normal:
+          return 'NORMAL';
+        case Difficulty.hard:
+          return 'HARD';
+        case Difficulty.insane:
+          return 'INSANE';
+      }
+    }
+
     return Container(
-      width: double.infinity,
+      width: 320,
       decoration: BoxDecoration(
-        color: colors.hudBg.withOpacity(0.6),
+        color: cardBg,
         borderRadius: BorderRadius.circular(28),
-        border: Border.all(
-          color: isHighScore
-              ? Colors.amber.withOpacity(0.4)
-              : colors.buttonBorder.withOpacity(0.25),
-          width: isHighScore ? 2 : 1.5,
-        ),
+        border: Border.all(color: cardBorder, width: 1.5),
         boxShadow: [
           BoxShadow(
-            color: isHighScore
-                ? Colors.amber.withOpacity(0.12)
-                : colors.buttonBorder.withOpacity(0.08),
-            blurRadius: 30,
+            color: colors.buttonBorder.withOpacity(0.3),
+            blurRadius: 40,
             spreadRadius: 2,
           ),
         ],
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          // Score number
+          // ── Header bar ─────────────────────────────────────────────
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  colors.buttonBorder.withOpacity(0.25),
+                  colors.accent.withOpacity(0.12),
+                ],
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+              ),
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(27)),
+              border: Border(
+                bottom: BorderSide(color: cardBorder.withOpacity(0.4)),
+              ),
+            ),
+            child: Row(
+              children: [
+                Text('🐍', style: const TextStyle(fontSize: 22)),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'SNAKE CLASSIC',
+                    style: TextStyle(
+                      fontFamily: 'Orbitron',
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      color: colors.text.withOpacity(0.9),
+                      letterSpacing: 2.5,
+                    ),
+                  ),
+                ),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: colors.buttonBorder.withOpacity(0.18),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: cardBorder.withOpacity(0.5)),
+                  ),
+                  child: Text(
+                    themeLabel(),
+                    style: TextStyle(
+                      fontFamily: 'Orbitron',
+                      fontSize: 8,
+                      color: colors.accent,
+                      letterSpacing: 2,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // ── Score area ─────────────────────────────────────────────
           Padding(
-            padding: const EdgeInsets.fromLTRB(24, 28, 24, 0),
+            padding: const EdgeInsets.fromLTRB(20, 22, 20, 8),
             child: Column(
               children: [
+                if (isHighScore)
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                    margin: const EdgeInsets.only(bottom: 10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFD700).withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                          color: const Color(0xFFFFD700).withOpacity(0.5)),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text('👑', style: TextStyle(fontSize: 12)),
+                        SizedBox(width: 6),
+                        Text(
+                          'NEW HIGH SCORE!',
+                          style: TextStyle(
+                            fontFamily: 'Orbitron',
+                            fontSize: 9,
+                            color: Color(0xFFFFD700),
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 2,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ShaderMask(
-                  shaderCallback: (bounds) => LinearGradient(
-                    colors: isHighScore
-                        ? [Colors.amber, Colors.orange]
-                        : [colors.text, colors.accent],
-                  ).createShader(bounds),
+                  shaderCallback: (b) => LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: scoreGradient,
+                  ).createShader(b),
                   child: Text(
-                    '$displayScore',
+                    '$score',
                     style: TextStyle(
                       fontFamily: fontFamily,
-                      fontSize: 72,
+                      fontSize: fontFamily == 'PressStart2P' ? 44 : 72,
                       color: Colors.white,
                       height: 1,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 2),
                 Text(
                   'POINTS',
                   style: TextStyle(
                     fontFamily: 'Orbitron',
-                    fontSize: 11,
-                    color: colors.text.withOpacity(0.4),
-                    letterSpacing: 4,
+                    fontSize: 9,
+                    letterSpacing: 5,
+                    color: labelColor,
                   ),
                 ),
               ],
             ),
           ),
 
-          const SizedBox(height: 20),
-
-          // Divider
-          Divider(
-            color: colors.buttonBorder.withOpacity(0.15),
-            thickness: 1,
-            height: 1,
+          // ── Divider ────────────────────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Divider(
+              color: cardBorder.withOpacity(0.4),
+              height: 1,
+            ),
           ),
 
-          // Stats grid
+          // ── Stats row ──────────────────────────────────────────────
           Padding(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _StatCol(
+                  icon: mode.icon,
+                  value: mode.displayName,
+                  label: 'MODE',
+                  labelColor: labelColor,
+                  valueColor: colors.text,
+                ),
+                _StatDivider(color: cardBorder),
+                _StatCol(
+                  icon: '🐍',
+                  value: '$snakeLength',
+                  label: 'LENGTH',
+                  labelColor: labelColor,
+                  valueColor: colors.text,
+                ),
+                _StatDivider(color: cardBorder),
+                _StatCol(
+                  icon: '🏆',
+                  value: '$bestScore',
+                  label: 'BEST',
+                  labelColor: labelColor,
+                  valueColor: colors.text,
+                ),
+              ],
+            ),
+          ),
+
+          // ── Footer ─────────────────────────────────────────────────
+          Container(
+            padding: const EdgeInsets.fromLTRB(20, 10, 20, 18),
+            decoration: BoxDecoration(
+              color: Colors.black.withOpacity(0.18),
+              borderRadius:
+                  const BorderRadius.vertical(bottom: Radius.circular(27)),
+            ),
             child: Row(
               children: [
-                _StatCell(
-                  label: 'MODE',
-                  value: '${mode.icon} ${mode.displayName}',
-                  colors: colors,
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: colors.accent.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: colors.accent.withOpacity(0.35)),
+                  ),
+                  child: Text(
+                    diffLabel(),
+                    style: TextStyle(
+                      fontFamily: 'Orbitron',
+                      fontSize: 7,
+                      color: colors.accent,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1,
+                    ),
+                  ),
                 ),
-                _VertDivider(colors: colors),
-                _StatCell(
-                  label: 'DIFFICULTY',
-                  value: difficulty.displayName,
-                  colors: colors,
-                ),
-                _VertDivider(colors: colors),
-                _StatCell(
-                  label: 'LENGTH',
-                  value: '$snakeLength',
-                  colors: colors,
+                const Spacer(),
+                Text(
+                  'Can you beat this? 🎮',
+                  style: TextStyle(
+                    fontFamily: 'Orbitron',
+                    fontSize: 8,
+                    color: labelColor,
+                    fontStyle: FontStyle.italic,
+                  ),
                 ),
               ],
             ),
@@ -569,52 +809,143 @@ class _ScoreShowcase extends StatelessWidget {
   }
 }
 
-class _StatCell extends StatelessWidget {
-  final String label;
+class _StatCol extends StatelessWidget {
+  final String icon;
   final String value;
-  final AppThemeColors colors;
-  const _StatCell({required this.label, required this.value, required this.colors});
+  final String label;
+  final Color labelColor;
+  final Color valueColor;
+  const _StatCol({
+    required this.icon,
+    required this.value,
+    required this.label,
+    required this.labelColor,
+    required this.valueColor,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: Column(
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontFamily: 'Orbitron',
-              fontSize: 8,
-              color: colors.text.withOpacity(0.4),
-              letterSpacing: 1,
-            ),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(icon, style: const TextStyle(fontSize: 18)),
+        const SizedBox(height: 5),
+        Text(
+          value,
+          style: TextStyle(
+            fontFamily: 'Orbitron',
+            fontSize: 11,
+            color: valueColor,
+            fontWeight: FontWeight.bold,
           ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: TextStyle(
-              fontFamily: 'Orbitron',
-              fontSize: 11,
-              color: colors.accent,
-              fontWeight: FontWeight.bold,
-            ),
-            textAlign: TextAlign.center,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        const SizedBox(height: 2),
+        Text(
+          label,
+          style: TextStyle(
+            fontFamily: 'Orbitron',
+            fontSize: 7,
+            color: labelColor,
+            letterSpacing: 1,
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
 
-class _VertDivider extends StatelessWidget {
-  final AppThemeColors colors;
-  const _VertDivider({required this.colors});
+class _StatDivider extends StatelessWidget {
+  final Color color;
+  const _StatDivider({required this.color});
   @override
   Widget build(BuildContext context) {
     return Container(
       width: 1,
-      height: 36,
-      color: colors.buttonBorder.withOpacity(0.15),
+      height: 48,
+      color: color.withOpacity(0.3),
+    );
+  }
+}
+
+class _RewardPill extends StatelessWidget {
+  final String icon;
+  final String label;
+  final String sublabel;
+  final Color color;
+  final double? progress;
+  final Color progressColor;
+  final Color bgColor;
+  final Color borderColor;
+
+  const _RewardPill({
+    required this.icon,
+    required this.label,
+    required this.sublabel,
+    required this.color,
+    required this.progress,
+    required this.progressColor,
+    required this.bgColor,
+    required this.borderColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: borderColor, width: 1.2),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(icon, style: const TextStyle(fontSize: 18)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: const TextStyle(
+                        fontFamily: 'Orbitron',
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ).copyWith(color: color),
+                    ),
+                    Text(
+                      sublabel,
+                      style: TextStyle(
+                        fontFamily: 'Orbitron',
+                        fontSize: 8,
+                        color: color.withOpacity(0.65),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (progress != null) ...[
+            const SizedBox(height: 8),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: progress,
+                minHeight: 4,
+                backgroundColor: progressColor.withOpacity(0.12),
+                valueColor: AlwaysStoppedAnimation<Color>(progressColor),
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }
@@ -643,156 +974,167 @@ class _ActionButtonState extends State<_ActionButton> {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: (_) => setState(() => _pressed = true),
-      onTapUp: (_) {
-        setState(() => _pressed = false);
-        widget.onTap?.call();
-      },
-      onTapCancel: () => setState(() => _pressed = false),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 100),
-        transform: _pressed
-            ? (Matrix4.identity()..scale(0.97, 0.97))
-            : Matrix4.identity(),
-        transformAlignment: Alignment.center,
-        width: double.infinity,
-        height: 60,
-        decoration: BoxDecoration(
-          gradient: widget.isPrimary
-              ? LinearGradient(
-                  colors: [
-                    widget.colors.buttonBorder,
-                    Color.lerp(widget.colors.buttonBorder,
-                        widget.colors.accent, 0.5)!,
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                )
-              : null,
-          color: widget.isPrimary ? null : widget.colors.hudBg.withOpacity(0.5),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
+    return Semantics(
+      button: true,
+      label: widget.label,
+      enabled: widget.onTap != null,
+      child: GestureDetector(
+        onTapDown: (_) => setState(() => _pressed = true),
+        onTapUp: (_) {
+          setState(() => _pressed = false);
+          widget.onTap?.call();
+        },
+        onTapCancel: () => setState(() => _pressed = false),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 100),
+          transform: _pressed
+              ? (Matrix4.identity()..scale(0.97, 0.97))
+              : Matrix4.identity(),
+          transformAlignment: Alignment.center,
+          width: double.infinity,
+          height: 60,
+          decoration: BoxDecoration(
+            gradient: widget.isPrimary
+                ? LinearGradient(
+                    colors: [
+                      widget.colors.buttonBorder,
+                      Color.lerp(widget.colors.buttonBorder,
+                          widget.colors.accent, 0.5)!,
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  )
+                : null,
             color: widget.isPrimary
-                ? Colors.transparent
-                : widget.colors.buttonBorder.withOpacity(0.3),
-            width: 1.5,
-          ),
-          boxShadow: _pressed || !widget.isPrimary
-              ? []
-              : [
-                  BoxShadow(
-                    color: widget.colors.buttonBorder.withOpacity(0.35),
-                    blurRadius: 20,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(widget.icon, style: const TextStyle(fontSize: 20)),
-            const SizedBox(width: 12),
-            Text(
-              widget.label,
-              style: TextStyle(
-                fontFamily: widget.font,
-                fontSize: 13,
-                color: widget.isPrimary
-                    ? Colors.white
-                    : widget.colors.text,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 2,
-              ),
+                ? null
+                : widget.colors.buttonBg.withOpacity(0.75),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: widget.isPrimary
+                  ? Colors.transparent
+                  : widget.colors.buttonBorder.withOpacity(0.55),
+              width: 1.5,
             ),
-          ],
-        ),
+            boxShadow: _pressed || !widget.isPrimary
+                ? []
+                : [
+                    BoxShadow(
+                      color: widget.colors.buttonBorder.withOpacity(0.35),
+                      blurRadius: 20,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(widget.icon, style: const TextStyle(fontSize: 20)),
+              const SizedBox(width: 12),
+              Text(
+                widget.label,
+                style: TextStyle(
+                  fontFamily: widget.font,
+                  fontSize: 13,
+                  color: widget.isPrimary ? Colors.white : widget.colors.text,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 2,
+                ),
+              ),
+            ],
+          ),
+        )
+            .animate(
+              onPlay: widget.isPrimary ? (c) => c.repeat() : null,
+            )
+            .shimmer(
+              duration: 2400.ms,
+              delay: 800.ms,
+              color: Colors.white.withOpacity(0.15),
+            ),
       ),
     );
   }
 }
 
-class _XpCard extends StatelessWidget {
-  final int xpEarned;
-  final StorageService storage;
+class _RankUpBanner extends StatelessWidget {
+  final int newRankLevel;
   final AppThemeColors colors;
   final String fontFamily;
-  const _XpCard(
-      {required this.xpEarned,
-      required this.storage,
-      required this.colors,
-      required this.fontFamily});
+
+  const _RankUpBanner({
+    required this.newRankLevel,
+    required this.colors,
+    required this.fontFamily,
+  });
+
+  static const _rankNames = [
+    'Hatchling',
+    'Crawler',
+    'Slitherer',
+    'Viper',
+    'Python',
+    'Cobra',
+    'Serpent',
+    'Leviathan',
+    'Titan',
+    'Legend',
+  ];
+
+  static const _rankIcons = [
+    '🥚',
+    '🐛',
+    '🌀',
+    '🐍',
+    '🐉',
+    '🌟',
+    '⚡',
+    '🔥',
+    '👑',
+    '🏆'
+  ];
 
   @override
   Widget build(BuildContext context) {
+    final rank = newRankLevel.clamp(0, _rankNames.length - 1);
+    final name = _rankNames[rank];
+    final icon = _rankIcons[rank];
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       decoration: BoxDecoration(
-        color: colors.hudBg.withOpacity(0.5),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: colors.buttonBorder.withOpacity(0.2)),
+        gradient: LinearGradient(
+          colors: [
+            colors.food.withOpacity(0.25),
+            colors.snakeHead.withOpacity(0.15),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: colors.food.withOpacity(0.6), width: 1.5),
       ),
       child: Row(
         children: [
-          Text(storage.rankEmoji, style: const TextStyle(fontSize: 28)),
-          const SizedBox(width: 14),
+          Text(icon, style: const TextStyle(fontSize: 36)),
+          const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(storage.rankTitle,
-                        style: TextStyle(
-                            fontFamily: 'Orbitron',
-                            color: colors.text,
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold)),
-                    if (xpEarned > 0)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: Colors.greenAccent.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                              color: Colors.greenAccent.withOpacity(0.4)),
-                        ),
-                        child: Text(
-                          '+$xpEarned XP',
-                          style: const TextStyle(
-                            fontFamily: 'Orbitron',
-                            color: Colors.greenAccent,
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(6),
-                  child: LinearProgressIndicator(
-                    value: storage.rankProgress,
-                    minHeight: 8,
-                    backgroundColor: colors.background.withOpacity(0.5),
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      colors.buttonBorder,
-                    ),
+                Text(
+                  'RANK UP!',
+                  style: TextStyle(
+                    fontFamily: fontFamily,
+                    fontSize: 11,
+                    letterSpacing: 3,
+                    color: colors.food.withOpacity(0.8),
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  storage.rankLevel < 9
-                      ? '${storage.xpToNextRank} XP to next rank'
-                      : '🌟 MAX RANK',
+                  name.toUpperCase(),
                   style: TextStyle(
-                    fontFamily: 'Orbitron',
-                    fontSize: 8,
-                    color: colors.text.withOpacity(0.45),
+                    fontFamily: fontFamily,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: colors.food,
                   ),
                 ),
               ],
@@ -804,71 +1146,10 @@ class _XpCard extends StatelessWidget {
   }
 }
 
-class _StreakCard extends StatelessWidget {
-  final int streak;
-  final AppThemeColors colors;
-  final String fontFamily;
-  const _StreakCard(
-      {required this.streak,
-      required this.colors,
-      required this.fontFamily});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            Colors.orange.withOpacity(0.15),
-            Colors.deepOrange.withOpacity(0.08),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.orange.withOpacity(0.35), width: 1.5),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.orange.withOpacity(0.15),
-            ),
-            child: const Center(
-              child: Text('🔥', style: TextStyle(fontSize: 24)),
-            ),
-          ),
-          const SizedBox(width: 14),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('$streak Day Streak! 🎉',
-                  style: TextStyle(
-                      color: Colors.orange,
-                      fontFamily: fontFamily,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold)),
-              Text('Come back tomorrow to keep it alive!',
-                  style: TextStyle(
-                      color: Colors.orange.withOpacity(0.6),
-                      fontFamily: 'Orbitron',
-                      fontSize: 8.5)),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _AchievementToast extends StatelessWidget {
   final Achievement achievement;
   final AppThemeColors colors;
-  const _AchievementToast(
-      {required this.achievement, required this.colors});
+  const _AchievementToast({required this.achievement, required this.colors});
 
   @override
   Widget build(BuildContext context) {
@@ -914,103 +1195,9 @@ class _AchievementToast extends StatelessWidget {
           ),
         ],
       ),
-    ).animate().slideX(begin: 1, end: 0, curve: Curves.easeOutBack, duration: 400.ms);
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Near Miss Card
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _NearMissCard extends StatelessWidget {
-  final int score;
-  final int snakeLength;
-  final StorageService storage;
-  final AppThemeColors colors;
-  final String fontFamily;
-
-  const _NearMissCard({
-    required this.score,
-    required this.snakeLength,
-    required this.storage,
-    required this.colors,
-    required this.fontFamily,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final scoreGap = storage.bestScore - score;
-    final lengthGap = storage.bestLength - snakeLength;
-
-    // Only show if within striking distance of personal best
-    final showScore = scoreGap > 0 && scoreGap <= (storage.bestScore * 0.3).ceil();
-    final showLength = lengthGap > 0 && lengthGap <= 10;
-
-    if (!showScore && !showLength) return const SizedBox.shrink();
-
-    String msg;
-    String emoji;
-    if (showScore && scoreGap <= 30) {
-      msg = 'Only $scoreGap more points for your best score!';
-      emoji = '🎯';
-    } else if (showLength && lengthGap <= 5) {
-      msg = 'Just $lengthGap more food to beat your length record!';
-      emoji = '📏';
-    } else if (showScore) {
-      msg = '$scoreGap points away from your personal best...';
-      emoji = '💪';
-    } else {
-      msg = '$lengthGap more food to match your best run!';
-      emoji = '🐍';
-    }
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            Colors.purple.withOpacity(0.15),
-            Colors.deepPurple.withOpacity(0.08),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.purpleAccent.withOpacity(0.4), width: 1.5),
-      ),
-      child: Row(
-        children: [
-          Text(emoji, style: const TextStyle(fontSize: 26)),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'SO CLOSE!',
-                  style: TextStyle(
-                    fontFamily: fontFamily,
-                    fontSize: 10,
-                    color: Colors.purpleAccent,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 2,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  msg,
-                  style: TextStyle(
-                    fontFamily: fontFamily,
-                    fontSize: 11,
-                    color: colors.text.withOpacity(0.8),
-                    height: 1.4,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
+    )
+        .animate()
+        .slideX(begin: 1, end: 0, curve: Curves.easeOutBack, duration: 400.ms);
   }
 }
 
@@ -1046,20 +1233,197 @@ class _CelebrationPainter extends CustomPainter {
       old.progress != progress;
 }
 
-class _ShareStat extends StatelessWidget {
-  final String label;
-  final String value;
-  final String font;
-
-  const _ShareStat({required this.label, required this.value, required this.font});
+// ── Safari Summary Card ──────────────────────────────────────────────────────
+class _SafariSummaryCard extends StatelessWidget {
+  final AppThemeColors colors;
+  final String fontFamily;
+  const _SafariSummaryCard({required this.colors, required this.fontFamily});
 
   @override
   Widget build(BuildContext context) {
+    final s = StorageService();
+    final counts = s.safariCounts;
+    final totalPrey = counts.values.fold(0, (a, b) => a + b);
+    final bestStreak = s.safariBestStreak;
+    final gems = s.safariGems;
+    final biomes = s.safariVisitedBiomes.length;
+    final rooms = s.safariRoomsVisited;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: Colors.green.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.green.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text('🌿', style: TextStyle(fontSize: 14)),
+              const SizedBox(width: 6),
+              Text(
+                'SAFARI RESULTS',
+                style: TextStyle(
+                  fontFamily: fontFamily,
+                  fontSize: 10,
+                  color: Colors.greenAccent,
+                  letterSpacing: 2,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const Spacer(),
+              if (gems > 0) ...[
+                const Text('💎', style: TextStyle(fontSize: 13)),
+                const SizedBox(width: 4),
+                Text(
+                  '$gems total',
+                  style: const TextStyle(
+                    color: Colors.cyanAccent,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _safarStat('🐾 Prey', '$totalPrey'),
+              _safarStat('🗺️ Rooms', '$rooms'),
+              _safarStat('🌍 Biomes', '$biomes/5'),
+              _safarStat('🔥 Streak', '×$bestStreak'),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _safarStat(String label, String value) {
     return Column(
       children: [
-        Text(label, style: TextStyle(fontFamily: font, color: Colors.white60, fontSize: 8)),
-        const SizedBox(height: 4),
-        Text(value, style: TextStyle(fontFamily: font, color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+        Text(label,
+            style: const TextStyle(color: Colors.white54, fontSize: 10)),
+        const SizedBox(height: 3),
+        Text(value,
+            style: const TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.bold)),
+      ],
+    );
+  }
+}
+
+// ── Campaign Star Rating Card ────────────────────────────────────────────────
+class _CampaignStarCard extends StatelessWidget {
+  final CampaignLevel level;
+  final int starsEarned;
+  final AppThemeColors colors;
+  final String fontFamily;
+  const _CampaignStarCard({
+    required this.level,
+    required this.starsEarned,
+    required this.colors,
+    required this.fontFamily,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: Colors.amber.withOpacity(0.07),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.amber.withOpacity(0.3)),
+      ),
+      child: Column(
+        children: [
+          Text(
+            level.title.toUpperCase(),
+            style: TextStyle(
+              fontFamily: fontFamily,
+              fontSize: 11,
+              color: Colors.amber.shade300,
+              letterSpacing: 2,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 12),
+          // Animated stars
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(3, (i) {
+              final lit = i < starsEarned;
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                child: Icon(
+                  lit ? Icons.star_rounded : Icons.star_outline_rounded,
+                  color: lit ? Colors.amber : colors.text.withOpacity(0.2),
+                  size: 44,
+                ).animate(delay: Duration(milliseconds: 200 + i * 150)).scale(
+                      begin: const Offset(0.4, 0.4),
+                      end: const Offset(1.0, 1.0),
+                      curve: Curves.easeOutBack,
+                      duration: 400.ms,
+                    ),
+              );
+            }),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            starsEarned == 3
+                ? 'Perfect run! ★★★'
+                : starsEarned == 2
+                    ? 'Great work! Keep pushing for 3 stars'
+                    : starsEarned == 1
+                        ? 'Level cleared! Aim higher for more stars'
+                        : 'Level passed — try again for stars',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontFamily: fontFamily,
+              fontSize: 10,
+              color: colors.text.withOpacity(0.7),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Divider(color: colors.text.withOpacity(0.1), height: 1),
+          const SizedBox(height: 8),
+          // Score thresholds
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _threshold('★', level.star1Score, starsEarned >= 1),
+              _threshold('★★', level.star2Score, starsEarned >= 2),
+              _threshold('★★★', level.star3Score, starsEarned >= 3),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _threshold(String stars, int score, bool reached) {
+    return Column(
+      children: [
+        Text(stars,
+            style: TextStyle(
+              color: reached ? Colors.amber : Colors.white24,
+              fontSize: 13,
+            )),
+        const SizedBox(height: 2),
+        Text(
+          '$score pts',
+          style: TextStyle(
+            color: reached ? Colors.white70 : Colors.white24,
+            fontSize: 10,
+            fontFamily: fontFamily,
+          ),
+        ),
       ],
     );
   }

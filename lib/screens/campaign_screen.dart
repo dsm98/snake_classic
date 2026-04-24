@@ -4,28 +4,47 @@ import '../core/constants/app_colors.dart';
 import '../core/enums/theme_type.dart';
 import '../core/enums/game_mode.dart';
 import '../core/models/campaign_level.dart';
+import '../providers/settings_provider.dart';
 import '../providers/user_provider.dart';
+import '../services/storage_service.dart';
 import 'game_screen.dart';
+import 'loadout_screen.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
-class CampaignScreen extends StatelessWidget {
+class CampaignScreen extends StatefulWidget {
   final ThemeType themeType;
   const CampaignScreen({super.key, required this.themeType});
 
+  @override
+  State<CampaignScreen> createState() => _CampaignScreenState();
+}
+
+class _CampaignScreenState extends State<CampaignScreen> {
+  ThemeType get themeType => widget.themeType;
+
   AppThemeColors get colors {
     switch (themeType) {
-      case ThemeType.retro: return AppThemeColors.retro;
-      case ThemeType.neon: return AppThemeColors.neon;
-      case ThemeType.nature: return AppThemeColors.nature;
-      case ThemeType.arcade: return AppThemeColors.arcade;
-      case ThemeType.cyber: return AppThemeColors.cyber;
-      case ThemeType.volcano: return AppThemeColors.volcano;
+      case ThemeType.retro:
+        return AppThemeColors.retro;
+      case ThemeType.neon:
+        return AppThemeColors.neon;
+      case ThemeType.nature:
+        return AppThemeColors.nature;
+      case ThemeType.arcade:
+        return AppThemeColors.arcade;
+      case ThemeType.cyber:
+        return AppThemeColors.cyber;
+      case ThemeType.volcano:
+        return AppThemeColors.volcano;
+      case ThemeType.ice:
+        return AppThemeColors.ice;
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final userProvider = context.watch<UserProvider>();
+    final settings = context.watch<SettingsProvider>();
     final highestLevel = userProvider.highestCampaignLevel;
 
     return Scaffold(
@@ -33,12 +52,16 @@ class CampaignScreen extends StatelessWidget {
       appBar: AppBar(
         title: Text(
           'ADVENTURE',
-          style: TextStyle(color: colors.text, fontFamily: 'Orbitron', fontWeight: FontWeight.bold),
+          style: TextStyle(
+              color: colors.text,
+              fontFamily: 'Orbitron',
+              fontWeight: FontWeight.bold),
         ),
         backgroundColor: colors.hudBg.withOpacity(0.7),
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new_rounded, color: colors.text, size: 20),
+          icon: Icon(Icons.arrow_back_ios_new_rounded,
+              color: colors.text, size: 20),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
@@ -57,22 +80,33 @@ class CampaignScreen extends StatelessWidget {
               isCurrent: isCurrent,
               colors: colors,
               onTap: () {
-                if (unlocked) {
-                  Navigator.of(context).push(MaterialPageRoute(
-                    builder: (_) => GameScreen(
-                      mode: GameMode.campaign,
-                      difficulty: Difficulty.normal,
-                      themeType: level.theme,
-                      campaignLevel: level,
-                    ),
-                  ));
-                }
+                if (unlocked) _launchWithLoadout(level, settings);
               },
-            ).animate().fadeIn(delay: Duration(milliseconds: 50 * index)).slideX();
+            )
+                .animate()
+                .fadeIn(delay: Duration(milliseconds: 50 * index))
+                .slideX();
           },
         ),
       ),
     );
+  }
+
+  Future<void> _launchWithLoadout(
+      CampaignLevel level, SettingsProvider settings) async {
+    final result = await Navigator.of(context).push<LoadoutResult>(
+      MaterialPageRoute(builder: (_) => const LoadoutScreen()),
+    );
+    if (!mounted) return;
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => GameScreen(
+        mode: GameMode.campaign,
+        difficulty: settings.difficulty,
+        themeType: level.theme,
+        campaignLevel: level,
+        equippedGear: result?.gear ?? [],
+      ),
+    ));
   }
 }
 
@@ -93,77 +127,172 @@ class _LevelCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final earnedStars =
+        isUnlocked ? StorageService().getLevelStars(level.index) : 0;
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isCurrent 
-              ? colors.buttonBorder.withOpacity(0.2) 
-              : isUnlocked 
-                  ? colors.hudBg.withOpacity(0.5) 
+          color: isCurrent
+              ? colors.buttonBorder.withOpacity(0.2)
+              : isUnlocked
+                  ? colors.hudBg.withOpacity(0.5)
                   : colors.background.withOpacity(0.2),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isCurrent 
-                ? colors.buttonBorder 
-                : isUnlocked 
-                    ? colors.buttonBorder.withOpacity(0.4) 
+            color: isCurrent
+                ? colors.buttonBorder
+                : isUnlocked
+                    ? colors.buttonBorder.withOpacity(0.4)
                     : colors.text.withOpacity(0.1),
             width: isCurrent ? 2 : 1,
           ),
-          boxShadow: isCurrent ? [
-            BoxShadow(color: colors.buttonBorder.withOpacity(0.3), blurRadius: 10)
-          ] : [],
+          boxShadow: isCurrent
+              ? [
+                  BoxShadow(
+                      color: colors.buttonBorder.withOpacity(0.3),
+                      blurRadius: 10)
+                ]
+              : [],
         ),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              width: 50,
-              height: 50,
-              decoration: BoxDecoration(
-                color: isUnlocked ? colors.buttonBorder.withOpacity(0.3) : colors.text.withOpacity(0.05),
-                shape: BoxShape.circle,
-              ),
-              child: Center(
-                child: isUnlocked
-                    ? Text('${level.index}', style: TextStyle(fontFamily: 'Orbitron', fontSize: 24, color: colors.text, fontWeight: FontWeight.bold))
-                    : Icon(Icons.lock, color: colors.text.withOpacity(0.3)),
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    isUnlocked ? level.title : 'Locked',
-                    style: TextStyle(
-                      fontFamily: 'Orbitron', 
-                      fontSize: 16, 
-                      color: isUnlocked ? colors.text : colors.text.withOpacity(0.3),
-                      fontWeight: FontWeight.bold,
-                    ),
+            // ── Header row ──────────────────────────────────────
+            Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: isUnlocked
+                        ? colors.buttonBorder.withOpacity(0.3)
+                        : colors.text.withOpacity(0.05),
+                    shape: BoxShape.circle,
                   ),
-                  const SizedBox(height: 4),
-                  if (isUnlocked)
-                    Text(
-                      level.description,
-                      style: TextStyle(
-                        fontFamily: 'Orbitron',
-                        fontSize: 11,
-                        color: colors.text.withOpacity(0.7),
+                  child: Center(
+                    child: isUnlocked
+                        ? Text('${level.index}',
+                            style: TextStyle(
+                                fontFamily: 'Orbitron',
+                                fontSize: 22,
+                                color: colors.text,
+                                fontWeight: FontWeight.bold))
+                        : Icon(Icons.lock, color: colors.text.withOpacity(0.3)),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        isUnlocked ? level.title : 'Locked',
+                        style: TextStyle(
+                          fontFamily: 'Orbitron',
+                          fontSize: 15,
+                          color: isUnlocked
+                              ? colors.text
+                              : colors.text.withOpacity(0.3),
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    ),
+                      if (isUnlocked) ...[
+                        const SizedBox(height: 4),
+                        // ── Star row ──────────────────────────
+                        Row(
+                          children: List.generate(3, (i) {
+                            final lit = i < earnedStars;
+                            return Padding(
+                              padding: const EdgeInsets.only(right: 3),
+                              child: Icon(
+                                lit
+                                    ? Icons.star_rounded
+                                    : Icons.star_outline_rounded,
+                                color: lit
+                                    ? Colors.amber
+                                    : colors.text.withOpacity(0.25),
+                                size: 18,
+                              ),
+                            );
+                          }),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                if (isCurrent)
+                  Icon(Icons.play_arrow_rounded,
+                      color: colors.buttonBorder, size: 28),
+              ],
+            ),
+
+            // ── Objectives section (unlocked only) ──────────────
+            if (isUnlocked) ...[
+              const SizedBox(height: 12),
+              Divider(color: colors.text.withOpacity(0.1), height: 1),
+              const SizedBox(height: 10),
+              ...level.objectives.map(
+                (obj) => Padding(
+                  padding: const EdgeInsets.only(bottom: 5),
+                  child: Row(
+                    children: [
+                      Icon(Icons.check_circle_outline_rounded,
+                          size: 13,
+                          color: colors.buttonBorder.withOpacity(0.8)),
+                      const SizedBox(width: 7),
+                      Expanded(
+                        child: Text(
+                          obj,
+                          style: TextStyle(
+                            fontFamily: 'Orbitron',
+                            fontSize: 10,
+                            color: colors.text.withOpacity(0.75),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              // ── Star thresholds ──────────────────────────────
+              Row(
+                children: [
+                  _starThreshold(
+                      '★', level.star1Score, Colors.amber.shade300, colors),
+                  const SizedBox(width: 10),
+                  _starThreshold('★★', level.star2Score, Colors.amber, colors),
+                  const SizedBox(width: 10),
+                  _starThreshold(
+                      '★★★', level.star3Score, Colors.amber.shade600, colors),
                 ],
               ),
-            ),
-            if (isCurrent)
-               Icon(Icons.play_arrow_rounded, color: colors.buttonBorder, size: 28)
+            ],
           ],
         ),
       ),
+    );
+  }
+
+  Widget _starThreshold(
+      String label, int score, Color starColor, AppThemeColors colors) {
+    return Row(
+      children: [
+        Text(label, style: TextStyle(color: starColor, fontSize: 11)),
+        const SizedBox(width: 3),
+        Text(
+          '$score pts',
+          style: TextStyle(
+            color: colors.text.withOpacity(0.55),
+            fontSize: 10,
+            fontFamily: 'Orbitron',
+          ),
+        ),
+      ],
     );
   }
 }

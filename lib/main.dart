@@ -7,6 +7,8 @@ import 'services/audio_service.dart';
 import 'services/ad_service.dart';
 import 'providers/settings_provider.dart';
 import 'providers/score_provider.dart';
+import 'core/constants/app_colors.dart';
+import 'core/enums/theme_type.dart';
 import 'services/auth_service.dart';
 import 'providers/user_provider.dart';
 import 'screens/splash_screen.dart';
@@ -55,18 +57,105 @@ void main() async {
 class SnakeApp extends StatelessWidget {
   const SnakeApp({super.key});
 
+  AppThemeColors _themeColors(ThemeType theme) {
+    switch (theme) {
+      case ThemeType.retro:
+        return AppThemeColors.retro;
+      case ThemeType.neon:
+        return AppThemeColors.neon;
+      case ThemeType.nature:
+        return AppThemeColors.nature;
+      case ThemeType.arcade:
+        return AppThemeColors.arcade;
+      case ThemeType.cyber:
+        return AppThemeColors.cyber;
+      case ThemeType.volcano:
+        return AppThemeColors.volcano;
+      case ThemeType.ice:
+        return AppThemeColors.ice;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final settings = context.watch<SettingsProvider>();
+    final palette = _themeColors(settings.theme);
+    final bool isRetro = settings.theme == ThemeType.retro;
+    final baseText = isRetro ? const Color(0xFF2B3306) : palette.text;
+    final cardColor = isRetro
+        ? palette.hudBg.withValues(alpha: 0.85)
+        : palette.hudBg.withValues(alpha: 0.72);
+    final borderColor = palette.buttonBorder.withValues(alpha: 0.35);
+
     return MaterialApp(
       title: 'Snake Classic Reborn',
       debugShowCheckedModeBanner: false,
       navigatorObservers: [AnalyticsService().getObserver()],
-      theme: ThemeData.dark().copyWith(
-        scaffoldBackgroundColor: const Color(0xFF9BBC0F), // Nokia LCD green
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFF8BAC0F),
+      builder: (context, child) {
+        final media = MediaQuery.of(context);
+        return MediaQuery(
+          data: media.copyWith(
+            textScaler: TextScaler.linear(settings.fontScale),
+            disableAnimations: settings.reducedMotion,
+          ),
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
+      theme: ThemeData.dark(useMaterial3: true).copyWith(
+        scaffoldBackgroundColor: palette.background,
+        canvasColor: palette.background,
+        cardColor: cardColor,
+        dividerColor: borderColor,
+        textTheme: ThemeData.dark().textTheme.apply(
+              bodyColor: baseText,
+              displayColor: baseText,
+            ),
+        appBarTheme: AppBarTheme(
+          backgroundColor: cardColor,
           elevation: 0,
-          foregroundColor: Color(0xFF0F380F), // dark text on LCD
+          foregroundColor: baseText,
+          surfaceTintColor: Colors.transparent,
+        ),
+        snackBarTheme: SnackBarThemeData(
+          backgroundColor: palette.hudBg.withValues(alpha: 0.95),
+          contentTextStyle: TextStyle(
+            color: baseText,
+            fontFamily: 'Orbitron',
+            fontSize: 12,
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: palette.buttonBorder,
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
+          ),
+        ),
+        outlinedButtonTheme: OutlinedButtonThemeData(
+          style: OutlinedButton.styleFrom(
+            foregroundColor: baseText,
+            side: BorderSide(color: borderColor),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
+          ),
+        ),
+        switchTheme: SwitchThemeData(
+          thumbColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) {
+              return palette.buttonBorder;
+            }
+            return palette.text.withValues(alpha: 0.7);
+          }),
+          trackColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) {
+              return palette.buttonBorder.withValues(alpha: 0.35);
+            }
+            return palette.background.withValues(alpha: 0.45);
+          }),
         ),
       ),
       home: const SplashScreen(),

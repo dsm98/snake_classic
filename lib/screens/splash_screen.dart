@@ -1,6 +1,9 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'home_screen.dart';
+import 'how_to_play_screen.dart';
+import '../services/storage_service.dart';
+import '../services/analytics_service.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -19,15 +22,20 @@ class _SplashScreenState extends State<SplashScreen>
   void initState() {
     super.initState();
 
+    final reducedMotion = StorageService().reducedMotion;
+
     _snakeController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1400),
+      duration: Duration(milliseconds: reducedMotion ? 300 : 1400),
     );
 
     _glowController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 900),
-    )..repeat(reverse: true);
+      duration: Duration(milliseconds: reducedMotion ? 500 : 900),
+    );
+    if (!reducedMotion) {
+      _glowController.repeat(reverse: true);
+    }
 
     _fadeController = AnimationController(
       vsync: this,
@@ -38,11 +46,35 @@ class _SplashScreenState extends State<SplashScreen>
       _fadeController.forward();
     });
 
-    Future.delayed(const Duration(milliseconds: 3000), () {
+    Future.delayed(Duration(milliseconds: reducedMotion ? 700 : 3000), () {
       if (mounted) {
+        final bool tutorialCompleted = StorageService().tutorialCompleted;
+        final Widget nextScreen = tutorialCompleted
+            ? const HomeScreen()
+            : const HowToPlayScreen(firstRun: true);
+
+        if (!tutorialCompleted) {
+          AnalyticsService().logTutorialStarted();
+        }
+
+        // Log experiment assignments on every launch (no-op if already logged)
+        final storage = StorageService();
+        AnalyticsService().logExperimentAssigned(
+          experimentKey: storage.expTutorialKey,
+          variant: storage.expTutorialVariant,
+        );
+        AnalyticsService().logExperimentAssigned(
+          experimentKey: storage.expStreakRewardKey,
+          variant: storage.expStreakRewardVariant,
+        );
+        AnalyticsService().logExperimentAssigned(
+          experimentKey: storage.expHudKey,
+          variant: storage.expHudSimplifiedVariant,
+        );
+
         Navigator.of(context).pushReplacement(
           PageRouteBuilder(
-            pageBuilder: (c, a1, a2) => const HomeScreen(),
+            pageBuilder: (c, a1, a2) => nextScreen,
             transitionsBuilder: (c, a1, a2, child) =>
                 FadeTransition(opacity: a1, child: child),
             transitionDuration: const Duration(milliseconds: 600),
@@ -124,9 +156,7 @@ class _SplashScreenState extends State<SplashScreen>
                           ),
                         ),
                       ),
-
                       const SizedBox(height: 10),
-
                       Text(
                         'CLASSIC  REBORN',
                         style: TextStyle(
@@ -216,12 +246,13 @@ class _SplashBgPainter extends CustomPainter {
         Colors.transparent,
       ],
     );
-    canvas.drawRect(
-        Offset.zero & size, Paint()..shader = radial.createShader(Offset.zero & size));
+    canvas.drawRect(Offset.zero & size,
+        Paint()..shader = radial.createShader(Offset.zero & size));
   }
 
   @override
-  bool shouldRepaint(covariant _SplashBgPainter old) => old.progress != progress;
+  bool shouldRepaint(covariant _SplashBgPainter old) =>
+      old.progress != progress;
 }
 
 class _SnakeLogoPainter extends CustomPainter {
@@ -247,7 +278,8 @@ class _SnakeLogoPainter extends CustomPainter {
     }
 
     // Draw glow trail
-    final glowProgress = (progress * (segments + 1)).clamp(0, segments + 1).toInt();
+    final glowProgress =
+        (progress * (segments + 1)).clamp(0, segments + 1).toInt();
     if (glowProgress > 1) {
       for (int i = 1; i < glowProgress && i < points.length; i++) {
         final t = i / segments;

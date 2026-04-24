@@ -1,7 +1,11 @@
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/constants/app_constants.dart';
+import '../../core/enums/game_mode.dart';
 import '../../core/enums/power_up_type.dart';
 import '../../core/enums/theme_type.dart';
+import '../../core/models/food_model.dart';
 import '../../core/utils/layout_util.dart';
 import '../../services/game_engine.dart';
 import '../../services/storage_service.dart';
@@ -20,12 +24,20 @@ class GameHud extends StatelessWidget {
 
   AppThemeColors get colors {
     switch (themeType) {
-      case ThemeType.retro:  return AppThemeColors.retro;
-      case ThemeType.neon:   return AppThemeColors.neon;
-      case ThemeType.nature: return AppThemeColors.nature;
-      case ThemeType.arcade: return AppThemeColors.arcade;
-      case ThemeType.cyber: return AppThemeColors.cyber;
-      case ThemeType.volcano: return AppThemeColors.volcano;
+      case ThemeType.retro:
+        return AppThemeColors.retro;
+      case ThemeType.neon:
+        return AppThemeColors.neon;
+      case ThemeType.nature:
+        return AppThemeColors.nature;
+      case ThemeType.arcade:
+        return AppThemeColors.arcade;
+      case ThemeType.cyber:
+        return AppThemeColors.cyber;
+      case ThemeType.volcano:
+        return AppThemeColors.volcano;
+      case ThemeType.ice:
+        return AppThemeColors.ice;
     }
   }
 
@@ -42,20 +54,19 @@ class GameHud extends StatelessWidget {
             _topBar(context),
             // Container with minHeight prevents layout jumps but allows expansion
             Container(
-              constraints: BoxConstraints(minHeight: LayoutUtil.spacing(context, 48)),
+              constraints:
+                  BoxConstraints(minHeight: LayoutUtil.spacing(context, 48)),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   if (engine.feverMeter > 0 || engine.isFeverMode)
                     _feverBar(context),
-                    
                   if (engine.activePowerUps.isNotEmpty)
                     _powerUpBar(context)
                   else if (themeType != ThemeType.retro)
                     _xpBar(context)
                   else
                     const SizedBox.shrink(),
-
                   if (engine.activePowerUps.isNotEmpty &&
                       themeType != ThemeType.retro)
                     Padding(
@@ -75,130 +86,157 @@ class GameHud extends StatelessWidget {
     final scale = LayoutUtil.getScale(context);
     final isRetro = themeType == ThemeType.retro;
 
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: LayoutUtil.spacing(context, 16),
-        vertical: LayoutUtil.spacing(context, 10),
-      ),
-      decoration: BoxDecoration(
-        color: isRetro ? colors.background : colors.hudBg,
-        boxShadow: isRetro
-            ? []
-            : [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.2),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
+    return isRetro
+        ? Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: LayoutUtil.spacing(context, 16),
+              vertical: LayoutUtil.spacing(context, 10),
+            ),
+            decoration: BoxDecoration(
+              color: colors.background,
+            ),
+            child: _topBarRow(context, scale, isRetro),
+          )
+        : ClipRect(
+            child: BackdropFilter(
+              filter: ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+              child: Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: LayoutUtil.spacing(context, 16),
+                  vertical: LayoutUtil.spacing(context, 10),
                 ),
-              ],
-      ),
-      child: Row(
-        children: [
-          // ── Score (left) ──────────────────────────────────────
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'SCORE',
+                decoration: BoxDecoration(
+                  color: colors.hudBg.withOpacity(0.75),
+                  border: Border(
+                    bottom: BorderSide(
+                        color: colors.buttonBorder.withOpacity(0.15), width: 1),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.2),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: _topBarRow(context, scale, isRetro),
+              ),
+            ),
+          );
+  }
+
+  Widget _topBarRow(BuildContext context, double scale, bool isRetro) {
+    return Row(
+      children: [
+        // ── Score (left) ──────────────────────────────────────
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'SCORE',
+                style: TextStyle(
+                  fontFamily: _fontFamily,
+                  fontSize: LayoutUtil.fontSize(context, 7),
+                  color: colors.text.withOpacity(0.4),
+                  letterSpacing: 1.5,
+                ),
+              ),
+              const SizedBox(height: 1),
+              Text(
+                '${engine.score}',
+                style: TextStyle(
+                  fontFamily: _fontFamily,
+                  fontSize: LayoutUtil.fontSize(context, 20),
+                  color: colors.text,
+                  fontWeight: FontWeight.bold,
+                  shadows: isRetro
+                      ? []
+                      : [
+                          Shadow(
+                            color: colors.buttonBorder.withOpacity(0.4),
+                            blurRadius: 12,
+                          ),
+                        ],
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // ── Center: event, time or combo ────────────────────────
+        if (engine.comebackBonus &&
+            DateTime.now().millisecondsSinceEpoch < engine.comebackBonusEndMs)
+          _comebackBonusBadge(context)
+        else if (engine.activeEvent != BoardEvent.none)
+          _eventDisplay(context)
+        else if (engine.gameMode.name == 'timeAttack' ||
+            engine.gameMode.name == 'blitz')
+          _timeDisplay(context)
+        else if (engine.gameMode == GameMode.explore)
+          _huntStreakDisplay(context)
+        else
+          _comboDisplay(context),
+
+        // ── Right controls ────────────────────────────────────
+        Expanded(
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              // Snake length badge
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: colors.buttonBorder.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(20),
+                  border:
+                      Border.all(color: colors.buttonBorder.withOpacity(0.25)),
+                ),
+                child: Text(
+                  '🐍 ${engine.snake.length}',
                   style: TextStyle(
                     fontFamily: _fontFamily,
-                    fontSize: LayoutUtil.fontSize(context, 7),
-                    color: colors.text.withOpacity(0.4),
-                    letterSpacing: 1.5,
+                    fontSize: LayoutUtil.fontSize(context, 10),
+                    color: colors.accent,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-                const SizedBox(height: 1),
-                Text(
-                  '${engine.score}',
-                  style: TextStyle(
-                    fontFamily: _fontFamily,
-                    fontSize: LayoutUtil.fontSize(context, 20),
-                    color: colors.text,
-                    fontWeight: FontWeight.bold,
-                    shadows: isRetro
+              ),
+              SizedBox(width: LayoutUtil.spacing(context, 10)),
+
+              // Pause button
+              GestureDetector(
+                onTap: onPause,
+                child: Container(
+                  width: 38 * scale,
+                  height: 38 * scale,
+                  decoration: BoxDecoration(
+                    color: colors.buttonBg.withOpacity(isRetro ? 1.0 : 0.7),
+                    border: Border.all(
+                        color: colors.buttonBorder.withOpacity(0.5),
+                        width: scale),
+                    borderRadius: BorderRadius.circular(12 * scale),
+                    boxShadow: isRetro
                         ? []
                         : [
-                            Shadow(
-                              color: colors.buttonBorder.withOpacity(0.4),
-                              blurRadius: 12,
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.2),
+                              blurRadius: 8,
                             ),
                           ],
                   ),
+                  child: Icon(
+                    Icons.pause_rounded,
+                    color: colors.text,
+                    size: LayoutUtil.fontSize(context, 18),
+                  ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-
-          // ── Center: event, time or combo ────────────────────────
-          if (engine.comebackBonus && DateTime.now().millisecondsSinceEpoch < engine.comebackBonusEndMs)
-            _comebackBonusBadge(context)
-          else if (engine.activeEvent != BoardEvent.none)
-            _eventDisplay(context)
-          else if (engine.gameMode.name == 'timeAttack')
-            _timeDisplay(context)
-          else
-            _comboDisplay(context),
-
-          // ── Right controls ────────────────────────────────────
-          Expanded(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                // Snake length badge
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: colors.buttonBorder.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                        color: colors.buttonBorder.withOpacity(0.25)),
-                  ),
-                  child: Text(
-                    '🐍 ${engine.snake.length}',
-                    style: TextStyle(
-                      fontFamily: _fontFamily,
-                      fontSize: LayoutUtil.fontSize(context, 10),
-                      color: colors.accent,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                SizedBox(width: LayoutUtil.spacing(context, 10)),
-
-                // Pause button
-                GestureDetector(
-                  onTap: onPause,
-                  child: Container(
-                    width: 38 * scale,
-                    height: 38 * scale,
-                    decoration: BoxDecoration(
-                      color: colors.buttonBg.withOpacity(isRetro ? 1.0 : 0.7),
-                      border: Border.all(
-                          color: colors.buttonBorder.withOpacity(0.5),
-                          width: scale),
-                      borderRadius: BorderRadius.circular(12 * scale),
-                      boxShadow: isRetro
-                          ? []
-                          : [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.2),
-                                blurRadius: 8,
-                              ),
-                            ],
-                    ),
-                    child: Icon(
-                      Icons.pause_rounded,
-                      color: colors.text,
-                      size: LayoutUtil.fontSize(context, 18),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -281,14 +319,18 @@ class GameHud extends StatelessWidget {
         vertical: LayoutUtil.spacing(context, 5),
       ),
       decoration: BoxDecoration(
-        color: isIce ? Colors.cyan.withOpacity(0.2) : Colors.black.withOpacity(0.6),
+        color: isIce
+            ? Colors.cyan.withOpacity(0.2)
+            : Colors.black.withOpacity(0.6),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: isIce ? Colors.cyan.withOpacity(0.5) : Colors.white24),
+        border: Border.all(
+            color: isIce ? Colors.cyan.withOpacity(0.5) : Colors.white24),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(isIce ? '❄️' : '🌑', style: TextStyle(fontSize: LayoutUtil.fontSize(context, 12))),
+          Text(isIce ? '❄️' : '🌑',
+              style: TextStyle(fontSize: LayoutUtil.fontSize(context, 12))),
           SizedBox(width: LayoutUtil.spacing(context, 6)),
           Text(
             isIce ? 'ICE BOARD' : 'LIGHTS OUT',
@@ -306,6 +348,20 @@ class GameHud extends StatelessWidget {
 
   Widget _comboDisplay(BuildContext context) {
     if (engine.combo <= 1) return const SizedBox.shrink();
+
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final remainingMs =
+        (engine.comboLastFoodMs + (AppConstants.comboWindow * 1000) - now)
+            .clamp(0, AppConstants.comboWindow * 1000);
+    final remainingRatio = remainingMs / (AppConstants.comboWindow * 1000);
+
+    // Urgency color: green → orange → red as timer drains
+    final Color urgencyColor = remainingRatio > 0.5
+        ? colors.accent
+        : remainingRatio > 0.25
+            ? Colors.orange
+            : Colors.redAccent;
+
     return Container(
       padding: EdgeInsets.symmetric(
         horizontal: LayoutUtil.spacing(context, 12),
@@ -314,78 +370,127 @@ class GameHud extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            colors.accent.withOpacity(0.2),
-            colors.buttonBorder.withOpacity(0.15),
+            urgencyColor.withOpacity(0.2),
+            urgencyColor.withOpacity(0.08),
           ],
         ),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: colors.accent.withOpacity(0.4)),
+        border: Border.all(color: urgencyColor.withOpacity(0.45)),
         boxShadow: [
           BoxShadow(
-            color: colors.accent.withOpacity(0.2),
-            blurRadius: 12,
+            color: urgencyColor.withOpacity(remainingRatio < 0.25 ? 0.35 : 0.2),
+            blurRadius: remainingRatio < 0.25 ? 16 : 12,
           ),
         ],
       ),
-      child: Text(
-        'x${engine.combo} COMBO!',
-        style: TextStyle(
-          fontFamily: _fontFamily,
-          fontSize: LayoutUtil.fontSize(context, 10),
-          color: colors.accent,
-          fontWeight: FontWeight.bold,
-        ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            'x${engine.combo} COMBO!',
+            style: TextStyle(
+              fontFamily: _fontFamily,
+              fontSize: LayoutUtil.fontSize(context, 10),
+              color: urgencyColor,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 2),
+          SizedBox(
+            width: LayoutUtil.spacing(context, 58),
+            height: 3,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(2),
+              child: LinearProgressIndicator(
+                value: remainingRatio,
+                backgroundColor: colors.background.withOpacity(0.4),
+                color: urgencyColor.withOpacity(0.9),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _powerUpBar(BuildContext context) {
     final now = DateTime.now().millisecondsSinceEpoch;
+    final active =
+        engine.activePowerUps.where((ap) => ap.isActive(now)).toList();
+
     return Container(
       padding: EdgeInsets.symmetric(
         horizontal: LayoutUtil.spacing(context, 16),
         vertical: 3,
       ),
-      child: Row(
-        children: engine.activePowerUps.where((ap) => ap.isActive(now)).map((ap) {
-          final progress = ap.progress(now);
-          return Padding(
-            padding: EdgeInsets.only(right: LayoutUtil.spacing(context, 14)),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 26,
-                  height: 26,
-                  decoration: BoxDecoration(
-                    color: colors.powerUp.withOpacity(0.15),
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                        color: colors.powerUp.withOpacity(0.4)),
-                  ),
-                  child: Center(
-                    child: Text(ap.type.icon,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        child: Row(
+          children: active.map((ap) {
+            final progress = ap.progress(now);
+            final remainingMs =
+                (ap.endsAtMs - now).clamp(0, ap.type.durationMs);
+            final remainingSeconds = (remainingMs / 1000).ceil();
+
+            return Padding(
+              padding: EdgeInsets.only(right: LayoutUtil.spacing(context, 10)),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 26,
+                    height: 26,
+                    decoration: BoxDecoration(
+                      color: colors.powerUp.withOpacity(0.15),
+                      shape: BoxShape.circle,
+                      border:
+                          Border.all(color: colors.powerUp.withOpacity(0.4)),
+                    ),
+                    child: Center(
+                      child: Text(
+                        ap.type.icon,
                         style: TextStyle(
-                            fontSize: LayoutUtil.fontSize(context, 12))),
-                  ),
-                ),
-                const SizedBox(width: 6),
-                SizedBox(
-                  width: LayoutUtil.spacing(context, 44),
-                  height: 5,
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(3),
-                    child: LinearProgressIndicator(
-                      value: progress,
-                      backgroundColor: colors.hudBg.withOpacity(0.5),
-                      valueColor: AlwaysStoppedAnimation<Color>(colors.powerUp),
+                            fontSize: LayoutUtil.fontSize(context, 12)),
+                      ),
                     ),
                   ),
-                ),
-              ],
-            ),
-          );
-        }).toList(),
+                  const SizedBox(width: 6),
+                  SizedBox(
+                    width: LayoutUtil.spacing(context, 56),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(
+                          height: 5,
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(3),
+                            child: LinearProgressIndicator(
+                              value: progress,
+                              backgroundColor: colors.hudBg.withOpacity(0.5),
+                              valueColor:
+                                  AlwaysStoppedAnimation<Color>(colors.powerUp),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 1),
+                        Text(
+                          '${remainingSeconds}s',
+                          style: TextStyle(
+                            fontFamily: 'Orbitron',
+                            fontSize: LayoutUtil.fontSize(context, 7),
+                            color: colors.text.withOpacity(0.65),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }).toList(),
+        ),
       ),
     );
   }
@@ -454,7 +559,9 @@ class GameHud extends StatelessWidget {
                   fontFamily: 'Orbitron',
                   fontSize: 8,
                   fontWeight: FontWeight.bold,
-                  color: engine.isFeverMode ? Colors.orange : colors.text.withOpacity(0.5),
+                  color: engine.isFeverMode
+                      ? Colors.orange
+                      : colors.text.withOpacity(0.5),
                 ),
               ),
               if (!engine.isFeverMode)
@@ -485,5 +592,152 @@ class GameHud extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  // ── Explore: Hunt Streak ────────────────────────────────────────────────────
+
+  Widget _huntStreakDisplay(BuildContext context) {
+    final streak = engine.huntStreak;
+    if (streak < 2) {
+      // Show compass only
+      return _foodCompass(context);
+    }
+
+    final label = streak >= 7
+        ? '🦁 APEX PREDATOR'
+        : streak >= 5
+            ? '⚡ HUNTER'
+            : '🔥 TRACKER';
+    final color = streak >= 7
+        ? Colors.redAccent
+        : streak >= 5
+            ? Colors.orange
+            : Colors.greenAccent;
+    final multi = streak >= 7
+        ? '×8'
+        : streak >= 5
+            ? '×4'
+            : '×2';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: color.withOpacity(0.5)),
+        boxShadow: [BoxShadow(color: color.withOpacity(0.25), blurRadius: 12)],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '$label  $multi',
+            style: TextStyle(
+              fontFamily: _fontFamily,
+              fontSize: LayoutUtil.fontSize(context, 8),
+              color: color,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.25),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              '×$streak',
+              style: TextStyle(
+                fontFamily: _fontFamily,
+                fontSize: LayoutUtil.fontSize(context, 8),
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _foodCompass(BuildContext context) {
+    if (engine.preyList.isEmpty || engine.snake.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    final head = engine.snake.first;
+    // Find nearest prey
+    FoodModel nearest = engine.preyList.first;
+    int minDist = _gridDist(head, nearest.position);
+    for (final p in engine.preyList) {
+      final d = _gridDist(head, p.position);
+      if (d < minDist) {
+        minDist = d;
+        nearest = p;
+      }
+    }
+    final dx = (nearest.position.x - head.x).toDouble();
+    final dy = (nearest.position.y - head.y).toDouble();
+    final angle = dy == 0 && dx == 0 ? 0.0 : _atan2(dy, dx);
+    final icon = _preyIcon(nearest.type);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: colors.buttonBorder.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: colors.buttonBorder.withOpacity(0.2)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(icon,
+              style: TextStyle(fontSize: LayoutUtil.fontSize(context, 11))),
+          const SizedBox(width: 4),
+          Transform.rotate(
+            angle: angle,
+            child: Icon(Icons.navigation_rounded,
+                color: colors.accent, size: LayoutUtil.fontSize(context, 14)),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            '$minDist',
+            style: TextStyle(
+              fontFamily: _fontFamily,
+              fontSize: LayoutUtil.fontSize(context, 9),
+              color: colors.text.withOpacity(0.8),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static int _gridDist(dynamic a, dynamic b) =>
+      (a.x - b.x).abs() + (a.y - b.y).abs();
+
+  static double _atan2(double y, double x) {
+    // Simple approximation of atan2 without dart:math import conflict
+    if (x == 0) return y > 0 ? 1.5708 : -1.5708;
+    final r = y / x;
+    final a = 0.9817 * r - 0.1963 * r * r * r;
+    return x < 0 ? (y >= 0 ? a + 3.1416 : a - 3.1416) : a;
+  }
+
+  static String _preyIcon(FoodType t) {
+    switch (t) {
+      case FoodType.mouse:
+        return '🐭';
+      case FoodType.rabbit:
+        return '🐇';
+      case FoodType.lizard:
+        return '🦎';
+      case FoodType.butterfly:
+        return '🦋';
+      case FoodType.croc:
+        return '🐊';
+      default:
+        return '🍎';
+    }
   }
 }

@@ -11,12 +11,20 @@ class AchievementsScreen extends StatelessWidget {
 
   AppThemeColors get colors {
     switch (themeType) {
-      case ThemeType.retro:  return AppThemeColors.retro;
-      case ThemeType.neon:   return AppThemeColors.neon;
-      case ThemeType.nature: return AppThemeColors.nature;
-      case ThemeType.arcade: return AppThemeColors.arcade;
-      case ThemeType.cyber: return AppThemeColors.cyber;
-      case ThemeType.volcano: return AppThemeColors.volcano;
+      case ThemeType.retro:
+        return AppThemeColors.retro;
+      case ThemeType.neon:
+        return AppThemeColors.neon;
+      case ThemeType.nature:
+        return AppThemeColors.nature;
+      case ThemeType.arcade:
+        return AppThemeColors.arcade;
+      case ThemeType.cyber:
+        return AppThemeColors.cyber;
+      case ThemeType.volcano:
+        return AppThemeColors.volcano;
+      case ThemeType.ice:
+        return AppThemeColors.ice;
     }
   }
 
@@ -131,8 +139,8 @@ class AchievementsScreen extends StatelessWidget {
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 12, vertical: 5),
                                   decoration: BoxDecoration(
-                                    color:
-                                        colors.buttonBorder.withValues(alpha: 0.15),
+                                    color: colors.buttonBorder
+                                        .withValues(alpha: 0.15),
                                     borderRadius: BorderRadius.circular(20),
                                     border: Border.all(
                                         color: colors.buttonBorder
@@ -277,8 +285,7 @@ class _AchievementTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final locked = !progress.unlocked;
-    final pct =
-        (progress.progress / achievement.targetValue).clamp(0.0, 1.0);
+    final pct = (progress.progress / achievement.targetValue).clamp(0.0, 1.0);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -352,10 +359,8 @@ class _AchievementTile extends StatelessWidget {
                   style: TextStyle(
                     fontFamily: 'Orbitron',
                     fontSize: 12,
-                    color:
-                        locked ? colors.text.withOpacity(0.35) : colors.text,
-                    fontWeight:
-                        locked ? FontWeight.normal : FontWeight.bold,
+                    color: locked ? colors.text.withOpacity(0.35) : colors.text,
+                    fontWeight: locked ? FontWeight.normal : FontWeight.bold,
                   ),
                 ),
                 const SizedBox(height: 3),
@@ -406,8 +411,7 @@ class _AchievementTile extends StatelessWidget {
 
           // XP badge
           Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             decoration: BoxDecoration(
               color: locked
                   ? Colors.transparent

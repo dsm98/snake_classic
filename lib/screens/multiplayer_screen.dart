@@ -57,7 +57,9 @@ class _MultiplayerScreenState extends State<MultiplayerScreen> {
             color: const Color(0xFF1E2638),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: color, width: 2),
-            boxShadow: [BoxShadow(color: color.withOpacity(0.4), blurRadius: 40)],
+            boxShadow: [
+              BoxShadow(color: color.withOpacity(0.4), blurRadius: 40)
+            ],
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -92,8 +94,10 @@ class _MultiplayerScreenState extends State<MultiplayerScreen> {
                       Navigator.pop(context); // close dialog
                       Navigator.pop(context); // close screen
                     },
-                    style: TextButton.styleFrom(foregroundColor: Colors.white70),
-                    child: const Text('MENU', style: TextStyle(fontFamily: 'Orbitron')),
+                    style:
+                        TextButton.styleFrom(foregroundColor: Colors.white70),
+                    child: const Text('MENU',
+                        style: TextStyle(fontFamily: 'Orbitron')),
                   ),
                   ElevatedButton(
                     onPressed: () {
@@ -103,9 +107,13 @@ class _MultiplayerScreenState extends State<MultiplayerScreen> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: color,
                       foregroundColor: Colors.black,
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 12),
                     ),
-                    child: const Text('REMATCH', style: TextStyle(fontFamily: 'Orbitron', fontWeight: FontWeight.bold)),
+                    child: const Text('REMATCH',
+                        style: TextStyle(
+                            fontFamily: 'Orbitron',
+                            fontWeight: FontWeight.bold)),
                   ),
                 ],
               )
@@ -152,14 +160,16 @@ class _MultiplayerScreenState extends State<MultiplayerScreen> {
     const threshold = 10;
     final dx = details.velocity.pixelsPerSecond.dx;
     final dy = details.velocity.pixelsPerSecond.dy;
-    
+
     if (dx.abs() > dy.abs()) {
       if (dx > threshold) {
         _engine.changeDirection2(Direction.left); // opposite
-      } else if (dx < -threshold) _engine.changeDirection2(Direction.right); // opposite
+      } else if (dx < -threshold)
+        _engine.changeDirection2(Direction.right); // opposite
     } else {
       if (dy > threshold) {
-        _engine.changeDirection2(Direction.up); // swipe down physically means moving up the screen, which is "up" relative to P2 looking from top.
+        _engine.changeDirection2(Direction
+            .up); // swipe down physically means moving up the screen, which is "up" relative to P2 looking from top.
       } else if (dy < -threshold) _engine.changeDirection2(Direction.down);
     }
   }
@@ -168,15 +178,30 @@ class _MultiplayerScreenState extends State<MultiplayerScreen> {
   Widget build(BuildContext context) {
     final settings = context.watch<SettingsProvider>();
     final themeType = settings.theme;
-    
+
     AppThemeColors colors;
-    switch(themeType) {
-      case ThemeType.retro: colors = AppThemeColors.retro; break;
-      case ThemeType.neon: colors = AppThemeColors.neon; break;
-      case ThemeType.nature: colors = AppThemeColors.nature; break;
-      case ThemeType.arcade: colors = AppThemeColors.arcade; break;
-      case ThemeType.cyber: colors = AppThemeColors.cyber; break;
-      case ThemeType.volcano: colors = AppThemeColors.volcano; break;
+    switch (themeType) {
+      case ThemeType.retro:
+        colors = AppThemeColors.retro;
+        break;
+      case ThemeType.neon:
+        colors = AppThemeColors.neon;
+        break;
+      case ThemeType.nature:
+        colors = AppThemeColors.nature;
+        break;
+      case ThemeType.arcade:
+        colors = AppThemeColors.arcade;
+        break;
+      case ThemeType.cyber:
+        colors = AppThemeColors.cyber;
+        break;
+      case ThemeType.volcano:
+        colors = AppThemeColors.volcano;
+        break;
+      case ThemeType.ice:
+        colors = AppThemeColors.ice;
+        break;
     }
 
     return Scaffold(
@@ -210,7 +235,9 @@ class _MultiplayerScreenState extends State<MultiplayerScreen> {
                           ),
                         ),
                         const SizedBox(height: 10),
-                        const Text('READY', style: TextStyle(color: Colors.white24, letterSpacing: 5)),
+                        const Text('READY',
+                            style: TextStyle(
+                                color: Colors.white24, letterSpacing: 5)),
                         const SizedBox(height: 20),
                       ],
                     ),
@@ -223,7 +250,9 @@ class _MultiplayerScreenState extends State<MultiplayerScreen> {
             Container(
               decoration: BoxDecoration(
                 border: Border.all(color: Colors.white24, width: 4),
-                boxShadow: const [BoxShadow(color: Colors.black54, blurRadius: 20)],
+                boxShadow: const [
+                  BoxShadow(color: Colors.black54, blurRadius: 20)
+                ],
               ),
               child: AspectRatio(
                 aspectRatio: 20 / 28,
@@ -244,9 +273,17 @@ class _MultiplayerScreenState extends State<MultiplayerScreen> {
                     children: [
                       const SizedBox(height: 20),
                       if (!_started)
-                        const Text('SWIPE TO START', style: TextStyle(color: Colors.white, fontFamily: 'Orbitron', fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 2))
+                        const Text('SWIPE TO START',
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontFamily: 'Orbitron',
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 2))
                       else
-                        const Text('PLAYING', style: TextStyle(color: Colors.white24, letterSpacing: 5)),
+                        const Text('PLAYING',
+                            style: TextStyle(
+                                color: Colors.white24, letterSpacing: 5)),
                       const SizedBox(height: 10),
                       ListenableBuilder(
                         listenable: _engine,

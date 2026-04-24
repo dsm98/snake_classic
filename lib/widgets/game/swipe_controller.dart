@@ -20,27 +20,51 @@ class SwipeController extends StatefulWidget {
 
 class _SwipeControllerState extends State<SwipeController> {
   Offset? _startPos;
-  static const double _minDistance = 22.0;
+
+  /// Minimum drag distance before a swipe is registered
+  static const double _minDistance = 20.0;
+
+  /// Once a swipe fires, the new anchor shifts to the current position
+  /// allowing continuous flicking without lifting the finger.
+  Direction? _lastDirection;
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onPanStart: (details) => _startPos = details.localPosition,
+      onPanStart: (details) {
+        _startPos = details.localPosition;
+        _lastDirection = null;
+      },
       onPanUpdate: (details) {
         if (_startPos == null) return;
         final delta = details.localPosition - _startPos!;
         if (delta.distance < _minDistance) return;
+
+        Direction dir;
         if (delta.dx.abs() > delta.dy.abs()) {
-          widget.onDirectionChanged(
-              delta.dx > 0 ? Direction.right : Direction.left);
+          dir = delta.dx > 0 ? Direction.right : Direction.left;
         } else {
-          widget.onDirectionChanged(
-              delta.dy > 0 ? Direction.down : Direction.up);
+          dir = delta.dy > 0 ? Direction.down : Direction.up;
         }
+
+        // Only fire if direction changed — avoids repeated calls on same drag
+        if (dir != _lastDirection) {
+          _lastDirection = dir;
+          widget.onDirectionChanged(dir);
+          HapticFeedback.selectionClick();
+        }
+        // Re-anchor so the user can chain multiple swipes in one gesture
         _startPos = details.localPosition;
       },
-      onPanEnd: (_) => _startPos = null,
+      onPanEnd: (_) {
+        _startPos = null;
+        _lastDirection = null;
+      },
+      onPanCancel: () {
+        _startPos = null;
+        _lastDirection = null;
+      },
       child: widget.child,
     );
   }
@@ -146,9 +170,8 @@ class _JoystickWidgetState extends State<JoystickWidget>
                             widget.colors.buttonBg.withOpacity(0.2),
                           ],
                         ),
-                  color: isRetro
-                      ? widget.colors.buttonBg.withOpacity(0.4)
-                      : null,
+                  color:
+                      isRetro ? widget.colors.buttonBg.withOpacity(0.4) : null,
                   border: Border.all(
                     color: widget.colors.buttonBorder.withOpacity(0.2),
                     width: 1,
