@@ -7,6 +7,7 @@ import '../providers/user_provider.dart';
 import '../core/enums/snake_skin.dart';
 import '../services/storage_service.dart';
 import '../widgets/ui/dynamic_background.dart';
+import 'grimoire_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   final ThemeType themeType;
@@ -173,7 +174,7 @@ class ProfileScreen extends StatelessWidget {
                     const SizedBox(height: 32),
                     _SectionTitle(title: '🗺️ SAFARI RECORD', colors: colors),
                     const SizedBox(height: 16),
-                    _SafariStatsCard(colors: colors),
+                    _SafariStatsCard(colors: colors, themeType: themeType),
                     const SizedBox(height: 32),
                     _SectionTitle(title: 'COLLECTION', colors: colors),
                     const SizedBox(height: 16),
@@ -310,7 +311,8 @@ class _StatTile extends StatelessWidget {
 
 class _SafariStatsCard extends StatelessWidget {
   final AppThemeColors colors;
-  const _SafariStatsCard({required this.colors});
+  final ThemeType themeType;
+  const _SafariStatsCard({required this.colors, required this.themeType});
 
   @override
   Widget build(BuildContext context) {
@@ -335,41 +337,74 @@ class _SafariStatsCard extends StatelessWidget {
       }
     }
 
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.green.withOpacity(0.07),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.green.withOpacity(0.25)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _safarStat('🗺️ Rooms', '$rooms / 88'),
-              _safarStat('🔥 Best Streak', '×$bestStreak'),
-            ],
+    return GestureDetector(
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => GrimoireScreen(themeType: themeType),
           ),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _safarStat('🐾 Prey Caught', '$totalPrey'),
-              _safarStat('🌍 Biomes', '$visited / 5'),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _safarStat('🐊 Crocs', '$crocs'),
-              _safarStat('🏆 Rarest',
-                  rarestCount > 0 ? '$rarestEmoji ×$rarestCount' : '—'),
-            ],
-          ),
-        ],
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: Colors.green.withOpacity(0.07),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: Colors.green.withOpacity(0.25)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.green.withOpacity(0.05),
+              blurRadius: 10,
+              spreadRadius: 2,
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'VIEW GRIMOIRE 📜',
+                  style: TextStyle(
+                    fontFamily: 'Orbitron',
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.greenAccent.withOpacity(0.8),
+                    letterSpacing: 1.2,
+                  ),
+                ),
+                const Icon(Icons.arrow_forward_ios_rounded, size: 12, color: Colors.greenAccent),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _safarStat('🗺️ Rooms', '$rooms / 88'),
+                _safarStat('🔥 Best Streak', '×$bestStreak'),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _safarStat('🐾 Prey Caught', '$totalPrey'),
+                _safarStat('🌍 Biomes', '$visited / 5'),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _safarStat('🐊 Crocs', '$crocs'),
+                _safarStat('🏆 Rarest',
+                    rarestCount > 0 ? '$rarestEmoji ×$rarestCount' : '—'),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

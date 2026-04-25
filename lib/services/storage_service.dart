@@ -92,8 +92,13 @@ class StorageService {
   // Safari lifetime stats
   static const _keySafariTotalPrey = 'safari_total_prey';
   static const _keySafariRoomsVisited = 'safari_rooms_visited';
-  static const _keySafariBestStreak = 'safari_best_streak';
   static const _keySafariCrocKills = 'safari_croc_kills';
+  static const _keySafariBestStreak = 'safari_best_streak';
+
+  // Altar Skills
+  static const _keySkillThickScales = 'skill_thick_scales';
+  static const _keySkillGreed = 'skill_greed';
+  static const _keySkillDashMastery = 'skill_dash_mastery';
 
   late SharedPreferences _prefs;
 
@@ -103,7 +108,7 @@ class StorageService {
 
   // ── Settings ───────────────────────────────────────────────────
   ThemeType get theme =>
-      ThemeType.values[_prefs.getInt(_keyTheme) ?? ThemeType.retro.index];
+      ThemeType.values[_prefs.getInt(_keyTheme) ?? ThemeType.neon.index];
   Future<void> saveTheme(ThemeType t) => _prefs.setInt(_keyTheme, t.index);
 
   Difficulty get difficulty => Difficulty
@@ -118,7 +123,7 @@ class StorageService {
   Future<void> saveVibrationEnabled(bool v) =>
       _prefs.setBool(_keyVibrationEnabled, v);
 
-  bool get showJoystick => _prefs.getBool(_keyShowJoystick) ?? true;
+  bool get showJoystick => _prefs.getBool(_keyShowJoystick) ?? false;
   Future<void> saveShowJoystick(bool v) => _prefs.setBool(_keyShowJoystick, v);
 
   bool get showRunModifierPrompt =>
@@ -660,6 +665,16 @@ class StorageService {
     final newVal = safariGems - amount;
     return _prefs.setInt(_keySafariGems, newVal < 0 ? 0 : newVal);
   }
+
+  // ── Altar Skills ────────────────────────────────────────────────────────────
+  int get skillThickScales => _prefs.getInt(_keySkillThickScales) ?? 0;
+  Future<void> setSkillThickScales(int level) => _prefs.setInt(_keySkillThickScales, level);
+
+  int get skillGreed => _prefs.getInt(_keySkillGreed) ?? 0;
+  Future<void> setSkillGreed(int level) => _prefs.setInt(_keySkillGreed, level);
+
+  int get skillDashMastery => _prefs.getInt(_keySkillDashMastery) ?? 0;
+  Future<void> setSkillDashMastery(int level) => _prefs.setInt(_keySkillDashMastery, level);
 
   // ── Expedition Gear ──────────────────────────────────────────────────────────
   Map<String, int> get gearCounts {

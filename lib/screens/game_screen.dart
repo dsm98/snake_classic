@@ -31,6 +31,7 @@ import '../services/ad_service.dart';
 import '../services/analytics_service.dart';
 import 'game_over_screen.dart';
 import 'home_screen.dart';
+import 'altar_screen.dart';
 
 class GameScreen extends StatefulWidget {
   final GameMode mode;
@@ -170,6 +171,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   }
 
   void _onEngineUpdate() {
+    _particleKey.currentState?.setWeather(_engine.currentBiome);
+
     if (!widget.tutorialMode || _tutorialCompleted) return;
 
     bool changed = false;
@@ -608,6 +611,9 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                 (_engine.isCampaignWon && widget.campaignLevel != null)
                     ? widget.campaignLevel!.starsForScore(_engine.score)
                     : 0,
+            killerType: _engine.killerType,
+            currentFloor: _engine.currentFloor,
+            equippedGear: _engine.equippedGear,
           ),
           transitionsBuilder: (c, a1, a2, child) =>
               FadeTransition(opacity: a1, child: child),
@@ -721,10 +727,127 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                   ],
                 ),
                 if (widget.tutorialMode) _buildTutorialOverlay(),
+                if (_engine.isCampfirePhase) _buildCampfireOverlay(),
               ],
             );
           },
         ),
+      ),
+    );
+  }
+
+  Widget _buildCampfireOverlay() {
+    return Positioned.fill(
+      child: Container(
+        color: Colors.black.withOpacity(0.85),
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '🔥 CAMPFIRE',
+                style: TextStyle(
+                  fontFamily: 'Orbitron',
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.orangeAccent,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Floor ${_engine.currentFloor} Cleared.',
+                style: TextStyle(
+                  fontFamily: 'Orbitron',
+                  fontSize: 16,
+                  color: Colors.white70,
+                ),
+              ),
+              Text(
+                'Coins Gathered: 🪙 ${_engine.coinsEarnedSession}',
+                style: const TextStyle(fontFamily: 'Orbitron', fontSize: 18, color: Colors.amber),
+              ),
+              const SizedBox(height: 32),
+              const Text(
+                'THE MERCHANT',
+                style: TextStyle(fontFamily: 'Orbitron', fontSize: 20, color: Colors.purpleAccent, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 16),
+              _buildMerchantItem('Ghost Shell (Extra Life: ${_engine.wallHitsLeft})', 50, () {
+                if (_engine.coinsEarnedSession >= 50) {
+                  setState(() {
+                    _engine.coinsEarnedSession -= 50;
+                    _engine.wallHitsLeft++;
+                  });
+                }
+              }),
+              _buildMerchantItem(
+                _engine.hasCrocBane ? 'Croc Bane (Owned)' : 'Croc Bane (Stun Immunity)',
+                100,
+                () {
+                  if (_engine.coinsEarnedSession >= 100 && !_engine.hasCrocBane) {
+                    setState(() {
+                      _engine.coinsEarnedSession -= 100;
+                      _engine.hasCrocBane = true;
+                    });
+                  }
+                },
+                disabled: _engine.hasCrocBane,
+              ),
+              if (_engine.currentFloor % 5 == 0) ...[
+                const SizedBox(height: 12),
+                _PremiumDialogButton(
+                  label: 'VISIT ALTAR',
+                  icon: '🏛️',
+                  isPrimary: false,
+                  colors: colors,
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const AltarScreen()),
+                    );
+                  },
+                ),
+              ],
+              const SizedBox(height: 32),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: colors.accent,
+                  foregroundColor: colors.background,
+                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                ),
+                onPressed: () {
+                  setState(() {
+                    _engine.nextFloor();
+                  });
+                },
+                child: Text(
+                  'DESCEND TO FLOOR ${_engine.currentFloor + 1}',
+                  style: const TextStyle(fontFamily: 'Orbitron', fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMerchantItem(String name, int cost, VoidCallback onBuy, {bool disabled = false}) {
+    final canAfford = _engine.coinsEarnedSession >= cost;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(name, style: const TextStyle(fontFamily: 'Orbitron', color: Colors.white70)),
+          const SizedBox(width: 16),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: disabled || !canAfford ? Colors.grey[800] : Colors.green[700],
+            ),
+            onPressed: disabled || !canAfford ? null : onBuy,
+            child: Text('🪙 $cost', style: const TextStyle(fontFamily: 'Orbitron')),
+          ),
+        ],
       ),
     );
   }

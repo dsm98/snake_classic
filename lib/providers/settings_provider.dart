@@ -8,11 +8,11 @@ import '../services/vibration_service.dart';
 class SettingsProvider extends ChangeNotifier {
   final StorageService _storage;
 
-  ThemeType _theme = ThemeType.retro;
+  ThemeType _theme = ThemeType.neon;
   Difficulty _difficulty = Difficulty.normal;
   bool _soundEnabled = true;
   bool _vibrationEnabled = true;
-  bool _showJoystick = true;
+  bool _showJoystick = false;
   bool _showRunModifierPrompt = true;
   double _fontScale = 1.0;
   bool _reducedMotion = false;

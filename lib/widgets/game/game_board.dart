@@ -166,14 +166,56 @@ class _SnakePainter extends CustomPainter {
     _drawPrey(canvas);
     _drawEffects(canvas);
     _drawShadow(canvas);
+    if (themeType == ThemeType.retro) _drawRetroGhosting(canvas);
+    _drawSpikeTraps(canvas);
 
     if (engine.gameMode == GameMode.explore) {
       // Restore before drawing viewport-relative overlays
       canvas.restore();
       _drawEvents(canvas, size);
+      _drawFogOfWar(canvas, size);
     } else {
       _drawEvents(canvas, size);
     }
+  }
+
+  void _drawFogOfWar(Canvas canvas, Size size) {
+    final biome = engine.currentBiome;
+    final isCursed = engine.hasWraithsEye;
+    
+    // Only draw fog if in cave/ruins, OR if cursed by Wraith's Eye
+    if (!isCursed && biome != BiomeType.cave && biome != BiomeType.ruins) return;
+    if (engine.snake.isEmpty) return;
+    
+    final head = engine.snake.first;
+    final double progress = engine.movementProgress;
+    final double smoothCamX = ui.lerpDouble(engine.prevCameraX.toDouble(), engine.cameraX.toDouble(), progress)!;
+    final double smoothCamY = ui.lerpDouble(engine.prevCameraY.toDouble(), engine.cameraY.toDouble(), progress)!;
+    
+    final double headScreenX = (head.x - smoothCamX) * cellSize + cellSize / 2;
+    final double headScreenY = (head.y - smoothCamY) * cellSize + cellSize / 2;
+    final center = Offset(headScreenX, headScreenY);
+
+    // Wraith's eye further restricts vision!
+    final double visionRadius = isCursed ? cellSize * 4.0 : cellSize * 5.5; 
+    final opacity = (biome == BiomeType.cave || isCursed) ? 0.95 : 0.85;
+
+    final gradient = ui.Gradient.radial(
+      center, 
+      visionRadius, 
+      [
+        Colors.transparent,
+        Colors.transparent,
+        Colors.black.withOpacity(opacity),
+        Colors.black.withOpacity(opacity)
+      ],
+      [0.0, 0.45, 1.0, 1.0]
+    );
+
+    canvas.drawRect(
+      Rect.fromLTWH(0, 0, size.width, size.height),
+      Paint()..shader = gradient,
+    );
   }
 
   void _drawPortalEdges(Canvas canvas, Size size) {
@@ -266,18 +308,36 @@ class _SnakePainter extends CustomPainter {
       );
     }
 
-    // DRAW LCD MATRIX DOTS (Retro Only)
+    // DRAW LCD MATRIX DOTS / GRID (Retro Only)
     if (themeType == ThemeType.retro) {
-      final dotPaint = Paint()..color = colors.gridLine.withOpacity(0.4);
-      const dotSize = 1.0;
-      final spacing = cellSize / 5; // 5 sub-pixels per cell
-
-      for (double x = 0; x < size.width; x += spacing) {
-        for (double y = 0; y < size.height; y += spacing) {
-          canvas.drawCircle(
-              Offset(x + spacing / 2, y + spacing / 2), dotSize / 2, dotPaint);
-        }
+      final gridPaint = Paint()
+        ..color = colors.gridLine.withOpacity(0.08)
+        ..strokeWidth = 1.0;
+      
+      // Draw sub-pixel lines
+      final subSize = cellSize / 4;
+      for (double x = 0; x < size.width; x += subSize) {
+        canvas.drawLine(Offset(x, 0), Offset(x, size.height), gridPaint);
       }
+      for (double y = 0; y < size.height; y += subSize) {
+        canvas.drawLine(Offset(0, y), Offset(size.width, y), gridPaint);
+      }
+    }
+  }
+
+  void _drawRetroGhosting(Canvas canvas) {
+    if (engine.trail.isEmpty) return;
+    
+    // Draw trail segments with fading opacity to simulate LCD ghosting
+    for (int i = 0; i < engine.trail.length; i++) {
+      final pos = engine.trail[i];
+      final rect = _cellRect(pos);
+      final opacity = (0.3 - (i * 0.05)).clamp(0.0, 1.0);
+      
+      canvas.drawRect(
+        rect.deflate(1.0),
+        Paint()..color = colors.snakeBody.withOpacity(opacity),
+      );
     }
   }
 
@@ -354,6 +414,55 @@ class _SnakePainter extends CustomPainter {
         Offset(cols * cellSize, y * cellSize),
         paint,
       );
+    }
+  }
+
+  void _drawSpikeTraps(Canvas canvas) {
+    if (engine.gameMode != GameMode.explore) return;
+    final isActive = engine.spikesActive;
+    final spikeColor = isActive ? const Color(0xFFFF1744) : Colors.white10;
+    
+    for (final pos in engine.spikeTraps) {
+      final rect = _cellRect(pos);
+      final center = rect.center;
+      
+      // Draw base plate
+      canvas.drawRect(
+        rect.deflate(1.0),
+        Paint()..color = Colors.black.withOpacity(0.4),
+      );
+      
+      if (isActive) {
+        // Glowing aura for active spikes
+        canvas.drawCircle(
+          center,
+          cellSize * 0.7,
+          Paint()
+            ..color = spikeColor.withOpacity(0.2 * (0.8 + pulse * 0.4))
+            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8),
+        );
+        
+        // Spike blades (X pattern)
+        final spikePaint = Paint()
+          ..color = spikeColor
+          ..strokeWidth = 2.0
+          ..strokeCap = StrokeCap.round;
+          
+        final offset = cellSize * 0.3;
+        canvas.drawLine(center + Offset(-offset, -offset), center + Offset(offset, offset), spikePaint);
+        canvas.drawLine(center + Offset(offset, -offset), center + Offset(-offset, offset), spikePaint);
+        
+        // Center core glow
+        canvas.drawCircle(center, 2.0, Paint()..color = Colors.white);
+      } else {
+        // Retracted dim spikes
+        final dimPaint = Paint()
+          ..color = Colors.white24
+          ..strokeWidth = 1.0;
+        final offset = cellSize * 0.2;
+        canvas.drawLine(center + Offset(-offset, -offset), center + Offset(offset, offset), dimPaint);
+        canvas.drawLine(center + Offset(offset, -offset), center + Offset(-offset, offset), dimPaint);
+      }
     }
   }
 
@@ -705,9 +814,68 @@ class _SnakePainter extends CustomPainter {
       case FoodType.croc:
         _drawCroc(canvas, prey);
         break;
+      case FoodType.portal:
+        _drawPortal(canvas, prey);
+        break;
+      case FoodType.shrine:
+        _drawShrine(canvas, prey);
+        break;
       default:
         _drawMouse(canvas, prey);
     }
+  }
+
+  void _drawPortal(Canvas canvas, FoodModel prey) {
+    final center = _cellRect(prey.position).center;
+    final r = (cellSize / 2) * (0.8 + pulse * 0.2);
+    canvas.drawCircle(
+        center,
+        r,
+        Paint()
+          ..color = Colors.deepPurpleAccent.withOpacity(0.4)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4));
+    canvas.drawCircle(
+        center,
+        r * 0.8,
+        Paint()
+          ..color = Colors.deepPurpleAccent
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.0);
+    canvas.drawCircle(center, r * 0.4, Paint()..color = Colors.black87);
+  }
+
+  void _drawShrine(Canvas canvas, FoodModel prey) {
+    final center = _cellRect(prey.position).center;
+    final r = (cellSize / 2) * (0.8 + pulse * 0.1);
+    
+    // Base stone
+    canvas.drawRect(
+        Rect.fromCenter(center: center, width: r * 2, height: r * 2),
+        Paint()..color = Colors.grey[800]!
+    );
+    
+    // Glowing red runes/pentagram
+    final path = Path();
+    for (int i = 0; i < 5; i++) {
+      final angle = i * 4 * pi / 5 - pi / 2;
+      final px = center.dx + r * 0.8 * cos(angle);
+      final py = center.dy + r * 0.8 * sin(angle);
+      if (i == 0) path.moveTo(px, py);
+      else path.lineTo(px, py);
+    }
+    path.close();
+    
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = Colors.redAccent
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.0
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2)
+    );
+    
+    // Core blood gem
+    canvas.drawCircle(center, r * 0.3, Paint()..color = Colors.red);
   }
 
   void _drawMouse(Canvas canvas, FoodModel prey) {
@@ -899,7 +1067,12 @@ class _SnakePainter extends CustomPainter {
       Position prevPos = (i + 1 < snake.length)
           ? snake[i + 1]
           : (engine.trail.isNotEmpty ? engine.trail.first : snake[i]);
-      final rect = _interpolatedRect(snake[i], prevPos, progress);
+      Rect rect = _interpolatedRect(snake[i], prevPos, progress);
+      
+      // Apply food bulge
+      if (engine.foodBulges.contains(i)) {
+        rect = rect.inflate(cellSize * 0.18);
+      }
 
       if (skin == SnakeSkin.ghost) {
         canvas.drawCircle(rect.center, cellSize * 0.45,

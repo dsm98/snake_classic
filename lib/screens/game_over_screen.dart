@@ -12,9 +12,10 @@ import '../services/storage_service.dart';
 import '../services/audio_service.dart';
 import 'home_screen.dart';
 import 'game_screen.dart';
-import 'safari_journal_screen.dart';
+import 'grimoire_screen.dart';
 import '../core/models/campaign_level.dart';
 import '../core/models/daily_event.dart';
+import '../core/models/expedition_gear.dart';
 
 class GameOverScreen extends StatefulWidget {
   final int score;
@@ -36,6 +37,11 @@ class GameOverScreen extends StatefulWidget {
   final bool rankLeveledUp;
   final int newRankLevel;
   final int campaignStars; // 0-3, set when isCampaignWon
+  
+  // Death Card Details
+  final String? killerType;
+  final int currentFloor;
+  final List<String> equippedGear;
 
   const GameOverScreen({
     super.key,
@@ -57,6 +63,9 @@ class GameOverScreen extends StatefulWidget {
     this.rankLeveledUp = false,
     this.newRankLevel = 0,
     this.campaignStars = 0,
+    this.killerType,
+    this.currentFloor = 1,
+    this.equippedGear = const [],
   });
 
   @override
@@ -327,6 +336,9 @@ class _GameOverScreenState extends State<GameOverScreen>
                               themeType: widget.themeType,
                               colors: colors,
                               fontFamily: _fontFamily,
+                              killerType: widget.killerType,
+                              currentFloor: widget.currentFloor,
+                              equippedGear: widget.equippedGear,
                             ),
                           )
                               .animate()
@@ -475,14 +487,14 @@ class _GameOverScreenState extends State<GameOverScreen>
                           if (widget.mode == GameMode.explore) ...[
                             const SizedBox(height: 10),
                             _ActionButton(
-                              label: 'SAFARI JOURNAL',
+                              label: 'THE GRIMOIRE',
                               icon: '📖',
                               isPrimary: false,
                               colors: colors,
                               font: _fontFamily,
                               onTap: () => Navigator.of(context).push(
                                 MaterialPageRoute(
-                                  builder: (_) => SafariJournalScreen(
+                                  builder: (_) => GrimoireScreen(
                                       themeType: widget.themeType),
                                 ),
                               ),
@@ -523,6 +535,10 @@ class _ShareCard extends StatelessWidget {
   final ThemeType themeType;
   final AppThemeColors colors;
   final String fontFamily;
+  
+  final String? killerType;
+  final int currentFloor;
+  final List<String> equippedGear;
 
   const _ShareCard({
     required this.score,
@@ -534,6 +550,9 @@ class _ShareCard extends StatelessWidget {
     required this.themeType,
     required this.colors,
     required this.fontFamily,
+    this.killerType,
+    this.currentFloor = 1,
+    this.equippedGear = const [],
   });
 
   @override
@@ -734,32 +753,105 @@ class _ShareCard extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                _StatCol(
-                  icon: mode.icon,
-                  value: mode.displayName,
-                  label: 'MODE',
-                  labelColor: labelColor,
-                  valueColor: colors.text,
-                ),
-                _StatDivider(color: cardBorder),
-                _StatCol(
-                  icon: '🐍',
-                  value: '$snakeLength',
-                  label: 'LENGTH',
-                  labelColor: labelColor,
-                  valueColor: colors.text,
-                ),
-                _StatDivider(color: cardBorder),
-                _StatCol(
-                  icon: '🏆',
-                  value: '$bestScore',
-                  label: 'BEST',
-                  labelColor: labelColor,
-                  valueColor: colors.text,
-                ),
+                if (mode == GameMode.explore) ...[
+                  Expanded(
+                    child: _StatCol(
+                      icon: '☠️',
+                      value: killerType ?? 'Unknown',
+                      label: 'SLAIN BY',
+                      labelColor: labelColor,
+                      valueColor: Colors.redAccent,
+                    ),
+                  ),
+                  _StatDivider(color: cardBorder),
+                  Expanded(
+                    child: _StatCol(
+                      icon: '🪜',
+                      value: '$currentFloor',
+                      label: 'FLOOR',
+                      labelColor: labelColor,
+                      valueColor: colors.text,
+                    ),
+                  ),
+                  _StatDivider(color: cardBorder),
+                  Expanded(
+                    child: _StatCol(
+                      icon: '🐍',
+                      value: '$snakeLength',
+                      label: 'LENGTH',
+                      labelColor: labelColor,
+                      valueColor: colors.text,
+                    ),
+                  ),
+                ] else ...[
+                  Expanded(
+                    child: _StatCol(
+                      icon: mode.icon,
+                      value: mode.displayName,
+                      label: 'MODE',
+                      labelColor: labelColor,
+                      valueColor: colors.text,
+                    ),
+                  ),
+                  _StatDivider(color: cardBorder),
+                  Expanded(
+                    child: _StatCol(
+                      icon: '🐍',
+                      value: '$snakeLength',
+                      label: 'LENGTH',
+                      labelColor: labelColor,
+                      valueColor: colors.text,
+                    ),
+                  ),
+                  _StatDivider(color: cardBorder),
+                  Expanded(
+                    child: _StatCol(
+                      icon: '🏆',
+                      value: '$bestScore',
+                      label: 'BEST',
+                      labelColor: labelColor,
+                      valueColor: colors.text,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
+
+          if (mode == GameMode.explore && equippedGear.isNotEmpty) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Divider(color: cardBorder.withOpacity(0.3), height: 1),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
+              child: Row(
+                children: [
+                  Text(
+                    'EQUIPPED:',
+                    style: TextStyle(
+                      fontFamily: 'Orbitron',
+                      fontSize: 8,
+                      color: labelColor,
+                      letterSpacing: 1,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  ...equippedGear.map((id) {
+                    final gear = ExpeditionGear.all.firstWhere(
+                      (g) => g.type.name == id,
+                      orElse: () => ExpeditionGear.all.first,
+                    );
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 6),
+                      child: Text(gear.emoji,
+                          style: const TextStyle(fontSize: 14)),
+                    );
+                  }),
+                ],
+              ),
+            ),
+          ],
 
           // ── Footer ─────────────────────────────────────────────────
           Container(

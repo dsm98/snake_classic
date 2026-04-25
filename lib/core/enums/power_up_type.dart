@@ -5,6 +5,7 @@ enum PowerUpType {
   ghostMode,
   shrink,
   magnet,
+  cursedRelic,
 }
 
 extension PowerUpTypeExtension on PowerUpType {
@@ -16,6 +17,7 @@ extension PowerUpTypeExtension on PowerUpType {
       case PowerUpType.ghostMode: return 'Ghost Mode';
       case PowerUpType.shrink: return 'Shrink';
       case PowerUpType.magnet: return 'Magnet';
+      case PowerUpType.cursedRelic: return 'Wraith\'s Eye';
     }
   }
 
@@ -27,6 +29,7 @@ extension PowerUpTypeExtension on PowerUpType {
       case PowerUpType.ghostMode: return '👻';
       case PowerUpType.shrink: return '✂️';
       case PowerUpType.magnet: return '🧲';
+      case PowerUpType.cursedRelic: return '👁️‍🗨️';
     }
   }
 
@@ -38,6 +41,7 @@ extension PowerUpTypeExtension on PowerUpType {
       case PowerUpType.ghostMode: return 5000;
       case PowerUpType.shrink: return 0; // instant
       case PowerUpType.magnet: return 7000;
+      case PowerUpType.cursedRelic: return 0; // permanent effect applied instantly
     }
   }
 

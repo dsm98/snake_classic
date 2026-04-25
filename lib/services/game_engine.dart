@@ -44,8 +44,23 @@ class GameEngine extends ChangeNotifier {
 
   Direction currentDirection = Direction.right;
   final List<Direction> _directionQueue = [];
+  
+  // Game Feel / Juice
+  bool isNearMissSlowMo = false;
+  int nearMissSlowMoEndMs = 0;
+  List<int> foodBulges = [];
 
   int score = 0;
+  // Expedition gear state
+  List<String> equippedGear = [];
+  bool hasMagnetGear = false;
+  bool hasSpeedTonic = false;
+  bool hasSnakeOil = false;
+  bool hasCrocBane = false;
+  
+  // Cursed Relics & Events
+  bool hasWraithsEye = false;
+  bool hasShrineSpawnedThisFloor = false;
   int combo = 0;
   int comboLastFoodMs = 0;
   bool isPlaying = false;
@@ -73,6 +88,11 @@ class GameEngine extends ChangeNotifier {
   Map<Position, int> portalIndices = {};
 
   // ── Explore mode ───────────────────────────────────────────────
+  int currentFloor = 1;
+  int maxFloorReached = 1;
+  int preyCaughtThisFloor = 0;
+  bool isCampfirePhase = false;
+
   /// Camera top-left corner in grid cells (updated each tick)
   int cameraX = 0;
   int cameraY = 0;
@@ -97,6 +117,9 @@ class GameEngine extends ChangeNotifier {
   int preyMagnetEndMs = 0; // preyMagnet: prey drift toward head
   bool biomeMapActive = false; // biomeMap: reveal all rooms
   int dashCharges = 0; // dashScroll: instant-move charges
+  
+  // Altar Skills
+  int greedLevel = 0;
 
   int get gridCols => gameMode == GameMode.explore
       ? AppConstants.exploreGridColumns
@@ -114,6 +137,13 @@ class GameEngine extends ChangeNotifier {
   CampaignLevel? activeCampaignLevel;
   bool isCampaignWon = false;
 
+  final Set<Position> spikeTraps = {};
+  bool spikesActive = false;
+  int _spikeTickCounter = 0;
+  int _weatherTickCounter = 0;
+  
+  VoidCallback? onBulgeConsumed;
+  
   BoardEvent activeEvent = BoardEvent.none;
   int eventEndMs = 0;
 
@@ -146,6 +176,8 @@ class GameEngine extends ChangeNotifier {
   VoidCallback? onComboDropped;
   VoidCallback? onHighScoreReached;
   VoidCallback? onGameOver;
+  
+  String killerType = 'Unknown';
 
   // ── Private ────────────────────────────────────────────────────
   Ticker? _ticker;
@@ -290,6 +322,13 @@ class GameEngine extends ChangeNotifier {
       }
     }
 
+    // Apply persistent Altar Skills
+    if (gameMode == GameMode.explore) {
+      wallHitsLeft += StorageService().skillThickScales;
+      dashCharges += StorageService().skillDashMastery;
+      greedLevel = StorageService().skillGreed;
+    }
+
     if (withComebackBonus) {
       comebackBonus = true;
       comebackBonusEndMs = DateTime.now().millisecondsSinceEpoch + 30000;
@@ -316,6 +355,7 @@ class GameEngine extends ChangeNotifier {
     combo = 0;
     comboLastFoodMs = 0;
     isGameOver = false;
+    killerType = 'Unknown';
     isCampaignWon = false;
     isHighScoreCelebrated = false;
     _shouldSkidNextTick = false;
@@ -335,11 +375,20 @@ class GameEngine extends ChangeNotifier {
     preyList.clear();
     roomBiomes.clear();
     _visitedRoomKeys.clear();
+    spikeTraps.clear();
+    spikesActive = false;
+    _spikeTickCounter = 0;
+    _weatherTickCounter = 0;
     huntStreak = 0;
     huntStreakEndMs = 0;
     lastCaughtType = null;
     isSuperHunter = false;
     superHunterEndMs = 0;
+    currentFloor = 1;
+    preyCaughtThisFloor = 0;
+    isCampfirePhase = false;
+    hasWraithsEye = false;
+    hasShrineSpawnedThisFloor = false;
     isCrocStunned = false;
     crocStunEndMs = 0;
     wallHitsLeft = 0;
@@ -487,6 +536,21 @@ class GameEngine extends ChangeNotifier {
             biomeValues[_rng.nextInt(biomeValues.length)];
       }
     }
+    // --- 6. Add some Spike Traps in rooms (randomly) ---
+    for (int rx = 0; rx < roomCols; rx++) {
+      for (int ry = 0; ry < roomRows; ry++) {
+        // 20% chance to have 1-2 spikes in a room
+        if (_rng.nextDouble() < 0.20) {
+          final int sx = rx * bs + 3 + _rng.nextInt(3);
+          final int sy = ry * bs + 3 + _rng.nextInt(3);
+          final pos = Position(sx, sy);
+          if (!snakeSet.contains(pos)) {
+            spikeTraps.add(pos);
+            obstacleSet.remove(pos); // Ensure it's not a permanent wall
+          }
+        }
+      }
+    }
   }
 
   /// Carve a 3-wide corridor between two adjacent rooms in the block grid.
@@ -562,6 +626,48 @@ class GameEngine extends ChangeNotifier {
     start();
   }
 
+  void nextFloor() {
+    currentFloor++;
+    if (currentFloor > maxFloorReached) maxFloorReached = currentFloor;
+    preyCaughtThisFloor = 0;
+    isCampfirePhase = false;
+    hasShrineSpawnedThisFloor = false;
+
+    // Board reset logic (keep score, gear, stats)
+    snake = [
+      Position(startX, startY),
+      Position(startX - 1, startY),
+      Position(startX - 2, startY),
+    ];
+    snakeSet = HashSet<Position>.from(snake);
+    cameraX = startX - AppConstants.exploreViewportCols ~/ 2;
+    cameraY = startY - AppConstants.exploreViewportRows ~/ 2;
+    prevCameraX = cameraX;
+    prevCameraY = cameraY;
+    currentDirection = Direction.right;
+    _directionQueue.clear();
+    
+    activeEvent = BoardEvent.none;
+    eventEndMs = 0;
+    boardPowerUps.clear();
+    trail.clear();
+    effects.clear();
+    preyList.clear();
+    roomBiomes.clear();
+    _visitedRoomKeys.clear();
+    obstacleSet.clear();
+
+    _generateExploreMap();
+    _spawnInitialPrey();
+    _updateCamera();
+
+    // Make the game slightly faster
+    currentTickMs = max((currentTickMs * 0.95).round(), AppConstants.speedMin);
+    
+    notifyListeners();
+    start();
+  }
+
   void changeDirection(Direction newDir) {
     // Croc stun blocks turning
     if (isCrocStunned && DateTime.now().millisecondsSinceEpoch < crocStunEndMs)
@@ -606,6 +712,13 @@ class GameEngine extends ChangeNotifier {
       currentDelay = (currentDelay * 0.7).round();
     } else if (isBoosting) {
       currentDelay = (currentDelay * 0.5).round();
+    }
+
+    if (isNearMissSlowMo) {
+      currentDelay = (currentDelay * 2.5).round(); // Matrix slow-mo!
+      if (DateTime.now().millisecondsSinceEpoch > nearMissSlowMoEndMs) {
+        isNearMissSlowMo = false;
+      }
     }
 
     if (_lastTickTime == Duration.zero ||
@@ -670,6 +783,37 @@ class GameEngine extends ChangeNotifier {
         _preyTickCounter = 0;
         _movePrey();
       }
+
+      // Update spike traps state every 12 ticks (~2.5 seconds)
+      _spikeTickCounter++;
+      if (_spikeTickCounter >= 12) {
+        _spikeTickCounter = 0;
+        spikesActive = !spikesActive;
+        if (spikesActive) {
+          VibrationService().vibrate(duration: 50, amplitude: 100);
+        }
+      }
+    }
+
+    // Weather Effects (Desert Sandstorm)
+    if (gameMode == GameMode.explore && currentBiome == BiomeType.desert) {
+      _weatherTickCounter++;
+      if (_weatherTickCounter >= 10) {
+        _weatherTickCounter = 0;
+        final head = snake.first;
+        // Wind push: try to move North (y-1)
+        final windPushPos = Position(head.x, head.y - 1);
+        if (_isValidPosition(windPushPos)) {
+          // Subtle nudge: we don't change head, but we might insert a fake move or just notify
+          // For simplicity, let's just show a visual effect and maybe a slight delay
+          effects.add(GameEffect(
+            position: head,
+            type: EffectType.comboBurst,
+            value: '💨 WIND!',
+            startTimeMs: DateTime.now().millisecondsSinceEpoch,
+          ));
+        }
+      }
     }
 
     if (isFeverMode) {
@@ -680,6 +824,24 @@ class GameEngine extends ChangeNotifier {
 
     final head = snake.first;
     final Position newHead = _nextHead(head);
+
+    // Spike Trap collision logic
+    if (gameMode == GameMode.explore && spikesActive && spikeTraps.contains(newHead) && !_hasPowerUp(PowerUpType.ghostMode)) {
+      if (wallHitsLeft > 0) {
+        wallHitsLeft--;
+        VibrationService().impact();
+        effects.add(GameEffect(
+          position: newHead,
+          type: EffectType.comboBurst,
+          value: 'SHIELDED!',
+          startTimeMs: DateTime.now().millisecondsSinceEpoch,
+        ));
+      } else {
+        killerType = 'Spike Trap';
+        _triggerGameOver();
+        return;
+      }
+    }
 
     if (!_isValidPosition(newHead)) {
       // ghostShell absorbs the first out-of-bounds or obstacle hit
@@ -703,6 +865,62 @@ class GameEngine extends ChangeNotifier {
     final oldTail = snake.last;
     snake.insert(0, newHead);
     snakeSet.add(newHead);
+
+    // Near Miss Matrix Dodge Logic
+    if (!isNearMissSlowMo) {
+      int dangerCount = 0;
+      final neighbors = [
+        Position(newHead.x + 1, newHead.y),
+        Position(newHead.x - 1, newHead.y),
+        Position(newHead.x, newHead.y + 1),
+        Position(newHead.x, newHead.y - 1),
+      ];
+      for (var n in neighbors) {
+        if (n == head) continue; 
+        if (!_isValidPosition(n)) dangerCount++;
+      }
+      
+      if (dangerCount >= 2) {
+        isNearMissSlowMo = true;
+        final nowMs = DateTime.now().millisecondsSinceEpoch;
+        nearMissSlowMoEndMs = nowMs + 600;
+        VibrationService().vibrate(duration: 50, amplitude: 255);
+        effects.add(GameEffect(
+          position: newHead,
+          type: EffectType.comboBurst,
+          value: 'DODGE!',
+          startTimeMs: nowMs,
+        ));
+        score += 15;
+      }
+    }
+
+    // Move food bulges down the snake
+    final initialBulgeCount = foodBulges.length;
+    for (int i = 0; i < foodBulges.length; i++) {
+      foodBulges[i]++;
+    }
+    
+    // Check if any bulge reached the end
+    bool bulgeReachedEnd = false;
+    foodBulges.removeWhere((b) {
+      if (b >= snake.length - 1) {
+        bulgeReachedEnd = true;
+        return true;
+      }
+      return false;
+    });
+
+    if (bulgeReachedEnd) {
+      onBulgeConsumed?.call();
+      VibrationService().vibrate(duration: 15, amplitude: 50);
+      effects.add(GameEffect(
+        position: snake.last,
+        type: EffectType.comboBurst,
+        value: '✨',
+        startTimeMs: DateTime.now().millisecondsSinceEpoch,
+      ));
+    }
 
     // Track rooms visited in explore mode
     if (gameMode == GameMode.explore) {
@@ -879,14 +1097,21 @@ class GameEngine extends ChangeNotifier {
       // Endless wraps — bounds always valid
     } else {
       if (pos.x < 0 || pos.x >= gridCols || pos.y < 0 || pos.y >= gridRows) {
+        killerType = 'Wall';
         return false;
       }
     }
 
-    if (obstacleSet.contains(pos)) return false;
+    if (obstacleSet.contains(pos)) {
+      killerType = 'Obstacle';
+      return false;
+    }
 
     if (!_hasPowerUp(PowerUpType.ghostMode) && !isFeverMode) {
-      if (snakeSet.contains(pos) && pos != snake.last) return false;
+      if (snakeSet.contains(pos) && pos != snake.last) {
+        killerType = 'Own Tail';
+        return false;
+      }
     }
 
     return true;
@@ -932,7 +1157,7 @@ class GameEngine extends ChangeNotifier {
       activeShadow!.wins++;
       if (activeShadow!.wins >= 3) {
         int shadowBonus = equippedSkin == SnakeSkin.vampire ? 150 : 50;
-        coinsEarnedSession += shadowBonus;
+        coinsEarnedSession += (shadowBonus * (1 + (greedLevel * 0.2))).round();
         VibrationService().ripple();
         AudioService().play(SoundEffect.shadowDefeat);
         AnalyticsService().logShadowSnakeEvent('defeated');
@@ -960,6 +1185,7 @@ class GameEngine extends ChangeNotifier {
     }
 
     comboLastFoodMs = now;
+    foodBulges.add(0);
 
     // Fever Meter Logic
     if (combo >= 3) {
@@ -982,11 +1208,12 @@ class GameEngine extends ChangeNotifier {
     points = (points * (1 + combo * 0.5)).round();
     points = (points * difficulty.scoreMultiplier).round();
     if (_hasPowerUp(PowerUpType.scoreMultiplier)) points *= 2;
+    if (hasWraithsEye) points *= 3;
     if (equippedSkin == SnakeSkin.skeleton) points = (points * 1.05).round();
 
     if (food?.type == FoodType.boss) {
       points *= 10;
-      coinsEarnedSession += 25;
+      coinsEarnedSession += (25 * (1 + (greedLevel * 0.2))).round();
       VibrationService().ripple();
       effects.add(GameEffect(
           position: snake.first,
@@ -1457,6 +1684,13 @@ class GameEngine extends ChangeNotifier {
         for (int i = 0; i < removeCount; i++) {
           if (snake.length > 1) snake.removeLast();
         }
+      } else if (pu.type == PowerUpType.cursedRelic) {
+        hasWraithsEye = true;
+        effects.add(GameEffect(
+            position: snake.first,
+            type: EffectType.comboBurst,
+            value: 'CURSED: WRAITH\'S EYE',
+            startTimeMs: now));
       }
     } else {
       activePowerUps.removeWhere((ap) => ap.type == pu.type);
@@ -1524,6 +1758,12 @@ class GameEngine extends ChangeNotifier {
         pos = _getEmptyPos();
         attempts++;
       }
+    }
+
+    if (!hasShrineSpawnedThisFloor && preyCaughtThisFloor >= 2 && _rng.nextInt(100) < 30) {
+      hasShrineSpawnedThisFloor = true;
+      preyList.add(FoodModel(position: pos, type: FoodType.shrine));
+      return;
     }
 
     // Pick type based on the biome of the spawn room
@@ -1830,6 +2070,17 @@ class GameEngine extends ChangeNotifier {
   }
 
   void _onPreyEaten(FoodModel prey) {
+    if (prey.type == FoodType.portal) {
+      isCampfirePhase = true;
+      pause();
+      return;
+    }
+
+    if (prey.type == FoodType.shrine) {
+      _activateShrine(prey);
+      return;
+    }
+
     AudioService().play(SoundEffect.eat);
     VibrationService().vibrate(duration: 30, amplitude: 64);
     final now = DateTime.now().millisecondsSinceEpoch;
@@ -1891,6 +2142,11 @@ class GameEngine extends ChangeNotifier {
       points = (points * 1.5).round();
     }
     score += points;
+    
+    // Greed Skill: Flat coin bonus per prey
+    if (greedLevel > 0) {
+      coinsEarnedSession += greedLevel;
+    }
 
     // Safari Journal: record catch + biome + mission progress
     final typeName = prey.type.name;
@@ -1906,8 +2162,95 @@ class GameEngine extends ChangeNotifier {
       onHighScoreReached?.call();
     }
 
-    _spawnSinglePrey(nearPos: prey.position);
+    preyCaughtThisFloor++;
+    foodBulges.add(0);
+    
+    // In Explore mode, 5% chance to spawn a shadow hunter when catching prey (15% if cursed!)
+    if (activeShadow == null) {
+      int spawnChance = hasWraithsEye ? 15 : 5;
+      if (_rng.nextInt(100) < spawnChance) {
+        Position spawnPos = _getEmptyPosNear(snake.first, radius: 10);
+        activeShadow = ShadowSnake(spawnPos);
+        effects.add(GameEffect(
+            position: spawnPos,
+            type: EffectType.shadowPoof,
+            value: 'HUNTED!',
+            startTimeMs: now));
+        AudioService().play(SoundEffect.shadowDefeat); // Scary warning sound
+        VibrationService().vibrate(duration: 500, amplitude: 255);
+      }
+    }
+
+    if (preyCaughtThisFloor == 5 + (currentFloor * 2)) {
+      _spawnPortal();
+    } else {
+      _spawnSinglePrey(nearPos: prey.position);
+    }
     onFoodEaten?.call();
+  }
+
+  void _spawnPortal() {
+    Position pos = Position(
+      _rng.nextInt(gridCols),
+      _rng.nextInt(gridRows),
+    );
+    int attempts = 0;
+    while (attempts < 200) {
+      pos = Position(
+        _rng.nextInt(gridCols),
+        _rng.nextInt(gridRows),
+      );
+      if (!snakeSet.contains(pos) &&
+          !obstacleSet.contains(pos)) {
+        break;
+      }
+      attempts++;
+    }
+    preyList.add(FoodModel(position: pos, type: FoodType.portal));
+    
+    final now = DateTime.now().millisecondsSinceEpoch;
+    effects.add(GameEffect(
+      position: pos,
+      type: EffectType.comboBurst,
+      value: '🌀 PORTAL OPENED!',
+      startTimeMs: now,
+    ));
+    VibrationService().heartbeat();
+  }
+
+  void _activateShrine(FoodModel prey) {
+    AudioService().play(SoundEffect.powerUp);
+    VibrationService().vibrate(duration: 500, amplitude: 255);
+    
+    // Sacrifice 5 segments (if possible) for massive points and coins
+    int sacrifice = min(5, max(0, snake.length - 3));
+    for (int i = 0; i < sacrifice; i++) {
+      if (snake.length > 3) snake.removeLast();
+    }
+    
+    score += 500 * currentFloor;
+    coinsEarnedSession += (50 * (1 + (greedLevel * 0.2))).round();
+    
+    // Grant invincibility (Ghost Mode)
+    final now = DateTime.now().millisecondsSinceEpoch;
+    activePowerUps.removeWhere((ap) => ap.type == PowerUpType.ghostMode);
+    activePowerUps.add(ActivePowerUp(
+      type: PowerUpType.ghostMode,
+      endsAtMs: now + 15000, // 15 seconds
+    ));
+    
+    effects.add(GameEffect(
+      position: snake.first,
+      type: EffectType.comboBurst,
+      value: 'BLOOD SACRIFICE!',
+      startTimeMs: now,
+    ));
+    notifyListeners();
+  }
+
+  BiomeType? get currentBiome {
+    if (snake.isEmpty) return null;
+    return _roomBiomeAt(snake.first);
   }
 
   BiomeType? _roomBiomeAt(Position pos) {
@@ -1951,8 +2294,8 @@ class GameEngine extends ChangeNotifier {
   }
 
   void _moveShadow() {
-    // Simple A* would be overkill, just move towards food
-    final target = food!.position;
+    // In explore mode, hunt the player's head. Otherwise, race for the food.
+    final target = gameMode == GameMode.explore ? snake.first : food!.position;
     final current = activeShadow!.segments.first;
 
     int dx = 0;
@@ -1960,27 +2303,44 @@ class GameEngine extends ChangeNotifier {
 
     if (target.x > current.x) {
       dx = 1;
-    } else if (target.x < current.x)
+    } else if (target.x < current.x) {
       dx = -1;
-    else if (target.y > current.y)
+    } else if (target.y > current.y) {
       dy = 1;
-    else if (target.y < current.y) dy = -1;
+    } else if (target.y < current.y) {
+      dy = -1;
+    }
+
+    // Shadow moves slower in explore mode so the player can outrun it.
+    activeShadow!.moveTicks++;
+    if (gameMode == GameMode.explore && activeShadow!.moveTicks % 2 != 0) {
+      return; 
+    }
 
     final next =
         Position((current.x + dx) % gridCols, (current.y + dy) % gridRows);
 
     activeShadow!.segments.insert(0, next);
-    if (activeShadow!.segments.length > 3) {
+    if (activeShadow!.segments.length > 4) {
       activeShadow!.segments.removeLast();
     }
 
-    // If shadow eats food first
-    if (next == food!.position) {
-      activeShadow = null;
-      food = null;
-      _spawnFood();
-      AudioService().play(SoundEffect.shadowSteal);
-      AnalyticsService().logShadowSnakeEvent('stole_food');
+    if (gameMode == GameMode.explore) {
+      // If shadow touches the player (head or body), the player is killed!
+      if (snakeSet.contains(next) && !_hasPowerUp(PowerUpType.ghostMode)) {
+        activeShadow = null;
+        killerType = 'Shadow Hunter';
+        _triggerGameOver();
+      }
+    } else {
+      // If shadow eats food first
+      if (next == food!.position) {
+        activeShadow = null;
+        food = null;
+        _spawnFood();
+        AudioService().play(SoundEffect.shadowSteal);
+        AnalyticsService().logShadowSnakeEvent('stole_food');
+      }
     }
   }
 }
@@ -1988,6 +2348,7 @@ class GameEngine extends ChangeNotifier {
 class ShadowSnake {
   final List<Position> segments;
   int wins = 0;
+  int moveTicks = 0;
   ShadowSnake(Position start) : segments = [start, start, start];
 }
 

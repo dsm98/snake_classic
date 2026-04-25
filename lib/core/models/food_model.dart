@@ -10,7 +10,10 @@ enum FoodType {
   rabbit,
   lizard,
   butterfly,
-  croc
+  croc,
+  portal,
+  shrine,
+  merchant
 }
 
 class FoodModel {

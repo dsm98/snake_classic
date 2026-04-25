@@ -3,17 +3,17 @@ import 'package:flutter/material.dart';
 // ── Retro (Nokia 3310 LCD) palette ────────────────────────────
 // Authentic 4-shade Nokia green palette: #0F380F / #306230 / #8BAC0F / #9BBC0F
 class RetroColors {
-  static const background = Color(0xFFC7D081); // Bright Nokia LCD (active)
-  static const grid = Color(0xFFB9C46D); // Darker LCD panel
-  static const gridLine = Color(0xFFB1BB63); // Grid texture
-  static const snakeHead = Color(0xFF2B3306); // Darkest pixel (nearly black)
-  static const snakeBody = Color(0xFF434D10); // Standard dark pixel
-  static const snakeTail = Color(0xFF434D10); // Standard dark pixel
-  static const food = Color(0xFF2B3306); // Dark pixel food
-  static const powerUp = Color(0xFF434D10); // Mid-shade for power-ups
-  static const text = Color(0xFF2B3306); // Authentic dark grey text
-  static const accent = Color(0xFF5A6615); // Slightly lighter contrast
-  static const hudBg = Color(0xFFB9C46D); // Matches LCD panel
+  static const background = Color(0xFF9BBC0F); // Authentic Gameboy Light
+  static const grid = Color(0xFF8BAC0F); // Mid Green
+  static const gridLine = Color(0xFF306230); // Dark Green for contrast
+  static const snakeHead = Color(0xFF0F380F); // Deepest Green/Black
+  static const snakeBody = Color(0xFF0F380F); // Deepest Green/Black
+  static const snakeTail = Color(0xFF0F380F); // Deepest Green/Black
+  static const food = Color(0xFF0F380F); // Deepest Green/Black
+  static const powerUp = Color(0xFF0F380F); // Deepest Green/Black
+  static const text = Color(0xFF0F380F); // High contrast text
+  static const accent = Color(0xFF306230); // High contrast accent
+  static const hudBg = Color(0xFF8BAC0F); // Matches LCD panel
   static const buttonBg = Color(0xFFD9D9D9); // Plastic grey buttons
   static const buttonBorder = Color(0xFF707070); // Button shadow/border
 }

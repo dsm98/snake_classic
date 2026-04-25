@@ -27,6 +27,7 @@ import 'quests_screen.dart';
 import 'campaign_screen.dart';
 import 'profile_screen.dart';
 import 'multiplayer_screen.dart';
+import 'altar_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -1307,6 +1308,12 @@ class _NavGrid extends StatelessWidget {
         icon: '⚙️',
         color: Colors.teal,
         onTap: () => onTap(context, const SettingsScreen()),
+      ),
+      _NavItem(
+        label: 'ALTAR',
+        icon: '🗡️',
+        color: Colors.redAccent,
+        onTap: () => onTap(context, const AltarScreen()),
       ),
     ];
 

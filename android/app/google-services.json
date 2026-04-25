@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "892662575098-422crp6sn66j414hbmicbgb84vkropcm.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.retrogames.snake_classic",
+            "certificate_hash": "bbae81c80ccc5aac9e52f9c4ce2bf24bc8046945"
+          }
+        },
+        {
           "client_id": "892662575098-prgjigm3phlhhvmae36g0ldeca056c2b.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {

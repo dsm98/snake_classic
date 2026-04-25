@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import '../../core/models/position.dart';
+import '../../core/enums/biome_type.dart';
 
 class Particle {
   double x;
@@ -50,6 +51,15 @@ class ParticleSystemState extends State<ParticleSystem> with SingleTickerProvide
   final List<Particle> _particles = [];
   final _random = Random();
   double _lastTime = 0;
+  BiomeType? _activeWeather;
+
+  void setWeather(BiomeType? biome) {
+    if (_activeWeather != biome) {
+      setState(() {
+        _activeWeather = biome;
+      });
+    }
+  }
 
   @override
   void initState() {
@@ -62,13 +72,40 @@ class ParticleSystemState extends State<ParticleSystem> with SingleTickerProvide
   }
 
   void _tick() {
-    if (_particles.isEmpty) return;
-
     final now = _controller.value * 3600 * 24 * 365; // Seconds since start
     final dt = now - _lastTime;
     _lastTime = now;
 
     if (dt <= 0) return;
+
+    // Emit weather
+    if (_activeWeather == BiomeType.swamp) {
+      for (int i = 0; i < 3; i++) {
+        _particles.add(Particle(
+          x: _random.nextDouble() * 1.2 - 0.1,
+          y: -0.1,
+          vx: 0.2,
+          vy: 1.5 + _random.nextDouble(),
+          life: 1.0,
+          color: Colors.blueAccent.withOpacity(0.5),
+          size: _random.nextDouble() * 2 + 1,
+        ));
+      }
+    } else if (_activeWeather == BiomeType.desert) {
+      for (int i = 0; i < 4; i++) {
+        _particles.add(Particle(
+          x: -0.1,
+          y: _random.nextDouble() * 1.2 - 0.1,
+          vx: 1.5 + _random.nextDouble(),
+          vy: 0.1,
+          life: 1.5,
+          color: Colors.orangeAccent.withOpacity(0.4),
+          size: _random.nextDouble() * 3 + 1,
+        ));
+      }
+    }
+
+    if (_particles.isEmpty && _activeWeather == null) return;
 
     setState(() {
       for (int i = _particles.length - 1; i >= 0; i--) {
