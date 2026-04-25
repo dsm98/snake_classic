@@ -15,6 +15,7 @@ import 'screens/splash_screen.dart';
 import 'firebase_options.dart';
 import 'services/analytics_service.dart';
 import 'services/notification_service.dart';
+import 'services/adaptive_music_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -33,6 +34,7 @@ void main() async {
   await storage.init();
 
   await AudioService().init();
+  await AdaptiveMusicService().init();
 
   // AdMob is not supported on Flutter Web — skip on web
   if (!kIsWeb) {

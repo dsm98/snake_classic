@@ -14,6 +14,8 @@ import '../../core/models/food_model.dart';
 import '../../core/enums/snake_skin.dart';
 
 import '../../services/game_engine.dart';
+import '../../services/tail_trail_service.dart';
+import '../../services/ghost_racing_service.dart';
 
 class GameBoard extends StatefulWidget {
   final GameEngine engine;
@@ -1234,24 +1236,80 @@ class _SnakePainter extends CustomPainter {
   }
 
   void _drawTrail(Canvas canvas) {
+    // Draw skin-based interactive trail (from TailTrailService)
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
+    final trailService = TailTrailService();
+    for (final seg in trailService.segments) {
+      final visuals = trailService.visualsFor(seg, nowMs, cellSize);
+      if (visuals.radius <= 0) continue;
+      final basePos = _cellRect(seg.position).center;
+      // Apply physics drift scaled to cell size
+      final offset = Offset(seg.vx * cellSize * 0.3, seg.vy * cellSize * 0.3) *
+          seg.progress(nowMs);
+      final center = basePos + offset;
+
+      final paint = Paint()
+        ..color = visuals.color
+        ..maskFilter = visuals.blurSigma > 0
+            ? MaskFilter.blur(BlurStyle.normal, visuals.blurSigma)
+            : null;
+
+      switch (visuals.shape) {
+        case TrailShape.ember:
+        case TrailShape.blob:
+          canvas.drawCircle(center, visuals.radius, paint);
+          break;
+        case TrailShape.ribbon:
+          canvas.drawRect(
+            Rect.fromCenter(
+                center: center,
+                width: visuals.radius * 2,
+                height: visuals.radius * 0.5),
+            paint,
+          );
+          break;
+        case TrailShape.star:
+          // Draw a simple 4-pointed star
+          final r = visuals.radius;
+          final starPath = Path()
+            ..moveTo(center.dx, center.dy - r)
+            ..lineTo(center.dx + r * 0.3, center.dy - r * 0.3)
+            ..lineTo(center.dx + r, center.dy)
+            ..lineTo(center.dx + r * 0.3, center.dy + r * 0.3)
+            ..lineTo(center.dx, center.dy + r)
+            ..lineTo(center.dx - r * 0.3, center.dy + r * 0.3)
+            ..lineTo(center.dx - r, center.dy)
+            ..lineTo(center.dx - r * 0.3, center.dy - r * 0.3)
+            ..close();
+          canvas.drawPath(starPath, paint);
+          break;
+        case TrailShape.slash:
+          canvas.drawLine(
+            center + Offset(-visuals.radius, -visuals.radius),
+            center + Offset(visuals.radius, visuals.radius),
+            paint..strokeWidth = visuals.radius * 0.4,
+          );
+          break;
+      }
+    }
+
+    // Also draw the basic position trail for non-skinned fallback
     if (engine.trail.isEmpty) return;
-
-    final trailColor = colors.snakeTail.withOpacity(0.35);
+    final trailColor = colors.snakeTail.withOpacity(0.2);
     for (int i = 0; i < engine.trail.length; i++) {
-      final opacity = (0.35 * (1 - (i / engine.trail.length))).clamp(0.0, 1.0);
+      final opacity = (0.2 * (1 - (i / engine.trail.length))).clamp(0.0, 1.0);
       final rect = _cellRect(engine.trail[i]);
-
       if (themeType == ThemeType.neon) {
         canvas.drawRect(
           rect,
           Paint()
-            ..color = colors.accent.withOpacity(opacity)
+            ..color = colors.accent.withOpacity(opacity * 0.4)
             ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5),
         );
       } else {
         canvas.drawCircle(
           rect.center,
-          cellSize * 0.35 * (1 - (i / engine.trail.length)),
+          cellSize * 0.2 * (1 - (i / engine.trail.length)),
           Paint()..color = trailColor.withOpacity(opacity),
         );
       }
@@ -1259,34 +1317,81 @@ class _SnakePainter extends CustomPainter {
   }
 
   void _drawGhost(Canvas canvas) {
-    if (engine.ghostPath.isEmpty ||
-        engine.ghostIndex >= engine.ghostPath.length) return;
+    // ── Personal Best ghost ──────────────────────────────────────────
+    if (engine.ghostPath.isNotEmpty &&
+        engine.ghostIndex < engine.ghostPath.length) {
+      final ghostPos = engine.ghostPath[engine.ghostIndex];
+      final rect = _cellRect(ghostPos);
+      canvas.drawCircle(
+          rect.center,
+          cellSize * 0.6,
+          Paint()
+            ..color = Colors.white.withOpacity(0.25)
+            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8));
+      canvas.drawCircle(rect.center, cellSize * 0.4,
+          Paint()..color = Colors.cyanAccent.withOpacity(0.2));
+      final pbTp = TextPainter(
+        text: const TextSpan(
+          text: 'PB',
+          style: TextStyle(
+              color: Colors.white38,
+              fontSize: 8,
+              fontWeight: FontWeight.bold,
+              fontFamily: 'Orbitron'),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      pbTp.paint(canvas,
+          Offset(rect.center.dx - pbTp.width / 2, rect.center.dy - pbTp.height / 2));
+    }
 
-    final ghostPos = engine.ghostPath[engine.ghostIndex];
-    final rect = _cellRect(ghostPos);
+    // ── Rival ghost (async multiplayer) ─────────────────────────────
+    final rival = GhostRacingService().activeRivalGhost;
+    if (rival != null && !rival.isFinished) {
+      final segments = rival.visibleSegments;
+      for (int i = 0; i < segments.length; i++) {
+        final pos = segments[i];
+        final rect = _cellRect(pos);
+        final isHead = i == segments.length - 1;
+        final segOpacity = (0.15 + 0.35 * (i / segments.length));
 
-    final ghostPaint = Paint()
-      ..color = Colors.white.withOpacity(0.25)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
+        // Rival body: semi-transparent purple
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(
+              rect.deflate(isHead ? 0.5 : 2.0),
+              Radius.circular(cellSize * 0.3)),
+          Paint()
+            ..color = const Color(0xFFAA00FF).withOpacity(segOpacity)
+            ..maskFilter = isHead
+                ? const MaskFilter.blur(BlurStyle.normal, 4)
+                : null,
+        );
+      }
 
-    canvas.drawCircle(rect.center, cellSize * 0.6, ghostPaint);
-    canvas.drawCircle(rect.center, cellSize * 0.4,
-        Paint()..color = Colors.cyanAccent.withOpacity(0.2));
-
-    // Draw "PB" text on ghost
-    final tp = TextPainter(
-      text: const TextSpan(
-        text: 'PB',
-        style: TextStyle(
-            color: Colors.white38,
-            fontSize: 8,
-            fontWeight: FontWeight.bold,
-            fontFamily: 'Orbitron'),
-      ),
-      textDirection: TextDirection.ltr,
-    )..layout();
-    tp.paint(canvas,
-        Offset(rect.center.dx - tp.width / 2, rect.center.dy - tp.height / 2));
+      // Rival label on head
+      if (segments.isNotEmpty) {
+        final head = segments.last;
+        final headRect = _cellRect(head);
+        final rivalTp = TextPainter(
+          text: TextSpan(
+            text: rival.rivalName,
+            style: TextStyle(
+                color: const Color(0xFFAA00FF).withOpacity(0.85),
+                fontSize: 6,
+                fontWeight: FontWeight.bold,
+                fontFamily: 'Orbitron'),
+          ),
+          textDirection: TextDirection.ltr,
+        )..layout();
+        rivalTp.paint(
+          canvas,
+          Offset(
+            headRect.center.dx - rivalTp.width / 2,
+            headRect.top - rivalTp.height - 2,
+          ),
+        );
+      }
+    }
   }
 
   void _drawEffects(Canvas canvas) {

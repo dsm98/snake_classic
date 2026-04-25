@@ -1,7 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'home_screen.dart';
-import 'how_to_play_screen.dart';
+import 'home_screen.dart' as home;
+import 'cold_open_screen.dart';
 import '../services/storage_service.dart';
 import '../services/analytics_service.dart';
 
@@ -50,8 +50,8 @@ class _SplashScreenState extends State<SplashScreen>
       if (mounted) {
         final bool tutorialCompleted = StorageService().tutorialCompleted;
         final Widget nextScreen = tutorialCompleted
-            ? const HomeScreen()
-            : const HowToPlayScreen(firstRun: true);
+            ? const home.HomeScreen()
+            : const ColdOpenScreen();
 
         if (!tutorialCompleted) {
           AnalyticsService().logTutorialStarted();

@@ -4,6 +4,7 @@ import '../core/constants/app_colors.dart';
 import '../core/enums/theme_type.dart';
 import '../core/models/achievement.dart';
 import '../services/storage_service.dart';
+import '../core/theme/app_typography.dart';
 
 class AchievementsScreen extends StatelessWidget {
   final ThemeType themeType;
@@ -67,7 +68,7 @@ class AchievementsScreen extends StatelessWidget {
                         Text(
                           'ACHIEVEMENTS',
                           style: TextStyle(
-                            fontFamily: 'Orbitron',
+                            fontFamily: AppTypography.modernFont,
                             fontSize: 13,
                             color: colors.text,
                             fontWeight: FontWeight.bold,
@@ -128,7 +129,7 @@ class AchievementsScreen extends StatelessWidget {
                                   child: Text(
                                     storage.rankTitle,
                                     style: TextStyle(
-                                      fontFamily: 'Orbitron',
+                                      fontFamily: AppTypography.modernFont,
                                       fontSize: 15,
                                       color: colors.text,
                                       fontWeight: FontWeight.bold,
@@ -149,7 +150,7 @@ class AchievementsScreen extends StatelessWidget {
                                   child: Text(
                                     '$unlocked / $total',
                                     style: TextStyle(
-                                      fontFamily: 'Orbitron',
+                                      fontFamily: AppTypography.modernFont,
                                       fontSize: 13,
                                       color: colors.buttonBorder,
                                       fontWeight: FontWeight.bold,
@@ -162,7 +163,7 @@ class AchievementsScreen extends StatelessWidget {
                             Text(
                               '${storage.totalXp} total XP',
                               style: TextStyle(
-                                fontFamily: 'Orbitron',
+                                fontFamily: AppTypography.modernFont,
                                 fontSize: 10,
                                 color: colors.text.withOpacity(0.45),
                               ),
@@ -184,7 +185,7 @@ class AchievementsScreen extends StatelessWidget {
                           Text(
                             '${(pct * 100).round()}% Complete',
                             style: TextStyle(
-                              fontFamily: 'Orbitron',
+                              fontFamily: AppTypography.modernFont,
                               fontSize: 9,
                               color: colors.text.withValues(alpha: 0.5),
                             ),
@@ -194,7 +195,7 @@ class AchievementsScreen extends StatelessWidget {
                                 ? '${storage.xpToNextRank} XP to ${StorageService.rankTitles[storage.rankLevel + 1]}'
                                 : '🌟 MAX RANK',
                             style: TextStyle(
-                              fontFamily: 'Orbitron',
+                              fontFamily: AppTypography.modernFont,
                               fontSize: 9,
                               color: colors.text.withValues(alpha: 0.4),
                             ),
@@ -357,7 +358,7 @@ class _AchievementTile extends StatelessWidget {
                 Text(
                   achievement.title,
                   style: TextStyle(
-                    fontFamily: 'Orbitron',
+                    fontFamily: AppTypography.modernFont,
                     fontSize: 12,
                     color: locked ? colors.text.withOpacity(0.35) : colors.text,
                     fontWeight: locked ? FontWeight.normal : FontWeight.bold,
@@ -367,7 +368,7 @@ class _AchievementTile extends StatelessWidget {
                 Text(
                   achievement.description,
                   style: TextStyle(
-                    fontFamily: 'Orbitron',
+                    fontFamily: AppTypography.modernFont,
                     fontSize: 9,
                     color: colors.text.withOpacity(locked ? 0.3 : 0.5),
                     height: 1.4,
@@ -395,7 +396,7 @@ class _AchievementTile extends StatelessWidget {
                       Text(
                         '${progress.progress}/${achievement.targetValue}',
                         style: TextStyle(
-                          fontFamily: 'Orbitron',
+                          fontFamily: AppTypography.modernFont,
                           fontSize: 8,
                           color: colors.text.withOpacity(0.35),
                         ),
@@ -428,7 +429,7 @@ class _AchievementTile extends StatelessWidget {
                 Text(
                   '+${achievement.xpReward}',
                   style: TextStyle(
-                    fontFamily: 'Orbitron',
+                    fontFamily: AppTypography.modernFont,
                     fontSize: 12,
                     color: locked
                         ? colors.text.withValues(alpha: 0.2)
@@ -439,7 +440,7 @@ class _AchievementTile extends StatelessWidget {
                 Text(
                   'XP',
                   style: TextStyle(
-                    fontFamily: 'Orbitron',
+                    fontFamily: AppTypography.modernFont,
                     fontSize: 7,
                     color: locked
                         ? colors.text.withValues(alpha: 0.15)

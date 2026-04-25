@@ -15,7 +15,7 @@ class AdmobIds {
   static const _prodIosInterstitial = 'ca-app-pub-XXXXXXXXXXXXXXXX/XXXXXXXXXX';
   static const _prodIosRewarded = 'ca-app-pub-XXXXXXXXXXXXXXXX/XXXXXXXXXX';
 
-  static const bool _useTestIds = true; // ← set false before release
+  static const bool _useTestIds = false; // ← set false before release
 
   static String get bannerAdUnitId {
     if (_useTestIds) return _testBanner;

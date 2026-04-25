@@ -8,11 +8,14 @@ import '../core/constants/app_colors.dart';
 import '../core/enums/game_mode.dart';
 import '../core/enums/theme_type.dart';
 import '../core/models/achievement.dart';
+import '../core/theme/app_typography.dart';
 import '../services/storage_service.dart';
 import '../services/audio_service.dart';
 import 'home_screen.dart';
 import 'game_screen.dart';
 import 'grimoire_screen.dart';
+import '../services/ghost_racing_service.dart';
+import 'package:flutter/services.dart';
 import '../core/models/campaign_level.dart';
 import '../core/models/daily_event.dart';
 import '../core/models/expedition_gear.dart';
@@ -100,7 +103,7 @@ class _GameOverScreenState extends State<GameOverScreen>
   }
 
   String get _fontFamily =>
-      widget.themeType == ThemeType.retro ? 'PressStart2P' : 'Orbitron';
+      widget.themeType == ThemeType.retro ? AppTypography.retroFont : AppTypography.modernFont;
 
   @override
   void initState() {
@@ -504,6 +507,13 @@ class _GameOverScreenState extends State<GameOverScreen>
                                 .slideY(begin: 0.1, end: 0),
                           ],
 
+                          const SizedBox(height: 10),
+                          _GhostCodeShareButton(
+                                  colors: colors, font: _fontFamily)
+                              .animate()
+                              .fadeIn(delay: 850.ms)
+                              .slideY(begin: 0.1, end: 0),
+
                           const SizedBox(height: 24),
                         ],
                       ),
@@ -642,7 +652,7 @@ class _ShareCard extends StatelessWidget {
                   child: Text(
                     'SNAKE CLASSIC',
                     style: TextStyle(
-                      fontFamily: 'Orbitron',
+                      fontFamily: AppTypography.modernFont,
                       fontSize: 12,
                       fontWeight: FontWeight.w800,
                       color: colors.text.withOpacity(0.9),
@@ -661,7 +671,7 @@ class _ShareCard extends StatelessWidget {
                   child: Text(
                     themeLabel(),
                     style: TextStyle(
-                      fontFamily: 'Orbitron',
+                      fontFamily: AppTypography.modernFont,
                       fontSize: 8,
                       color: colors.accent,
                       letterSpacing: 2,
@@ -697,7 +707,7 @@ class _ShareCard extends StatelessWidget {
                         Text(
                           'NEW HIGH SCORE!',
                           style: TextStyle(
-                            fontFamily: 'Orbitron',
+                            fontFamily: AppTypography.modernFont,
                             fontSize: 9,
                             color: Color(0xFFFFD700),
                             fontWeight: FontWeight.bold,
@@ -717,7 +727,7 @@ class _ShareCard extends StatelessWidget {
                     '$score',
                     style: TextStyle(
                       fontFamily: fontFamily,
-                      fontSize: fontFamily == 'PressStart2P' ? 44 : 72,
+                      fontSize: fontFamily == AppTypography.retroFont ? 44 : 72,
                       color: Colors.white,
                       height: 1,
                       fontWeight: FontWeight.w900,
@@ -728,7 +738,7 @@ class _ShareCard extends StatelessWidget {
                 Text(
                   'POINTS',
                   style: TextStyle(
-                    fontFamily: 'Orbitron',
+                    fontFamily: AppTypography.modernFont,
                     fontSize: 9,
                     letterSpacing: 5,
                     color: labelColor,
@@ -830,7 +840,7 @@ class _ShareCard extends StatelessWidget {
                   Text(
                     'EQUIPPED:',
                     style: TextStyle(
-                      fontFamily: 'Orbitron',
+                      fontFamily: AppTypography.modernFont,
                       fontSize: 8,
                       color: labelColor,
                       letterSpacing: 1,
@@ -874,7 +884,7 @@ class _ShareCard extends StatelessWidget {
                   child: Text(
                     diffLabel(),
                     style: TextStyle(
-                      fontFamily: 'Orbitron',
+                      fontFamily: AppTypography.modernFont,
                       fontSize: 7,
                       color: colors.accent,
                       fontWeight: FontWeight.bold,
@@ -886,7 +896,7 @@ class _ShareCard extends StatelessWidget {
                 Text(
                   'Can you beat this? 🎮',
                   style: TextStyle(
-                    fontFamily: 'Orbitron',
+                    fontFamily: AppTypography.modernFont,
                     fontSize: 8,
                     color: labelColor,
                     fontStyle: FontStyle.italic,
@@ -925,7 +935,7 @@ class _StatCol extends StatelessWidget {
         Text(
           value,
           style: TextStyle(
-            fontFamily: 'Orbitron',
+            fontFamily: AppTypography.modernFont,
             fontSize: 11,
             color: valueColor,
             fontWeight: FontWeight.bold,
@@ -937,7 +947,7 @@ class _StatCol extends StatelessWidget {
         Text(
           label,
           style: TextStyle(
-            fontFamily: 'Orbitron',
+            fontFamily: AppTypography.modernFont,
             fontSize: 7,
             color: labelColor,
             letterSpacing: 1,
@@ -1005,7 +1015,7 @@ class _RewardPill extends StatelessWidget {
                     Text(
                       label,
                       style: const TextStyle(
-                        fontFamily: 'Orbitron',
+                        fontFamily: AppTypography.modernFont,
                         fontSize: 13,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
@@ -1014,7 +1024,7 @@ class _RewardPill extends StatelessWidget {
                     Text(
                       sublabel,
                       style: TextStyle(
-                        fontFamily: 'Orbitron',
+                        fontFamily: AppTypography.modernFont,
                         fontSize: 8,
                         color: color.withOpacity(0.65),
                       ),
@@ -1268,7 +1278,7 @@ class _AchievementToast extends StatelessWidget {
                     style: TextStyle(
                         color: Colors.amber,
                         fontSize: 10,
-                        fontFamily: 'Orbitron',
+                        fontFamily: AppTypography.modernFont,
                         fontWeight: FontWeight.bold)),
                 const SizedBox(height: 2),
                 Text(achievement.title,
@@ -1276,12 +1286,12 @@ class _AchievementToast extends StatelessWidget {
                         color: Colors.white,
                         fontSize: 13,
                         fontWeight: FontWeight.bold,
-                        fontFamily: 'Orbitron')),
+                        fontFamily: AppTypography.modernFont)),
                 Text('+${achievement.xpReward} XP',
                     style: TextStyle(
                         color: Colors.greenAccent.shade200,
                         fontSize: 10,
-                        fontFamily: 'Orbitron')),
+                        fontFamily: AppTypography.modernFont)),
               ],
             ),
           ),
@@ -1517,6 +1527,43 @@ class _CampaignStarCard extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _GhostCodeShareButton extends StatelessWidget {
+  final AppThemeColors colors;
+  final String font;
+
+  const _GhostCodeShareButton({required this.colors, required this.font});
+
+  @override
+  Widget build(BuildContext context) {
+    return _ActionButton(
+      label: 'COPY GHOST CODE',
+      icon: '👻',
+      isPrimary: false,
+      colors: colors,
+      font: font,
+      onTap: () async {
+        final code = await GhostRacingService().exportShareCode();
+        if (code != null) {
+          await Clipboard.setData(ClipboardData(text: code));
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Ghost Code copied to clipboard! Share it with friends.'),
+              ),
+            );
+          }
+        } else {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('No best run recorded yet!')),
+            );
+          }
+        }
+      },
     );
   }
 }

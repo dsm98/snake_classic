@@ -16,6 +16,42 @@ enum FoodType {
   merchant
 }
 
+extension FoodTypeExtension on FoodType {
+  String get loreName {
+    switch (this) {
+      case FoodType.standard: return 'Ember Seed';
+      case FoodType.golden: return 'Radiant Core';
+      case FoodType.poison: return 'Blight Bloom';
+      case FoodType.boss: return 'Titan Relic';
+      case FoodType.mouse: return 'Ashen Mouse';
+      case FoodType.rabbit: return 'Ghost-Hearth Rabbit';
+      case FoodType.lizard: return 'Void-Scale Lizard';
+      case FoodType.butterfly: return 'Soul-Wing Butterfly';
+      case FoodType.croc: return 'Mire-King Crocodile';
+      case FoodType.portal: return 'Void Rift';
+      case FoodType.shrine: return 'Ancient Altar';
+      case FoodType.merchant: return 'The Wandering Shade';
+    }
+  }
+
+  String get flavorText {
+    switch (this) {
+      case FoodType.standard: return 'A small spark of life in the growing dark.';
+      case FoodType.golden: return 'It glows with the intensity of a thousand suns.';
+      case FoodType.poison: return 'Bitterness that corrupts the senses.';
+      case FoodType.boss: return 'A weight that anchors the soul to the earth.';
+      case FoodType.mouse: return 'It scurries from the light, hiding in the shadows.';
+      case FoodType.rabbit: return 'Faster than a heartbeat, fleeting as a dream.';
+      case FoodType.lizard: return 'A master of stillness, waiting for the perfect moment.';
+      case FoodType.butterfly: return 'Wings made of sighs and forgotten whispers.';
+      case FoodType.croc: return 'The apex of the mire, ancient and unyielding.';
+      case FoodType.portal: return 'A gateway to where the stars are different.';
+      case FoodType.shrine: return 'Sacrifice for power; the old gods are hungry.';
+      case FoodType.merchant: return 'He trades in curiosities that defy explanation.';
+    }
+  }
+}
+
 class FoodModel {
   final Position position;
   final FoodType type;

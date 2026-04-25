@@ -20,6 +20,13 @@ import '../services/storage_service.dart';
 import '../services/audio_service.dart';
 import '../core/models/daily_event.dart';
 import '../core/models/game_modifier.dart';
+import '../core/models/shadow_snake.dart';
+import 'map_generator.dart';
+import 'entity_manager.dart';
+import 'screen_shake_service.dart';
+import 'tail_trail_service.dart';
+import 'adaptive_music_service.dart';
+import 'ghost_racing_service.dart';
 
 enum BoardEvent { none, lightsOut, iceBoard }
 
@@ -49,6 +56,14 @@ class GameEngine extends ChangeNotifier {
   bool isNearMissSlowMo = false;
   int nearMissSlowMoEndMs = 0;
   List<int> foodBulges = [];
+
+  // Graze / Near-Miss combos
+  int grazeMissCount = 0;           // consecutive near misses this run
+  int grazeMultiplierEndMs = 0;     // window before multiplier resets
+  int get grazeMultiplier => (1 + (grazeMissCount ~/ 3)).clamp(1, 5);
+
+  final MapGenerator _mapGenerator = MapGenerator();
+  final EntityManager _entityManager = EntityManager();
 
   int score = 0;
   // Expedition gear state
@@ -83,6 +98,7 @@ class GameEngine extends ChangeNotifier {
   int goldenApplesEatenSession = 0;
   int poisonApplesEatenSession = 0;
   int coinsEarnedSession = 0;
+  int mapSeed = 0;
 
   Map<Position, Position> boardPortals = {};
   Map<Position, int> portalIndices = {};
@@ -160,6 +176,7 @@ class GameEngine extends ChangeNotifier {
   GameMode gameMode = GameMode.classic;
   Difficulty difficulty = Difficulty.normal;
 
+  int gameTimeMs = 0;
   int lastTickRealtimeMs = 0;
 
   double get movementProgress {
@@ -198,7 +215,7 @@ class GameEngine extends ChangeNotifier {
     } catch (_) {}
   }
 
-  final Random _rng = Random();
+  Random _rng = Random();
   int _foodEatenSinceLastPowerUp = 0;
   int _preyTickCounter = 0;
   // New-player grace: gentler speed scaling for first 5 games
@@ -223,6 +240,9 @@ class GameEngine extends ChangeNotifier {
 
     final gamesPlayed = StorageService().gamesPlayed;
     _newPlayerGrace = gamesPlayed < 5;
+
+    mapSeed = DateTime.now().millisecondsSinceEpoch;
+    _rng = Random(mapSeed);
 
     ghostPath = StorageService().getBestReplay();
     ghostIndex = 0;
@@ -275,14 +295,13 @@ class GameEngine extends ChangeNotifier {
 
     // Apply post-reset modifier effects
     if (activeModifier != null) {
-      final nowMs = DateTime.now().millisecondsSinceEpoch;
       switch (activeModifier!.type) {
         case GameModifierType.invertedStart:
-          invertControlsUntilMs = nowMs + 20000;
+          invertControlsUntilMs = gameTimeMs + 20000;
           break;
         case GameModifierType.frenzy:
           isFeverMode = true;
-          feverEndMs = nowMs + 8000;
+          feverEndMs = gameTimeMs + 8000;
           feverMeter = 0;
           break;
         default:
@@ -291,17 +310,15 @@ class GameEngine extends ChangeNotifier {
     }
 
     if (equippedSkin == SnakeSkin.ghost) {
-      final nowMs = DateTime.now().millisecondsSinceEpoch;
       activePowerUps.add(
         ActivePowerUp(
           type: PowerUpType.ghostMode,
-          endsAtMs: nowMs + AppConstants.powerUpDurationMs,
+          endsAtMs: gameTimeMs + AppConstants.powerUpDurationMs,
         ),
       );
     }
 
     // Apply expedition gear effects
-    final nowMs = DateTime.now().millisecondsSinceEpoch;
     for (final gear in equippedGear) {
       switch (gear) {
         case 'speedTonic':
@@ -311,7 +328,7 @@ class GameEngine extends ChangeNotifier {
           wallHitsLeft = 1;
           break;
         case 'preyMagnet':
-          preyMagnetEndMs = nowMs + 30000;
+          preyMagnetEndMs = gameTimeMs + 30000;
           break;
         case 'biomeMap':
           biomeMapActive = true;
@@ -331,7 +348,7 @@ class GameEngine extends ChangeNotifier {
 
     if (withComebackBonus) {
       comebackBonus = true;
-      comebackBonusEndMs = DateTime.now().millisecondsSinceEpoch + 30000;
+      comebackBonusEndMs = gameTimeMs + 30000;
     }
 
     highestScoreOnRecord = StorageService().bestScore;
@@ -354,6 +371,7 @@ class GameEngine extends ChangeNotifier {
     score = 0;
     combo = 0;
     comboLastFoodMs = 0;
+    gameTimeMs = 0;
     isGameOver = false;
     killerType = 'Unknown';
     isCampaignWon = false;
@@ -447,142 +465,25 @@ class GameEngine extends ChangeNotifier {
   }
 
   void _generatePerimeterWalls() {
-    for (int x = 0; x < AppConstants.gridColumns; x++) {
-      obstacleSet.add(Position(x, 0)); // Top wall
-      obstacleSet.add(Position(x, AppConstants.gridRows - 1)); // Bottom wall
-    }
-    for (int y = 1; y < AppConstants.gridRows - 1; y++) {
-      obstacleSet.add(Position(0, y)); // Left wall
-      obstacleSet.add(Position(AppConstants.gridColumns - 1, y)); // Right wall
-    }
+    _mapGenerator.generatePerimeterWalls(obstacleSet);
   }
 
   /// Room-and-corridor map: guarantees every open area is reachable, all
   /// corridors are 3 cells wide so the snake can always turn back.
   void _generateExploreMap() {
-    const int cols = AppConstants.exploreGridColumns; // 80
-    const int rows = AppConstants.exploreGridRows; // 110
-    const int bs = 10; // block (room) size
-    const int roomCols = cols ~/ bs; // 8
-    const int roomRows = rows ~/ bs; // 11
-
-    // --- 1. Fill entire map with walls ---
-    for (int x = 0; x < cols; x++) {
-      for (int y = 0; y < rows; y++) {
-        obstacleSet.add(Position(x, y));
-      }
-    }
-
-    // --- 2. Carve room interiors (positions 2..7 within each bs×bs block) ---
-    for (int rx = 0; rx < roomCols; rx++) {
-      for (int ry = 0; ry < roomRows; ry++) {
-        for (int dx = 2; dx <= 7; dx++) {
-          for (int dy = 2; dy <= 7; dy++) {
-            obstacleSet.remove(Position(rx * bs + dx, ry * bs + dy));
-          }
-        }
-      }
-    }
-
-    // --- 3. Prim's spanning tree to connect all rooms ---
-    // Start from the room containing the spawn point
-    final int spawnRx = AppConstants.exploreStartX ~/ bs; // 4
-    final int spawnRy = AppConstants.exploreStartY ~/ bs; // 5
-
-    final Set<int> inTree = {};
-    // Frontier entries: [fromRx, fromRy, toRx, toRy]
-    final List<List<int>> frontier = [];
-
-    void addNeighbors(int rx, int ry) {
-      if (rx > 0) frontier.add([rx, ry, rx - 1, ry]);
-      if (rx < roomCols - 1) frontier.add([rx, ry, rx + 1, ry]);
-      if (ry > 0) frontier.add([rx, ry, rx, ry - 1]);
-      if (ry < roomRows - 1) frontier.add([rx, ry, rx, ry + 1]);
-    }
-
-    inTree.add(spawnRx * roomRows + spawnRy);
-    addNeighbors(spawnRx, spawnRy);
-
-    while (inTree.length < roomCols * roomRows) {
-      if (frontier.isEmpty) break;
-      final edgeIdx = _rng.nextInt(frontier.length);
-      final edge = frontier.removeAt(edgeIdx);
-      final int nRx = edge[2], nRy = edge[3];
-      final int nIdx = nRx * roomRows + nRy;
-      if (!inTree.contains(nIdx)) {
-        inTree.add(nIdx);
-        _carveCorridorBetween(edge[0], edge[1], nRx, nRy, bs);
-        addNeighbors(nRx, nRy);
-      }
-    }
-
-    // --- 4. Add extra corridors (~55% of remaining possible edges) for loops ---
-    for (int rx = 0; rx < roomCols; rx++) {
-      for (int ry = 0; ry < roomRows; ry++) {
-        if (rx + 1 < roomCols && _rng.nextDouble() < 0.55) {
-          _carveCorridorBetween(rx, ry, rx + 1, ry, bs);
-        }
-        if (ry + 1 < roomRows && _rng.nextDouble() < 0.55) {
-          _carveCorridorBetween(rx, ry, rx, ry + 1, bs);
-        }
-      }
-    }
-
-    // --- 5. Assign a random biome to every room ---
-    final biomeValues = BiomeType.values;
-    for (int rx = 0; rx < roomCols; rx++) {
-      for (int ry = 0; ry < roomRows; ry++) {
-        roomBiomes[rx * roomRows + ry] =
-            biomeValues[_rng.nextInt(biomeValues.length)];
-      }
-    }
-    // --- 6. Add some Spike Traps in rooms (randomly) ---
-    for (int rx = 0; rx < roomCols; rx++) {
-      for (int ry = 0; ry < roomRows; ry++) {
-        // 20% chance to have 1-2 spikes in a room
-        if (_rng.nextDouble() < 0.20) {
-          final int sx = rx * bs + 3 + _rng.nextInt(3);
-          final int sy = ry * bs + 3 + _rng.nextInt(3);
-          final pos = Position(sx, sy);
-          if (!snakeSet.contains(pos)) {
-            spikeTraps.add(pos);
-            obstacleSet.remove(pos); // Ensure it's not a permanent wall
-          }
-        }
-      }
-    }
+    _mapGenerator.generateExploreMap(
+      obstacleSet: obstacleSet,
+      roomBiomes: roomBiomes,
+      spikeTraps: spikeTraps,
+      snakeSet: snakeSet,
+    );
+  }  void _generateMazeObstacles() {
+    _mapGenerator.generateMazeObstacles(obstacleSet, difficulty, AppConstants.gridColumns ~/ 2, AppConstants.gridRows ~/ 2);
   }
 
-  /// Carve a 3-wide corridor between two adjacent rooms in the block grid.
-  void _carveCorridorBetween(int rx1, int ry1, int rx2, int ry2, int bs) {
-    // Normalize so we always go right or down
-    if (rx1 > rx2 || (rx1 == rx2 && ry1 > ry2)) {
-      _carveCorridorBetween(rx2, ry2, rx1, ry1, bs);
-      return;
-    }
-
-    if (rx2 == rx1 + 1 && ry2 == ry1) {
-      // Horizontal: carve 4 wall cells between block rx1 and rx2
-      // Wall cells: x = rx1*bs+8, rx1*bs+9, rx2*bs+0, rx2*bs+1
-      final int xStart = rx1 * bs + 8;
-      final int xEnd = rx2 * bs + 1;
-      final int cy = ry1 * bs + 5; // centre of room in y
-      for (int x = xStart; x <= xEnd; x++) {
-        obstacleSet.remove(Position(x, cy - 1));
-        obstacleSet.remove(Position(x, cy));
-        obstacleSet.remove(Position(x, cy + 1));
-      }
-    } else if (ry2 == ry1 + 1 && rx2 == rx1) {
-      // Vertical: carve 4 wall cells between block ry1 and ry2
-      final int yStart = ry1 * bs + 8;
-      final int yEnd = ry2 * bs + 1;
-      final int cx = rx1 * bs + 5; // centre of room in x
-      for (int y = yStart; y <= yEnd; y++) {
-        obstacleSet.remove(Position(cx - 1, y));
-        obstacleSet.remove(Position(cx, y));
-        obstacleSet.remove(Position(cx + 1, y));
-      }
-    }
+  void _generateCampaignObstacles() {
+    if (activeCampaignLevel == null) return;
+    _mapGenerator.generateCampaignObstacles(obstacleSet, activeCampaignLevel!, AppConstants.gridColumns ~/ 2, AppConstants.gridRows ~/ 2);
   }
 
   void start() {
@@ -670,9 +571,9 @@ class GameEngine extends ChangeNotifier {
 
   void changeDirection(Direction newDir) {
     // Croc stun blocks turning
-    if (isCrocStunned && DateTime.now().millisecondsSinceEpoch < crocStunEndMs)
+    if (isCrocStunned && gameTimeMs < crocStunEndMs)
       return;
-    if (DateTime.now().millisecondsSinceEpoch < invertControlsUntilMs) {
+    if (gameTimeMs < invertControlsUntilMs) {
       newDir = newDir.opposite();
     }
     if (_directionQueue.isNotEmpty) {
@@ -716,7 +617,7 @@ class GameEngine extends ChangeNotifier {
 
     if (isNearMissSlowMo) {
       currentDelay = (currentDelay * 2.5).round(); // Matrix slow-mo!
-      if (DateTime.now().millisecondsSinceEpoch > nearMissSlowMoEndMs) {
+      if (gameTimeMs > nearMissSlowMoEndMs) {
         isNearMissSlowMo = false;
       }
     }
@@ -725,6 +626,7 @@ class GameEngine extends ChangeNotifier {
         elapsed.inMilliseconds - _lastTickTime.inMilliseconds >= currentDelay) {
       _lastTickTime = elapsed;
       lastTickRealtimeMs = DateTime.now().millisecondsSinceEpoch;
+      gameTimeMs += currentDelay;
       if (isBoosting && score > 0) {
         score -= 2; // Drains score when boosting
         if (score < 0) score = 0;
@@ -810,7 +712,7 @@ class GameEngine extends ChangeNotifier {
             position: head,
             type: EffectType.comboBurst,
             value: '💨 WIND!',
-            startTimeMs: DateTime.now().millisecondsSinceEpoch,
+            startTimeMs: gameTimeMs,
           ));
         }
       }
@@ -834,7 +736,7 @@ class GameEngine extends ChangeNotifier {
           position: newHead,
           type: EffectType.comboBurst,
           value: 'SHIELDED!',
-          startTimeMs: DateTime.now().millisecondsSinceEpoch,
+          startTimeMs: gameTimeMs,
         ));
       } else {
         killerType = 'Spike Trap';
@@ -882,16 +784,34 @@ class GameEngine extends ChangeNotifier {
       
       if (dangerCount >= 2) {
         isNearMissSlowMo = true;
-        final nowMs = DateTime.now().millisecondsSinceEpoch;
+        final nowMs = gameTimeMs;
         nearMissSlowMoEndMs = nowMs + 600;
+
+        // Graze mechanic: count consecutive near misses for multiplier
+        if (nowMs < grazeMultiplierEndMs) {
+          grazeMissCount++;
+        } else {
+          grazeMissCount = 1;
+        }
+        grazeMultiplierEndMs = nowMs + 3000; // 3s window
+
+        final int grazeBonus = 15 * grazeMultiplier;
+        score += grazeBonus;
+
         VibrationService().vibrate(duration: 50, amplitude: 255);
+        ScreenShakeService().nearMiss();
+        AudioService().play(SoundEffect.eat);
+
+        final label = grazeMissCount >= 3
+            ? 'GRAZE x$grazeMultiplier! +$grazeBonus'
+            : 'DODGE! +$grazeBonus';
+
         effects.add(GameEffect(
           position: newHead,
           type: EffectType.comboBurst,
-          value: 'DODGE!',
+          value: label,
           startTimeMs: nowMs,
         ));
-        score += 15;
       }
     }
 
@@ -918,7 +838,7 @@ class GameEngine extends ChangeNotifier {
         position: snake.last,
         type: EffectType.comboBurst,
         value: '✨',
-        startTimeMs: DateTime.now().millisecondsSinceEpoch,
+        startTimeMs: gameTimeMs,
       ));
     }
 
@@ -959,7 +879,7 @@ class GameEngine extends ChangeNotifier {
           // skip stun entirely
         } else {
           // Stun — can't turn for 2 ticks (reuse invertControlsUntilMs as a direction-lock)
-          final now = DateTime.now().millisecondsSinceEpoch;
+          final now = gameTimeMs;
           isCrocStunned = true;
           crocStunEndMs = now + (currentTickMs * 2);
           VibrationService().vibrate(duration: 200, amplitude: 200);
@@ -985,11 +905,16 @@ class GameEngine extends ChangeNotifier {
       }
     }
 
-    // Update trail
+    // Update trail & emit skin-based tail trail
     trail.insert(0, oldTail);
     if (trail.length > 5) {
       trail.removeLast();
     }
+    TailTrailService().add(oldTail, equippedSkin, gameTimeMs);
+    TailTrailService().purge(gameTimeMs);
+
+    // Advance ghost racer
+    GhostRacingService().tickGhost();
 
     sessionPath.add(newHead);
 
@@ -997,7 +922,7 @@ class GameEngine extends ChangeNotifier {
     if (gameMode == GameMode.explore) _updateCamera();
 
     // Clean up expired visual effects (fading after 0.8s)
-    final now = DateTime.now().millisecondsSinceEpoch;
+    final now = gameTimeMs;
     effects.removeWhere((p) => now - p.startTimeMs > 800);
 
     if (collectedPowerUp != null) {
@@ -1053,6 +978,14 @@ class GameEngine extends ChangeNotifier {
       _triggerGameOver();
       return;
     }
+
+    // Update adaptive music based on current state
+    AdaptiveMusicService().update(
+      combo: combo,
+      isFeverMode: isFeverMode,
+      isGameOver: isGameOver,
+      isPaused: isPaused,
+    );
 
     notifyListeners();
   }
@@ -1132,12 +1065,13 @@ class GameEngine extends ChangeNotifier {
 
   void _onFoodEaten() {
     AudioService().play(SoundEffect.eat);
-    final now = DateTime.now().millisecondsSinceEpoch;
+    final now = gameTimeMs;
 
     if (now - comboLastFoodMs <= AppConstants.comboWindow * 1000) {
       combo = min(combo + 1, AppConstants.comboMultiplierMax);
       if (combo >= 3) {
         VibrationService().heartbeat();
+        ScreenShakeService().eatGolden();
         effects.add(GameEffect(
             position: snake.first,
             type: EffectType.comboBurst,
@@ -1145,6 +1079,7 @@ class GameEngine extends ChangeNotifier {
             startTimeMs: now));
       } else {
         VibrationService().vibrate(duration: 30, amplitude: 64);
+        ScreenShakeService().eatSmall();
       }
     } else {
       if (combo > 1) {
@@ -1152,6 +1087,7 @@ class GameEngine extends ChangeNotifier {
       }
       combo = 1;
       VibrationService().vibrate(duration: 20, amplitude: 32);
+      ScreenShakeService().eatSmall();
     }
     if (activeShadow != null) {
       activeShadow!.wins++;
@@ -1175,7 +1111,7 @@ class GameEngine extends ChangeNotifier {
         AppConstants.gridColumns - 1 - snake.last.x,
         AppConstants.gridRows - 1 - snake.last.y,
       );
-      activeShadow = ShadowSnake(spawnPos);
+      activeShadow = ShadowSnake(segments: [spawnPos, spawnPos, spawnPos]);
       AnalyticsService().logShadowSnakeEvent('spawn');
       effects.add(GameEffect(
           position: spawnPos,
@@ -1196,6 +1132,7 @@ class GameEngine extends ChangeNotifier {
         feverMeter = 0;
         AudioService().play(SoundEffect.powerUp);
         VibrationService().vibrate(duration: 500, amplitude: 255);
+        ScreenShakeService().feverStart();
         effects.add(GameEffect(
             position: snake.first,
             type: EffectType.comboBurst,
@@ -1215,6 +1152,7 @@ class GameEngine extends ChangeNotifier {
       points *= 10;
       coinsEarnedSession += (25 * (1 + (greedLevel * 0.2))).round();
       VibrationService().ripple();
+      ScreenShakeService().eatBoss();
       effects.add(GameEffect(
           position: snake.first,
           type: EffectType.comboBurst,
@@ -1223,6 +1161,7 @@ class GameEngine extends ChangeNotifier {
     } else if (food?.type == FoodType.golden) {
       points *= (equippedSkin == SnakeSkin.dragon) ? 8 : 5;
       goldenApplesEatenSession++;
+      ScreenShakeService().eatGolden();
     } else if (food?.type == FoodType.poison) {
       points = -100;
       invertControlsUntilMs = now + 5000;
@@ -1348,14 +1287,14 @@ class GameEngine extends ChangeNotifier {
 
     if (r < 4 && allowBoss) {
       t = FoodType.boss;
-      expires = DateTime.now().millisecondsSinceEpoch + 15000; // 15s window
+      expires = gameTimeMs + 15000; // 15s window
       _bossMoveTick = 0;
     } else if (r >= 4 && r < 9 && allowGold) {
       t = FoodType.golden;
-      expires = DateTime.now().millisecondsSinceEpoch + 8000;
+      expires = gameTimeMs + 8000;
     } else if (r >= 9 && r < 19 && allowPoison) {
       t = FoodType.poison;
-      expires = DateTime.now().millisecondsSinceEpoch + 8000;
+      expires = gameTimeMs + 8000;
     }
 
     Position pos = Position(
@@ -1384,36 +1323,15 @@ class GameEngine extends ChangeNotifier {
   }
 
   void _moveBossFood() {
-    if (food == null) return;
-    final head = snake.first;
-    final bossPos = food!.position;
-
-    // Find the neighbour that maximises distance from snake head
-    final candidates = [
-      Position(bossPos.x + 1, bossPos.y),
-      Position(bossPos.x - 1, bossPos.y),
-      Position(bossPos.x, bossPos.y + 1),
-      Position(bossPos.x, bossPos.y - 1),
-    ];
-
-    Position? best;
-    double bestDist = -1;
-    for (final m in candidates) {
-      if (m.x < 0 || m.x >= gridCols) continue;
-      if (m.y < 0 || m.y >= gridRows) continue;
-      if (snakeSet.contains(m) || obstacleSet.contains(m)) continue;
-      final dx = m.x - head.x;
-      final dy = m.y - head.y;
-      final d = (dx * dx + dy * dy).toDouble();
-      if (d > bestDist) {
-        bestDist = d;
-        best = m;
-      }
-    }
-    if (best != null) {
-      food = FoodModel(
-          position: best, type: FoodType.boss, expiresAtMs: food!.expiresAtMs);
-    }
+    _entityManager.moveBossFood(
+      food: food,
+      snake: snake,
+      snakeSet: snakeSet,
+      obstacleSet: obstacleSet,
+      gridCols: gridCols,
+      gridRows: gridRows,
+      onUpdate: (newFood) => food = newFood,
+    );
   }
 
   bool _pathExists(Position start, Position end) {
@@ -1497,7 +1415,7 @@ class GameEngine extends ChangeNotifier {
       );
       attempts++;
     }
-    final now = DateTime.now().millisecondsSinceEpoch;
+    final now = gameTimeMs;
     boardPowerUps.add(PowerUpModel(
       position: pos,
       type: type,
@@ -1505,31 +1423,7 @@ class GameEngine extends ChangeNotifier {
     ));
   }
 
-  void _generateMazeObstacles() {
-    int count;
-    switch (difficulty) {
-      case Difficulty.easy:
-        count = AppConstants.mazeObstaclesEasy;
-        break;
-      case Difficulty.normal:
-        count = AppConstants.mazeObstaclesNormal;
-        break;
-      case Difficulty.hard:
-        count = AppConstants.mazeObstaclesHard;
-        break;
-      case Difficulty.insane:
-        count = AppConstants.mazeObstaclesInsane;
-        break;
-    }
 
-    _spawnRandomObstacles(count);
-  }
-
-  void _generateCampaignObstacles() {
-    if (activeCampaignLevel!.obstacleDensity <= 0) return;
-    int count = activeCampaignLevel!.obstacleDensity * 2;
-    _spawnRandomObstacles(count);
-  }
 
   void _spawnRandomObstacles(int count) {
     const clearZone = 4;
@@ -1594,6 +1488,8 @@ class GameEngine extends ChangeNotifier {
     isPlaying = false;
     VibrationService().impact();
     AudioService().play(SoundEffect.gameOver);
+    ScreenShakeService().gameOver();
+    TailTrailService().clear();
     _vibrate(200, 255);
     _ticker?.stop();
     _timeAttackTimer?.cancel();
@@ -1602,12 +1498,12 @@ class GameEngine extends ChangeNotifier {
   }
 
   bool _hasPowerUp(PowerUpType type) {
-    final now = DateTime.now().millisecondsSinceEpoch;
+    final now = gameTimeMs;
     return activePowerUps.any((ap) => ap.type == type && ap.isActive(now));
   }
 
   ActivePowerUp? getActivePowerUp(PowerUpType type) {
-    final now = DateTime.now().millisecondsSinceEpoch;
+    final now = gameTimeMs;
     try {
       return activePowerUps
           .firstWhere((ap) => ap.type == type && ap.isActive(now));
@@ -1663,7 +1559,7 @@ class GameEngine extends ChangeNotifier {
     // Remove any ghost mode that was tied to the old system just in case
     activePowerUps.removeWhere((p) => p.type == PowerUpType.ghostMode);
     // Give 3 seconds of invincibility just to be perfectly safe as they orient themselves
-    final now = DateTime.now().millisecondsSinceEpoch;
+    final now = gameTimeMs;
     activePowerUps.add(ActivePowerUp(
       type: PowerUpType.ghostMode,
       endsAtMs: now + 3000,
@@ -1676,7 +1572,7 @@ class GameEngine extends ChangeNotifier {
     AudioService().play(SoundEffect.powerUp);
     VibrationService().ripple();
     powerUpsCollectedSession++;
-    final now = DateTime.now().millisecondsSinceEpoch;
+    final now = gameTimeMs;
 
     if (pu.type.isInstant) {
       if (pu.type == PowerUpType.shrink) {
@@ -1793,7 +1689,7 @@ class GameEngine extends ChangeNotifier {
         // monarchWyrm skin doubles butterfly lifespan
         final butterflyMs =
             equippedSkin == SnakeSkin.monarchWyrm ? 30000 : 15000;
-        final expires = DateTime.now().millisecondsSinceEpoch + butterflyMs;
+        final expires = gameTimeMs + butterflyMs;
         preyList.add(FoodModel(
             position: pos,
             type: FoodType.butterfly,
@@ -1834,240 +1730,22 @@ class GameEngine extends ChangeNotifier {
   }
 
   void _movePrey() {
-    if (preyList.isEmpty || snake.isEmpty) return;
-    final head = snake.first;
-    final now = DateTime.now().millisecondsSinceEpoch;
-
-    // Expire butterflies
-    preyList.removeWhere((p) =>
-        p.type == FoodType.butterfly &&
-        p.expiresAtMs != null &&
-        now > p.expiresAtMs!);
-
-    // Refill to maintain 3 prey
-    while (preyList.length < 3) {
-      _spawnSinglePrey();
-    }
-
-    for (int i = 0; i < preyList.length; i++) {
-      final prey = preyList[i];
-
-      // preyMagnet: pull all prey one step toward snake head
-      final magnetActive = preyMagnetEndMs > 0 &&
-          DateTime.now().millisecondsSinceEpoch < preyMagnetEndMs;
-      if (magnetActive) {
-        _preySingleStepToward(i, head);
-        continue;
-      }
-
-      switch (prey.type) {
-        case FoodType.mouse:
-          _moveMouse(i, head);
-          break;
-        case FoodType.rabbit:
-          _moveRabbit(i, head);
-          break;
-        case FoodType.lizard:
-          _moveLizard(i, head);
-          break;
-        case FoodType.butterfly:
-          _moveButterfly(i);
-          break;
-        case FoodType.croc:
-          _moveCroc(i, head);
-          break;
-        default:
-          break;
-      }
-    }
+    _entityManager.movePrey(
+      preyList: preyList,
+      snake: snake,
+      snakeSet: snakeSet,
+      obstacleSet: obstacleSet,
+      gridCols: gridCols,
+      gridRows: gridRows,
+      roomBiomes: roomBiomes,
+      gameTimeMs: gameTimeMs,
+      preyMagnetEndMs: preyMagnetEndMs,
+      equippedSkin: equippedSkin,
+      rng: _rng,
+    );
   }
 
-  void _moveMouse(int idx, Position head) {
-    final prey = preyList[idx];
-    final dist =
-        (prey.position.x - head.x).abs() + (prey.position.y - head.y).abs();
-    if (dist > 5) return;
-    _preySingleStep(idx, head);
-  }
 
-  void _moveRabbit(int idx, Position head) {
-    final prey = preyList[idx];
-    final dist =
-        (prey.position.x - head.x).abs() + (prey.position.y - head.y).abs();
-    if (dist > 6) return;
-    if (prey.dashChargesLeft > 0) {
-      _rabbitDash(idx, head);
-    } else {
-      _preySingleStep(idx, head);
-    }
-  }
-
-  void _moveLizard(int idx, Position head) {
-    final prey = preyList[idx];
-    // Counts down stillness; when still it's camouflaged
-    if (prey.stillTicksLeft > 0) {
-      preyList[idx] = prey.copyWith(stillTicksLeft: prey.stillTicksLeft - 1);
-      return;
-    }
-    final dist =
-        (prey.position.x - head.x).abs() + (prey.position.y - head.y).abs();
-    if (dist > 7) {
-      // Far away — stop and hide again
-      preyList[idx] = prey.copyWith(stillTicksLeft: 4 + _rng.nextInt(5));
-      return;
-    }
-    _preySingleStep(idx, head);
-    // After moving, rest for a few ticks
-    preyList[idx] = preyList[idx].copyWith(stillTicksLeft: 2 + _rng.nextInt(3));
-  }
-
-  void _moveButterfly(int idx) {
-    final prey = preyList[idx];
-    // Sine-wave path: move 2 cells along x each tick, y oscillates
-    final newAngle = prey.sinAngle + 0.8;
-    final ny = (prey.position.y + (sin(newAngle) * 1.5).round())
-        .clamp(0, gridRows - 1);
-    final nx = (prey.position.x + 2).clamp(0, gridCols - 1);
-    final newPos = Position(nx, ny);
-    if (!obstacleSet.contains(newPos) && !snakeSet.contains(newPos)) {
-      preyList[idx] = prey.copyWith(position: newPos, sinAngle: newAngle);
-    } else {
-      // Reverse direction on obstacle
-      final revPos = Position(
-          (prey.position.x - 1).clamp(0, gridCols - 1), prey.position.y);
-      preyList[idx] = prey.copyWith(position: revPos, sinAngle: newAngle + pi);
-    }
-  }
-
-  void _moveCroc(int idx, Position head) {
-    final prey = preyList[idx];
-    if (prey.crocBody.isEmpty) return;
-    final dist =
-        (prey.position.x - head.x).abs() + (prey.position.y - head.y).abs();
-    if (dist > 8) return;
-
-    // Move head away from snake, body follows
-    final pos = prey.crocBody.first;
-    final candidates = [
-      Position(pos.x + 1, pos.y),
-      Position(pos.x - 1, pos.y),
-      Position(pos.x, pos.y + 1),
-      Position(pos.x, pos.y - 1),
-    ];
-    Position? best;
-    int bestDist = -1;
-    for (final c in candidates) {
-      if (c.x < 0 || c.x >= gridCols || c.y < 0 || c.y >= gridRows) continue;
-      if (obstacleSet.contains(c)) continue;
-      if (snakeSet.contains(c)) continue;
-      // Don't collide with own body
-      if (prey.crocBody.skip(1).contains(c)) continue;
-      final d = (c.x - head.x).abs() + (c.y - head.y).abs();
-      if (d > bestDist) {
-        bestDist = d;
-        best = c;
-      }
-    }
-    if (best != null) {
-      final newBody = [best, prey.crocBody[0], prey.crocBody[1]];
-      preyList[idx] = prey.copyWith(position: best, crocBody: newBody);
-    }
-  }
-
-  void _preySingleStep(int preyIdx, Position head) {
-    final prey = preyList[preyIdx];
-    final pos = prey.position;
-
-    final candidates = [
-      Position(pos.x + 1, pos.y),
-      Position(pos.x - 1, pos.y),
-      Position(pos.x, pos.y + 1),
-      Position(pos.x, pos.y - 1),
-    ];
-
-    Position? best;
-    int bestDist = -1;
-    for (final c in candidates) {
-      if (c.x < 0 || c.x >= gridCols || c.y < 0 || c.y >= gridRows) continue;
-      if (obstacleSet.contains(c)) continue;
-      if (snakeSet.contains(c)) continue;
-      if (preyList.any((p) => p.position == c)) continue;
-      final d = (c.x - head.x).abs() + (c.y - head.y).abs();
-      if (d > bestDist) {
-        bestDist = d;
-        best = c;
-      }
-    }
-
-    if (best != null) {
-      preyList[preyIdx] = prey.copyWith(position: best);
-    }
-  }
-
-  // Move prey one step toward [head] (magnet effect).
-  void _preySingleStepToward(int preyIdx, Position head) {
-    final prey = preyList[preyIdx];
-    final pos = prey.position;
-
-    final candidates = [
-      Position(pos.x + 1, pos.y),
-      Position(pos.x - 1, pos.y),
-      Position(pos.x, pos.y + 1),
-      Position(pos.x, pos.y - 1),
-    ];
-
-    Position? best;
-    int bestDist = 999999;
-    for (final c in candidates) {
-      if (c.x < 0 || c.x >= gridCols || c.y < 0 || c.y >= gridRows) continue;
-      if (obstacleSet.contains(c)) continue;
-      if (snakeSet.contains(c)) continue;
-      if (preyList.any((p) => p != prey && p.position == c)) continue;
-      final d = (c.x - head.x).abs() + (c.y - head.y).abs();
-      if (d < bestDist) {
-        bestDist = d;
-        best = c;
-      }
-    }
-
-    if (best != null) {
-      preyList[preyIdx] = prey.copyWith(position: best);
-    }
-  }
-
-  void _rabbitDash(int preyIdx, Position head) {
-    final prey = preyList[preyIdx];
-    final pos = prey.position;
-    final dx = pos.x - head.x;
-    final dy = pos.y - head.y;
-
-    Position? dashPos;
-    if (dx.abs() >= dy.abs()) {
-      dashPos = _findDashLanding(pos, dx >= 0 ? 1 : -1, 0, 3);
-    } else {
-      dashPos = _findDashLanding(pos, 0, dy >= 0 ? 1 : -1, 3);
-    }
-
-    if (dashPos != null) {
-      preyList[preyIdx] = prey.copyWith(
-          position: dashPos, dashChargesLeft: prey.dashChargesLeft - 1);
-    } else {
-      _preySingleStep(preyIdx, head);
-    }
-  }
-
-  Position? _findDashLanding(Position start, int xDir, int yDir, int steps) {
-    Position pos = start;
-    for (int i = 0; i < steps; i++) {
-      final next = Position(pos.x + xDir, pos.y + yDir);
-      if (next.x < 0 || next.x >= gridCols) break;
-      if (next.y < 0 || next.y >= gridRows) break;
-      if (obstacleSet.contains(next)) break;
-      if (snakeSet.contains(next)) break;
-      pos = next;
-    }
-    return pos == start ? null : pos;
-  }
 
   void _onPreyEaten(FoodModel prey) {
     if (prey.type == FoodType.portal) {
@@ -2083,7 +1761,7 @@ class GameEngine extends ChangeNotifier {
 
     AudioService().play(SoundEffect.eat);
     VibrationService().vibrate(duration: 30, amplitude: 64);
-    final now = DateTime.now().millisecondsSinceEpoch;
+    final now = gameTimeMs;
 
     final basePoints = _preyBasePoints(prey.type);
     final label = _preyLabel(prey.type, basePoints);
@@ -2170,7 +1848,7 @@ class GameEngine extends ChangeNotifier {
       int spawnChance = hasWraithsEye ? 15 : 5;
       if (_rng.nextInt(100) < spawnChance) {
         Position spawnPos = _getEmptyPosNear(snake.first, radius: 10);
-        activeShadow = ShadowSnake(spawnPos);
+        activeShadow = ShadowSnake(segments: [spawnPos, spawnPos, spawnPos]);
         effects.add(GameEffect(
             position: spawnPos,
             type: EffectType.shadowPoof,
@@ -2208,7 +1886,7 @@ class GameEngine extends ChangeNotifier {
     }
     preyList.add(FoodModel(position: pos, type: FoodType.portal));
     
-    final now = DateTime.now().millisecondsSinceEpoch;
+    final now = gameTimeMs;
     effects.add(GameEffect(
       position: pos,
       type: EffectType.comboBurst,
@@ -2232,7 +1910,7 @@ class GameEngine extends ChangeNotifier {
     coinsEarnedSession += (50 * (1 + (greedLevel * 0.2))).round();
     
     // Grant invincibility (Ghost Mode)
-    final now = DateTime.now().millisecondsSinceEpoch;
+    final now = gameTimeMs;
     activePowerUps.removeWhere((ap) => ap.type == PowerUpType.ghostMode);
     activePowerUps.add(ActivePowerUp(
       type: PowerUpType.ghostMode,
@@ -2294,63 +1972,27 @@ class GameEngine extends ChangeNotifier {
   }
 
   void _moveShadow() {
-    // In explore mode, hunt the player's head. Otherwise, race for the food.
-    final target = gameMode == GameMode.explore ? snake.first : food!.position;
-    final current = activeShadow!.segments.first;
-
-    int dx = 0;
-    int dy = 0;
-
-    if (target.x > current.x) {
-      dx = 1;
-    } else if (target.x < current.x) {
-      dx = -1;
-    } else if (target.y > current.y) {
-      dy = 1;
-    } else if (target.y < current.y) {
-      dy = -1;
-    }
-
-    // Shadow moves slower in explore mode so the player can outrun it.
-    activeShadow!.moveTicks++;
-    if (gameMode == GameMode.explore && activeShadow!.moveTicks % 2 != 0) {
-      return; 
-    }
-
-    final next =
-        Position((current.x + dx) % gridCols, (current.y + dy) % gridRows);
-
-    activeShadow!.segments.insert(0, next);
-    if (activeShadow!.segments.length > 4) {
-      activeShadow!.segments.removeLast();
-    }
-
-    if (gameMode == GameMode.explore) {
-      // If shadow touches the player (head or body), the player is killed!
-      if (snakeSet.contains(next) && !_hasPowerUp(PowerUpType.ghostMode)) {
-        activeShadow = null;
+    _entityManager.moveShadow(
+      activeShadow: activeShadow,
+      gameMode: gameMode,
+      snake: snake,
+      snakeSet: snakeSet,
+      food: food,
+      gridCols: gridCols,
+      gridRows: gridRows,
+      isGhostMode: _hasPowerUp(PowerUpType.ghostMode),
+      onKill: () {
         killerType = 'Shadow Hunter';
         _triggerGameOver();
-      }
-    } else {
-      // If shadow eats food first
-      if (next == food!.position) {
-        activeShadow = null;
+      },
+      onFoodStolen: () {
         food = null;
         _spawnFood();
-        AudioService().play(SoundEffect.shadowSteal);
-        AnalyticsService().logShadowSnakeEvent('stole_food');
-      }
-    }
+      },
+    );
   }
 }
 
-class ShadowSnake {
-  final List<Position> segments;
-  int wins = 0;
-  int moveTicks = 0;
-  ShadowSnake(Position start) : segments = [start, start, start];
-}
 
 enum EffectType { comboBurst, shadowPoof }
 

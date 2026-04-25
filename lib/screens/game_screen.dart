@@ -11,6 +11,8 @@ import '../core/enums/game_mode.dart';
 import '../core/enums/theme_type.dart';
 import '../core/models/high_score.dart';
 import '../providers/settings_provider.dart';
+import 'grimoire_screen.dart';
+import '../services/ghost_racing_service.dart';
 import '../core/models/campaign_level.dart';
 import '../core/models/daily_event.dart';
 import '../core/models/game_modifier.dart';
@@ -27,6 +29,7 @@ import '../widgets/game/game_board.dart';
 import '../widgets/game/game_hud.dart';
 import '../widgets/game/swipe_controller.dart';
 import '../widgets/game/particle_system.dart';
+import '../widgets/game/screen_shake_wrapper.dart';
 import '../services/ad_service.dart';
 import '../services/analytics_service.dart';
 import 'game_over_screen.dart';
@@ -513,7 +516,15 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       );
 
       isTop = await LeaderboardService().submitScore(score);
-      if (isTop) AudioService().play(SoundEffect.highScore);
+      if (isTop) {
+        AudioService().play(SoundEffect.highScore);
+        await GhostRacingService().saveMyRun(
+          name: auth.playerName,
+          score: _engine.score,
+          mapSeed: _engine.mapSeed,
+          path: _engine.sessionPath,
+        );
+      }
     }
 
     AnalyticsService().logGameOver(
@@ -877,14 +888,16 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
             : BorderRadius.circular(10),
         child: Stack(
           children: [
-            ParticleSystem(
-              key: _particleKey,
-              gridWidth: 20,
-              gridHeight: 28,
-              child: GameBoard(
-                engine: _engine,
-                themeType: widget.themeType,
-                skin: skin,
+            ScreenShakeWrapper(
+              child: ParticleSystem(
+                key: _particleKey,
+                gridWidth: 20,
+                gridHeight: 28,
+                child: GameBoard(
+                  engine: _engine,
+                  themeType: widget.themeType,
+                  skin: skin,
+                ),
               ),
             ),
             if (_eatFlash > 0)

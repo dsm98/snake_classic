@@ -8,6 +8,7 @@ import '../core/models/expedition_gear.dart';
 import '../providers/user_provider.dart';
 import '../services/audio_service.dart';
 import '../services/storage_service.dart';
+import '../core/theme/app_typography.dart';
 import '../widgets/ui/dynamic_background.dart';
 
 class ShopScreen extends StatefulWidget {
@@ -72,7 +73,7 @@ class _ShopScreenState extends State<ShopScreen>
         title: Text(
           '🛒 SHOP',
           style: TextStyle(
-            fontFamily: 'Orbitron',
+            fontFamily: AppTypography.modernFont,
             fontSize: 16,
             color: colors.text,
             fontWeight: FontWeight.bold,
@@ -90,7 +91,7 @@ class _ShopScreenState extends State<ShopScreen>
                   const SizedBox(width: 3),
                   Text('$coins',
                       style: const TextStyle(
-                          fontFamily: 'Orbitron',
+                          fontFamily: AppTypography.modernFont,
                           fontSize: 11,
                           color: Colors.amber,
                           fontWeight: FontWeight.bold)),
@@ -100,7 +101,7 @@ class _ShopScreenState extends State<ShopScreen>
                   const SizedBox(width: 3),
                   Text('$gems',
                       style: const TextStyle(
-                          fontFamily: 'Orbitron',
+                          fontFamily: AppTypography.modernFont,
                           fontSize: 11,
                           color: Colors.cyanAccent,
                           fontWeight: FontWeight.bold)),
@@ -161,7 +162,7 @@ class _ShopScreenState extends State<ShopScreen>
                     children: [
                       Text('MYSTERY BOX',
                           style: TextStyle(
-                              fontFamily: 'Orbitron',
+                              fontFamily: AppTypography.modernFont,
                               fontSize: 18,
                               color: colors.text,
                               fontWeight: FontWeight.bold)),
@@ -180,7 +181,7 @@ class _ShopScreenState extends State<ShopScreen>
                                 child: Column(children: [
                                   const Text('NEW SKIN UNLOCKED!',
                                       style: TextStyle(
-                                          fontFamily: 'Orbitron',
+                                          fontFamily: AppTypography.modernFont,
                                           color: Colors.greenAccent,
                                           fontSize: 10,
                                           fontWeight: FontWeight.bold)),
@@ -203,14 +204,14 @@ class _ShopScreenState extends State<ShopScreen>
                                   const SizedBox(height: 16),
                                   Text(wonSkin!.displayName,
                                       style: TextStyle(
-                                          fontFamily: 'Orbitron',
+                                          fontFamily: AppTypography.modernFont,
                                           fontSize: 24,
                                           color: colors.accent,
                                           fontWeight: FontWeight.bold)),
                                   const SizedBox(height: 4),
                                   Text(wonSkin!.rarity.name.toUpperCase(),
                                       style: TextStyle(
-                                          fontFamily: 'Orbitron',
+                                          fontFamily: AppTypography.modernFont,
                                           fontSize: 10,
                                           color: colors.text.withOpacity(0.5))),
                                 ]),
@@ -226,7 +227,7 @@ class _ShopScreenState extends State<ShopScreen>
                           'Drop Rates\nCommon 50%  •  Rare 30%\nEpic 15%  •  Legendary 5%',
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                            fontFamily: 'Orbitron',
+                            fontFamily: AppTypography.modernFont,
                             fontSize: 10,
                             color: colors.text.withOpacity(0.7),
                             height: 1.5,
@@ -237,7 +238,7 @@ class _ShopScreenState extends State<ShopScreen>
                           'Duplicate compensation: +$minComp to +$maxComp coins',
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                            fontFamily: 'Orbitron',
+                            fontFamily: AppTypography.modernFont,
                             fontSize: 9,
                             color: colors.text.withOpacity(0.5),
                           ),
@@ -272,7 +273,7 @@ class _ShopScreenState extends State<ShopScreen>
                           },
                           child: Text('SPIN ($spinCost 💰)',
                               style: const TextStyle(
-                                  fontFamily: 'Orbitron',
+                                  fontFamily: AppTypography.modernFont,
                                   fontWeight: FontWeight.bold)),
                         ),
                       if (!spinning)
@@ -280,7 +281,7 @@ class _ShopScreenState extends State<ShopScreen>
                           onPressed: () => Navigator.pop(ctx),
                           child: Text('CLOSE',
                               style: TextStyle(
-                                  fontFamily: 'Orbitron', color: colors.text)),
+                                  fontFamily: AppTypography.modernFont, color: colors.text)),
                         ),
                     ],
                   ),
@@ -320,7 +321,7 @@ class _SkinsTab extends StatelessWidget {
                 child: Text(
                   'ALL SKINS',
                   style: TextStyle(
-                    fontFamily: 'Orbitron',
+                    fontFamily: AppTypography.modernFont,
                     fontSize: 11,
                     color: colors.text.withOpacity(0.6),
                     letterSpacing: 2,
@@ -384,7 +385,7 @@ class _SkinsTab extends StatelessWidget {
               'LUCKY SPIN\n${AppConstants.gachaSpinCost} 💰',
               textAlign: TextAlign.center,
               style: const TextStyle(
-                  fontFamily: 'Orbitron',
+                  fontFamily: AppTypography.modernFont,
                   fontWeight: FontWeight.bold,
                   fontSize: 10,
                   color: Colors.black),
@@ -757,7 +758,7 @@ class _ShopHero extends StatelessWidget {
                 Text(
                   'PREMIUM SKIN COLLECTION',
                   style: TextStyle(
-                    fontFamily: 'Orbitron',
+                    fontFamily: AppTypography.modernFont,
                     fontSize: 10,
                     color: colors.accent,
                     fontWeight: FontWeight.bold,
@@ -768,7 +769,7 @@ class _ShopHero extends StatelessWidget {
                 Text(
                   'Unlock looks, perks, and progression style.',
                   style: TextStyle(
-                    fontFamily: 'Orbitron',
+                    fontFamily: AppTypography.modernFont,
                     fontSize: 9,
                     color: colors.text.withOpacity(0.72),
                   ),
@@ -858,7 +859,7 @@ class _SkinCard extends StatelessWidget {
                           style: const TextStyle(fontSize: 30)))),
               Text(skin.displayName,
                   style: TextStyle(
-                      fontFamily: 'Orbitron',
+                      fontFamily: AppTypography.modernFont,
                       fontSize: 13,
                       color: colors.text,
                       fontWeight: FontWeight.bold)),
@@ -866,7 +867,7 @@ class _SkinCard extends StatelessWidget {
               Text(skin.advantageDescription,
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                      fontFamily: 'Orbitron',
+                      fontFamily: AppTypography.modernFont,
                       fontSize: 8,
                       color: colors.accent,
                       fontWeight: FontWeight.normal)),
@@ -880,7 +881,7 @@ class _SkinCard extends StatelessWidget {
                         borderRadius: BorderRadius.circular(10)),
                     child: const Text('EQUIPPED',
                         style: TextStyle(
-                            fontFamily: 'Orbitron',
+                            fontFamily: AppTypography.modernFont,
                             fontSize: 9,
                             color: Colors.black,
                             fontWeight: FontWeight.bold)))
@@ -893,7 +894,7 @@ class _SkinCard extends StatelessWidget {
                         borderRadius: BorderRadius.circular(10)),
                     child: Text('USE',
                         style: TextStyle(
-                            fontFamily: 'Orbitron',
+                            fontFamily: AppTypography.modernFont,
                             fontSize: 9,
                             color: colors.buttonBorder,
                             fontWeight: FontWeight.bold)))
@@ -908,7 +909,7 @@ class _SkinCard extends StatelessWidget {
                         const SizedBox(width: 4),
                         Text('${skin.price}',
                             style: const TextStyle(
-                                fontFamily: 'Orbitron',
+                                fontFamily: AppTypography.modernFont,
                                 fontSize: 11,
                                 color: Colors.amber,
                                 fontWeight: FontWeight.bold))
@@ -936,7 +937,7 @@ class _SkinCard extends StatelessWidget {
                                 ? 'Tap to unlock!'
                                 : '${(skin.price - availableCoins).clamp(0, skin.price)} more',
                             style: TextStyle(
-                              fontFamily: 'Orbitron',
+                              fontFamily: AppTypography.modernFont,
                               fontSize: 7,
                               color: availableCoins >= skin.price
                                   ? Colors.greenAccent

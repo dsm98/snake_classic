@@ -209,4 +209,33 @@ extension SnakeSkinExtension on SnakeSkin {
         return 0;
     }
   }
+
+  String get lore {
+    switch (this) {
+      case SnakeSkin.classic:
+        return 'The progenitor. A simple serpent from a forgotten era.';
+      case SnakeSkin.skeleton:
+        return 'Reanimated bones bound by a hunger that never dies.';
+      case SnakeSkin.robot:
+        return 'A high-precision hunter forged in the fires of the Great Forge.';
+      case SnakeSkin.rainbow:
+        return 'A celestial traveler that leaves a trail of pure starlight.';
+      case SnakeSkin.ghost:
+        return 'A restless spirit that flickers between this realm and the Void.';
+      case SnakeSkin.ninja:
+        return 'A shadow that strikes without sound, leaving only a whisper.';
+      case SnakeSkin.dragon:
+        return 'An ancient wyrm of legendary power, hoarding the riches of the world.';
+      case SnakeSkin.vampire:
+        return 'A creature of the night that feasts on the essence of its rivals.';
+      case SnakeSkin.golden:
+        return 'The ultimate evolution of the serpent, shining with divine light.';
+      case SnakeSkin.jadeSerpent:
+        return 'A guardian of the deep jungles, carved from the earth itself.';
+      case SnakeSkin.monarchWyrm:
+        return 'A royal predator that commands the winds of the shifting sands.';
+      case SnakeSkin.crocBane:
+        return 'A hunter of giants, wearing the scales of its fallen foes.';
+    }
+  }
 }
