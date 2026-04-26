@@ -23,8 +23,8 @@ import 'shop_screen.dart';
 import 'quests_screen.dart';
 import 'campaign_screen.dart';
 import 'multiplayer_screen.dart';
-import 'altar_screen.dart';
 import '../services/ghost_racing_service.dart';
+import '../services/auth_service.dart';
 import '../core/theme/app_typography.dart';
 import '../widgets/home/mode_selector.dart';
 import '../widgets/home/event_cards.dart';
@@ -198,10 +198,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Widget _buildBottomNav(AppThemeColors colors, String font) {
     return Container(
       decoration: BoxDecoration(
-        color: colors.hudBg.withValues(alpha: 0.95),
+        color: colors.hudBg.withValues(alpha: 0.97),
         border: Border(
-          top: BorderSide(color: colors.buttonBorder.withValues(alpha: 0.2)),
+          top: BorderSide(color: colors.buttonBorder.withValues(alpha: 0.15)),
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.35),
+            blurRadius: 20,
+            offset: const Offset(0, -4),
+          ),
+        ],
       ),
       child: BottomNavigationBar(
         currentIndex: _currentIndex,
@@ -210,37 +217,49 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         elevation: 0,
         type: BottomNavigationBarType.fixed,
         selectedItemColor: colors.accent,
-        unselectedItemColor: colors.text.withValues(alpha: 0.4),
+        unselectedItemColor: colors.text.withValues(alpha: 0.35),
+        selectedFontSize: 9,
+        unselectedFontSize: 9,
         selectedLabelStyle: TextStyle(
           fontFamily: font,
-          fontSize: 11,
+          fontSize: 9,
           fontWeight: FontWeight.bold,
           letterSpacing: 0.5,
         ),
         unselectedLabelStyle: TextStyle(
           fontFamily: font,
-          fontSize: 10,
+          fontSize: 9,
           letterSpacing: 0.5,
         ),
-        items: const [
+        items: [
           BottomNavigationBarItem(
-            icon: Icon(Icons.shopping_cart_rounded),
+            icon: const Icon(Icons.shopping_bag_outlined, size: 22),
+            activeIcon: Icon(Icons.shopping_bag_rounded,
+                size: 24, color: colors.accent),
             label: 'SHOP',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.event_note_rounded),
+            icon: const Icon(Icons.local_activity_outlined, size: 22),
+            activeIcon: Icon(Icons.local_activity_rounded,
+                size: 24, color: colors.accent),
             label: 'EVENTS',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.play_arrow_rounded, size: 32),
+            icon: const Icon(Icons.sports_esports_outlined, size: 26),
+            activeIcon: Icon(Icons.sports_esports_rounded,
+                size: 28, color: colors.accent),
             label: 'PLAY',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.leaderboard_rounded),
+            icon: const Icon(Icons.people_outline_rounded, size: 22),
+            activeIcon:
+                Icon(Icons.people_rounded, size: 24, color: colors.accent),
             label: 'SOCIAL',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.person_rounded),
+            icon: const Icon(Icons.person_outline_rounded, size: 22),
+            activeIcon:
+                Icon(Icons.person_rounded, size: 24, color: colors.accent),
             label: 'PROFILE',
           ),
         ],
@@ -278,7 +297,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           .fadeIn(duration: 400.ms)
                           .slideY(begin: -0.2, end: 0),
 
-                      SizedBox(height: LayoutUtil.spacing(context, 32)),
+                      SizedBox(height: LayoutUtil.spacing(context, 20)),
 
                       // ── Hero Title ────────────────────────────────
                       HeroTitle(
@@ -287,7 +306,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         pulseController: _pulseController,
                       ).animate().fadeIn(delay: 100.ms),
 
-                      SizedBox(height: LayoutUtil.spacing(context, 40)),
+                      SizedBox(height: LayoutUtil.spacing(context, 28)),
 
                       // ── Mode Selector ─────────────────────────────
                       ModeSelectorCard(
@@ -300,7 +319,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             StorageService().highestCampaignLevel,
                       ).animate().fadeIn(delay: 200.ms),
 
-                      SizedBox(height: LayoutUtil.spacing(context, 32)),
+                      SizedBox(height: LayoutUtil.spacing(context, 20)),
 
                       // ── PLAY Button ───────────────────────────────
                       PlayButton(
@@ -387,43 +406,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               },
             ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1, end: 0),
           ],
-
-          const SizedBox(height: 20),
-          _buildTabHeader('UPCOMING', colors, font),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: colors.hudBg.withValues(alpha: 0.3),
-              borderRadius: BorderRadius.circular(16),
-              border:
-                  Border.all(color: colors.buttonBorder.withValues(alpha: 0.1)),
-            ),
-            child: Row(
-              children: [
-                const Text('🔥', style: TextStyle(fontSize: 24)),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('WEEKEND SURGE',
-                          style: TextStyle(
-                              fontFamily: font,
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: colors.text)),
-                      const SizedBox(height: 4),
-                      Text('Double XP active in 2 days!',
-                          style: TextStyle(
-                              fontSize: 10,
-                              color: colors.text.withValues(alpha: 0.5))),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
         ],
       ),
     );
@@ -440,7 +422,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+          child: _buildTabHeader('SOCIAL', colors, font),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          child: _buildSocialHero(colors, font),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
           child: GhostChallengeCard(
             colors: colors,
             font: font,
@@ -448,32 +438,25 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ).animate().fadeIn().slideY(begin: 0.1, end: 0),
         ),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           child: Row(
             children: [
               Expanded(
                 child: _buildSocialActionCard(
-                  'GLOBAL LEADERBOARD',
+                  'LEADERBOARD',
                   '🏆',
                   colors.accent,
                   colors,
                   font,
-                  () {},
+                  () => _goTo(
+                    context,
+                    LeaderboardScreen(
+                        initialMode: _selectedMode, isEmbedded: false),
+                  ),
                   isActive: true,
                 ),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildSocialActionCard(
-                  'LOCAL VERSUS',
-                  '⚔️',
-                  Colors.redAccent,
-                  colors,
-                  font,
-                  () => _goTo(context, const MultiplayerScreen()),
-                ),
-              ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               Expanded(
                 child: _buildSocialActionCard(
                   'ONLINE GHOSTS',
@@ -493,6 +476,22 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             padding: EdgeInsets.all(8),
             child: CircularProgressIndicator(strokeWidth: 2),
           ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 6),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'GLOBAL RANKINGS',
+              style: TextStyle(
+                fontFamily: font,
+                fontSize: 9,
+                letterSpacing: 2,
+                color: colors.text.withValues(alpha: 0.4),
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ),
         Expanded(
           child:
               LeaderboardScreen(initialMode: _selectedMode, isEmbedded: true),
@@ -501,82 +500,169 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildOnlineGhostsList(AppThemeColors colors, String font) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildSocialHero(AppThemeColors colors, String font) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            colors.accent.withValues(alpha: 0.22),
+            colors.buttonBorder.withValues(alpha: 0.2),
+            colors.hudBg.withValues(alpha: 0.7),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: colors.buttonBorder.withValues(alpha: 0.3)),
+        boxShadow: [
+          BoxShadow(
+            color: colors.accent.withValues(alpha: 0.12),
+            blurRadius: 16,
+          ),
+        ],
+      ),
+      child: Row(
         children: [
-          Text(
-            'TOP GHOSTS — tap to challenge',
-            style: TextStyle(
-              fontFamily: font,
-              fontSize: 9,
-              color: colors.text.withValues(alpha: 0.5),
-              letterSpacing: 1.2,
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: colors.hudBg.withValues(alpha: 0.75),
+              border: Border.all(color: colors.accent.withValues(alpha: 0.45)),
+            ),
+            child: const Center(
+              child: Text('🌐', style: TextStyle(fontSize: 22)),
             ),
           ),
-          const SizedBox(height: 6),
-          SizedBox(
-            height: 56,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: _topGhosts.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 8),
-              itemBuilder: (context, i) {
-                final ghost = _topGhosts[i];
-                return GestureDetector(
-                  onTap: () async {
-                    await GhostRacingService().setRivalGhost(ghost);
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            '${ghost.rivalName} set as rival!',
-                            style: TextStyle(fontFamily: font),
-                          ),
-                          duration: const Duration(seconds: 2),
-                        ),
-                      );
-                    }
-                  },
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.purpleAccent.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                          color: Colors.purpleAccent.withValues(alpha: 0.3)),
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          ghost.rivalName,
-                          style: TextStyle(
-                              fontFamily: font,
-                              fontSize: 9,
-                              color: colors.text),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        Text(
-                          '${ghost.rivalScore}',
-                          style: const TextStyle(
-                            fontFamily: 'Orbitron',
-                            fontSize: 12,
-                            color: Colors.purpleAccent,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'COMPETE WITH THE WORLD',
+                  style: TextStyle(
+                    fontFamily: font,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: colors.text,
+                    letterSpacing: 1.1,
                   ),
-                );
-              },
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  'Challenge rivals, import ghost runs, and climb the seasonal ladder.',
+                  style: TextStyle(
+                    fontFamily: AppTypography.modernFont,
+                    fontSize: 10,
+                    color: colors.text.withValues(alpha: 0.68),
+                    height: 1.25,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildOnlineGhostsList(AppThemeColors colors, String font) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: colors.hudBg.withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: colors.buttonBorder.withValues(alpha: 0.2)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'TOP GHOSTS — tap to challenge',
+              style: TextStyle(
+                fontFamily: font,
+                fontSize: 9,
+                color: colors.text.withValues(alpha: 0.5),
+                letterSpacing: 1.2,
+              ),
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 60,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: _topGhosts.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 8),
+                itemBuilder: (context, i) {
+                  final ghost = _topGhosts[i];
+                  return GestureDetector(
+                    onTap: () async {
+                      await GhostRacingService().setRivalGhost(ghost);
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              '${ghost.rivalName} set as rival!',
+                              style: TextStyle(fontFamily: font),
+                            ),
+                            duration: const Duration(seconds: 2),
+                          ),
+                        );
+                      }
+                    },
+                    child: Container(
+                      width: 124,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 8),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            Colors.purpleAccent.withValues(alpha: 0.16),
+                            Colors.purpleAccent.withValues(alpha: 0.06),
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                            color: Colors.purpleAccent.withValues(alpha: 0.35)),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            ghost.rivalName,
+                            style: TextStyle(
+                                fontFamily: font,
+                                fontSize: 9,
+                                color: colors.text),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '${ghost.rivalScore}',
+                            style: const TextStyle(
+                              fontFamily: 'Orbitron',
+                              fontSize: 12,
+                              color: Colors.purpleAccent,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -586,31 +672,43 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       {bool isActive = false}) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        constraints: const BoxConstraints(minHeight: 76),
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
         decoration: BoxDecoration(
           color: isActive
-              ? color.withValues(alpha: 0.15)
-              : colors.hudBg.withValues(alpha: 0.4),
-          borderRadius: BorderRadius.circular(16),
+              ? color.withValues(alpha: 0.18)
+              : colors.hudBg.withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(18),
           border: Border.all(
             color: isActive
-                ? color.withValues(alpha: 0.5)
-                : colors.buttonBorder.withValues(alpha: 0.2),
+                ? color.withValues(alpha: 0.6)
+                : colors.buttonBorder.withValues(alpha: 0.18),
             width: isActive ? 1.5 : 1,
           ),
+          boxShadow: isActive
+              ? [
+                  BoxShadow(
+                    color: color.withValues(alpha: 0.18),
+                    blurRadius: 12,
+                  )
+                ]
+              : [],
         ),
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(icon, style: const TextStyle(fontSize: 20)),
-            const SizedBox(height: 4),
+            Text(icon, style: const TextStyle(fontSize: 22)),
+            const SizedBox(height: 6),
             Text(
               label,
               style: TextStyle(
                 fontFamily: font,
-                fontSize: 8,
+                fontSize: 9,
                 fontWeight: FontWeight.bold,
-                color: isActive ? color : colors.text.withValues(alpha: 0.6),
+                color: isActive ? color : colors.text.withValues(alpha: 0.55),
+                letterSpacing: 0.3,
               ),
               textAlign: TextAlign.center,
             ),
@@ -626,66 +724,222 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.all(20),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildTabHeader('MY STATS', colors, font),
-          const SizedBox(height: 20),
-
-          // Use the existing NextGoalCard as a summary
+          _buildTabHeader('PROFILE', colors, font),
+          const SizedBox(height: 16),
+          _buildSectionLabel('ACCOUNT', colors, font),
+          const SizedBox(height: 8),
+          Consumer<AuthService>(
+            builder: (context, auth, _) => _buildProfileAccountCard(
+              auth: auth,
+              colors: colors,
+              font: font,
+            ),
+          ).animate().fadeIn().slideY(begin: 0.08, end: 0),
+          const SizedBox(height: 16),
           NextGoalCard(
             colors: colors,
             hint: userProvider.personalizedHint,
           ).animate().fadeIn().slideY(begin: 0.1, end: 0),
-
-          const SizedBox(height: 12),
-
-          // Navigation to other profile parts
+          const SizedBox(height: 20),
+          _buildSectionLabel('PROGRESS', colors, font),
+          const SizedBox(height: 8),
           _buildMenuTile(
-              'ACHIEVEMENTS',
-              '🏅',
-              Colors.purple,
-              colors,
-              font,
-              () => _goTo(
-                  context, AchievementsScreen(themeType: settings.theme))),
+                  'ACHIEVEMENTS',
+                  '🏅',
+                  Colors.purpleAccent,
+                  colors,
+                  font,
+                  () => _goTo(
+                      context, AchievementsScreen(themeType: settings.theme)))
+              .animate(delay: 50.ms)
+              .fadeIn()
+              .slideX(begin: 0.05, end: 0),
           _buildLockedMenuTile(
             'QUESTS',
-            '📅',
+            '🗺️',
             Colors.pinkAccent,
             colors,
             font,
             () => _goTo(context, QuestsScreen(themeType: settings.theme)),
             locked: !StorageService().isUnlocked('quests'),
             unlockHint: 'Play 2 games to unlock',
-          ),
-          _buildLockedMenuTile(
-            'ALTAR',
-            '🗡️',
-            Colors.redAccent,
-            colors,
-            font,
-            () => _goTo(context, const AltarScreen()),
-            locked: !StorageService().isUnlocked('altar'),
-            unlockHint: 'Play 1 game to unlock',
-          ),
-          _buildMenuTile('HOW TO PLAY', '📖', Colors.blue, colors, font,
-              () => _goTo(context, const HowToPlayScreen())),
-          _buildMenuTile('SETTINGS', '⚙️', Colors.teal, colors, font,
-              () => _goTo(context, const SettingsScreen())),
+          ).animate(delay: 100.ms).fadeIn().slideX(begin: 0.05, end: 0),
+          const SizedBox(height: 16),
+          _buildSectionLabel('GENERAL', colors, font),
+          const SizedBox(height: 8),
+          _buildMenuTile('HOW TO PLAY', '📖', Colors.blueAccent, colors, font,
+                  () => _goTo(context, const HowToPlayScreen()))
+              .animate(delay: 150.ms)
+              .fadeIn()
+              .slideX(begin: 0.05, end: 0),
+          _buildMenuTile('SETTINGS', '⚙️', Colors.tealAccent, colors, font,
+                  () => _goTo(context, const SettingsScreen()))
+              .animate(delay: 200.ms)
+              .fadeIn()
+              .slideX(begin: 0.05, end: 0),
+          const SizedBox(height: 20),
         ],
       ),
     );
   }
 
-  Widget _buildTabHeader(String title, AppThemeColors colors, String font) {
+  Widget _buildProfileAccountCard({
+    required AuthService auth,
+    required AppThemeColors colors,
+    required String font,
+  }) {
+    final isSignedIn = auth.isSignedIn;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colors.hudBg.withValues(alpha: 0.52),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: colors.buttonBorder.withValues(alpha: 0.22)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 50,
+            height: 50,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                colors: [
+                  colors.buttonBorder.withValues(alpha: 0.5),
+                  colors.buttonBorder.withValues(alpha: 0.15),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              border:
+                  Border.all(color: colors.buttonBorder.withValues(alpha: 0.4)),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: auth.currentUser?.photoURL != null
+                ? Image.network(auth.currentUser!.photoURL!, fit: BoxFit.cover)
+                : const Center(
+                    child: Text('👤', style: TextStyle(fontSize: 24))),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isSignedIn ? 'SIGNED IN AS' : 'GUEST MODE',
+                  style: TextStyle(
+                    fontFamily: AppTypography.modernFont,
+                    fontSize: 8,
+                    color: colors.text.withValues(alpha: 0.45),
+                    letterSpacing: 1,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  isSignedIn ? auth.playerName : 'Login to save scores',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontFamily: font,
+                    fontSize: 12,
+                    color: colors.text,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          if (isSignedIn)
+            GestureDetector(
+              onTap: auth.signOut,
+              child: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.red.withValues(alpha: 0.1),
+                  border: Border.all(color: Colors.red.withValues(alpha: 0.35)),
+                ),
+                child: const Icon(Icons.logout_rounded,
+                    color: Colors.redAccent, size: 20),
+              ),
+            )
+          else
+            GestureDetector(
+              onTap: auth.signInWithGoogle,
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      colors.buttonBorder,
+                      Color.lerp(colors.buttonBorder, colors.accent, 0.4)!,
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Text(
+                  'SIGN IN',
+                  style: TextStyle(
+                    fontFamily: AppTypography.modernFont,
+                    fontSize: 10,
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionLabel(String label, AppThemeColors colors, String font) {
     return Text(
-      title,
+      label,
       style: TextStyle(
         fontFamily: font,
-        fontSize: 12,
-        fontWeight: FontWeight.w900,
-        color: colors.accent,
-        letterSpacing: 2,
+        fontSize: 9,
+        fontWeight: FontWeight.bold,
+        color: colors.text.withValues(alpha: 0.4),
+        letterSpacing: 2.5,
       ),
+    );
+  }
+
+  Widget _buildTabHeader(String title, AppThemeColors colors, String font) {
+    return Row(
+      children: [
+        Container(
+          width: 3,
+          height: 18,
+          decoration: BoxDecoration(
+            color: colors.accent,
+            borderRadius: BorderRadius.circular(2),
+            boxShadow: [
+              BoxShadow(
+                color: colors.accent.withValues(alpha: 0.5),
+                blurRadius: 8,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 10),
+        Text(
+          title,
+          style: TextStyle(
+            fontFamily: font,
+            fontSize: 14,
+            fontWeight: FontWeight.w900,
+            color: colors.text,
+            letterSpacing: 2.5,
+          ),
+        ),
+      ],
     );
   }
 
@@ -710,48 +964,84 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               )
           : onTap,
       child: Opacity(
-        opacity: locked ? 0.45 : 1.0,
+        opacity: locked ? 0.4 : 1.0,
         child: Container(
           margin: const EdgeInsets.only(bottom: 10),
-          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: colors.buttonBg.withValues(alpha: 0.4),
+            color: colors.buttonBg.withValues(alpha: 0.45),
             borderRadius: BorderRadius.circular(16),
-            border:
-                Border.all(color: colors.buttonBorder.withValues(alpha: 0.1)),
+            border: Border.all(
+                color: accent.withValues(alpha: locked ? 0.1 : 0.25)),
           ),
-          child: Row(
-            children: [
-              Text(locked ? '🔒' : icon, style: const TextStyle(fontSize: 20)),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: TextStyle(
-                        fontFamily: font,
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        color: colors.text,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: IntrinsicHeight(
+              child: Row(
+                children: [
+                  Container(
+                    width: 4,
+                    color: accent.withValues(alpha: locked ? 0.3 : 0.7),
+                  ),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 14),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              color: accent.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Center(
+                              child: Text(
+                                locked ? '🔒' : icon,
+                                style: const TextStyle(fontSize: 18),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  title,
+                                  style: TextStyle(
+                                    fontFamily: font,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: colors.text,
+                                  ),
+                                ),
+                                if (locked) ...[
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    unlockHint,
+                                    style: TextStyle(
+                                      fontFamily: font,
+                                      fontSize: 8,
+                                      color:
+                                          colors.text.withValues(alpha: 0.45),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                          Icon(Icons.arrow_forward_ios_rounded,
+                              size: 13,
+                              color: colors.text.withValues(alpha: 0.2)),
+                        ],
                       ),
                     ),
-                    if (locked)
-                      Text(
-                        unlockHint,
-                        style: TextStyle(
-                          fontFamily: font,
-                          fontSize: 8,
-                          color: colors.text.withValues(alpha: 0.5),
-                        ),
-                      ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-              Icon(Icons.arrow_forward_ios_rounded,
-                  size: 14, color: colors.text.withValues(alpha: 0.2)),
-            ],
+            ),
           ),
         ),
       ),
@@ -764,29 +1054,59 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: colors.buttonBg.withValues(alpha: 0.4),
+          color: colors.buttonBg.withValues(alpha: 0.45),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: colors.buttonBorder.withValues(alpha: 0.1)),
+          border: Border.all(color: accent.withValues(alpha: 0.25)),
         ),
-        child: Row(
-          children: [
-            Text(icon, style: const TextStyle(fontSize: 20)),
-            const SizedBox(width: 16),
-            Text(
-              title,
-              style: TextStyle(
-                fontFamily: font,
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
-                color: colors.text,
-              ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: IntrinsicHeight(
+            child: Row(
+              children: [
+                Container(
+                  width: 4,
+                  color: accent.withValues(alpha: 0.7),
+                ),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 14),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: accent.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Center(
+                            child: Text(icon,
+                                style: const TextStyle(fontSize: 18)),
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Text(
+                          title,
+                          style: TextStyle(
+                            fontFamily: font,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: colors.text,
+                          ),
+                        ),
+                        const Spacer(),
+                        Icon(Icons.arrow_forward_ios_rounded,
+                            size: 13,
+                            color: colors.text.withValues(alpha: 0.2)),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
-            const Spacer(),
-            Icon(Icons.arrow_forward_ios_rounded,
-                size: 14, color: colors.text.withValues(alpha: 0.2)),
-          ],
+          ),
         ),
       ),
     );
@@ -1105,7 +1425,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           borderRadius: BorderRadius.circular(20),
           side: BorderSide(color: accent.withValues(alpha: 0.4)),
         ),
-        title: const Text('挑战友人', // Challenge Friend (Ghost)
+        title: const Text('CHALLENGE FRIEND',
             textAlign: TextAlign.center,
             style: TextStyle(
                 fontFamily: AppTypography.modernFont,

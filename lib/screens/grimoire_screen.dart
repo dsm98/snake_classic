@@ -22,7 +22,7 @@ class _GrimoireScreenState extends State<GrimoireScreen>
       'mouse',
       '🐭',
       'Ashen Mouse',
-      'Forest / Desert / Ruins',
+      'Forest / Desert / Ruins / Tundra / Ashlands',
       Color(0xFF9E9E9E),
       'Timid — flees from the snake\'s scent.',
       'They say these mice feed on the ashes of the old world.',
@@ -36,7 +36,7 @@ class _GrimoireScreenState extends State<GrimoireScreen>
       'rabbit',
       '🐇',
       'Ghost-Hearth Rabbit',
-      'Forest / Ruins',
+      'Forest / Jungle / Savanna / Tundra / Frozen Lake / Mushroom',
       Color(0xFFEEEEEE),
       'Dashes away when cornered — watch the charges.',
       'It moves with unnatural speed, almost as if fleeing a shadow we cannot see.',
@@ -50,7 +50,7 @@ class _GrimoireScreenState extends State<GrimoireScreen>
       'lizard',
       '🦎',
       'Void-Scale Lizard',
-      'Desert / Swamp / Cave / Ruins',
+      'Desert / Savanna / Swamp / Coral / Cave / Ruins / Lava / Ashlands',
       Color(0xFF66BB6A),
       'Camouflages when still — blink and you\'ll miss it.',
       'Its scales are cold, colder than the desert night.',
@@ -64,7 +64,7 @@ class _GrimoireScreenState extends State<GrimoireScreen>
       'butterfly',
       '🦋',
       'Soul-Wing Butterfly',
-      'Cave / Ruins',
+      'Jungle / Coral / Cave / Crystal Cave / Ruins / Frozen Lake / Mushroom',
       Color(0xFFFF9800),
       'Flies in sine waves — times out quickly!',
       'Lost souls often take the form of these glowing wings.',
@@ -78,7 +78,7 @@ class _GrimoireScreenState extends State<GrimoireScreen>
       'croc',
       '🐊',
       'Mire-King Crocodile',
-      'Swamp',
+      'Swamp / Lava / Ashlands',
       Color(0xFF2E7D32),
       'Boss — hits stun you. Aim for the head.',
       'The beast of the mire. It guards the sunken ruins.',
@@ -88,14 +88,65 @@ class _GrimoireScreenState extends State<GrimoireScreen>
         'Fragment III: To defeat it is to earn the title of Sovereign of the Mud.'
       ],
     ),
+    _CreatureInfo(
+      'fruit',
+      '🍎',
+      'Wildgrown Fruit',
+      'Forest / Jungle / Swamp / Coral / Mushroom',
+      Color(0xFFE53935),
+      'Stationary but short-lived — claim it before it fades.',
+      'Ripe offerings nourished by each realm\'s hidden currents.',
+      [
+        'Fragment I: They bloom where prey trails are thickest and hunters are most desperate.',
+        'Fragment II: Their flesh stores trace echoes of the biome that birthed them.',
+        'Fragment III: Some druids believed these fruits can rewrite a traveler\'s fate.'
+      ],
+    ),
+    _CreatureInfo(
+      'elite',
+      '⚔️',
+      'Alpha Predator',
+      'Ruins / Cave / Crystal Cave / Frozen Lake / Lava / Ashlands',
+      Color(0xFFFF7043),
+      'Highly aggressive and rare — bursts movement and huge rewards.',
+      'Apex signatures detected only in hostile zones where weak hunters vanish.',
+      [
+        'Fragment I: Elites adapt to pursuit, learning from every failed capture attempt.',
+        'Fragment II: Their blood burns in lava realms and hardens like glass in frozen lands.',
+        'Fragment III: Veteran trackers call them gatekeepers of the deep floors.'
+      ],
+    ),
+    _CreatureInfo(
+      'biomeEvent',
+      '✨',
+      'Biome Anomaly',
+      'All Realms (event spawn)',
+      Color(0xFF00ACC1),
+      'Limited-time anomaly — triggers biome-exclusive effects when captured.',
+      'A rupture where local realm energy condenses into a transient relic-form.',
+      [
+        'Fragment I: These anomalies ring the air with a tone only predators can hear.',
+        'Fragment II: Capturing one bends the room to the laws of its biome for a moment.',
+        'Fragment III: Grimoire scholars think anomalies are fragments of an older world-map.'
+      ],
+    ),
   ];
 
   static const _biomes = [
     _BiomeInfo('forest', '🌲', 'Forest', Color(0xFF00C853)),
+    _BiomeInfo('jungle', '🌴', 'Jungle', Color(0xFF2E7D32)),
     _BiomeInfo('desert', '🏜️', 'Desert', Color(0xFFFF8C00)),
+    _BiomeInfo('savanna', '🦁', 'Savanna', Color(0xFFBCA23A)),
     _BiomeInfo('swamp', '🌿', 'Swamp', Color(0xFF00897B)),
+    _BiomeInfo('coral', '🪸', 'Coral', Color(0xFF26C6DA)),
     _BiomeInfo('cave', '🕳️', 'Cave', Color(0xFF7B1FA2)),
+    _BiomeInfo('crystalCave', '💎', 'Crystal Cave', Color(0xFF7E57C2)),
     _BiomeInfo('ruins', '🏚️', 'Ruins', Color(0xFF757575)),
+    _BiomeInfo('tundra', '❄️', 'Tundra', Color(0xFF90CAF9)),
+    _BiomeInfo('frozenLake', '🧊', 'Frozen Lake', Color(0xFF81D4FA)),
+    _BiomeInfo('lavaField', '🌋', 'Lava Field', Color(0xFFFF7043)),
+    _BiomeInfo('ashlands', '🌫️', 'Ashlands', Color(0xFF8D6E63)),
+    _BiomeInfo('mushroom', '🍄', 'Mushroom Grove', Color(0xFFBA68C8)),
   ];
 
   @override
@@ -147,12 +198,13 @@ class _GrimoireScreenState extends State<GrimoireScreen>
             child: Opacity(
               opacity: 0.08,
               child: Image.file(
-                File('C:/Users/Diluka/.gemini/antigravity/brain/4d2b09ec-164a-4f26-b72a-69ed1ff32b08/parchment_texture_1777104109361.png'),
+                File(
+                    'C:/Users/Diluka/.gemini/antigravity/brain/4d2b09ec-164a-4f26-b72a-69ed1ff32b08/parchment_texture_1777104109361.png'),
                 fit: BoxFit.cover,
               ),
             ),
           ),
-          
+
           SafeArea(
             child: CustomScrollView(
               slivers: [
@@ -388,11 +440,14 @@ class _GrimoireScreenState extends State<GrimoireScreen>
                 width: 54,
                 height: 54,
                 decoration: BoxDecoration(
-                  color: caught ? info.color.withValues(alpha: 0.1) : Colors.black26,
+                  color: caught
+                      ? info.color.withValues(alpha: 0.1)
+                      : Colors.black26,
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color:
-                        caught ? info.color.withValues(alpha: 0.5) : Colors.white10,
+                    color: caught
+                        ? info.color.withValues(alpha: 0.5)
+                        : Colors.white10,
                   ),
                 ),
                 alignment: Alignment.center,
@@ -415,8 +470,9 @@ class _GrimoireScreenState extends State<GrimoireScreen>
                         fontFamily: 'Orbitron',
                         fontSize: 13,
                         fontWeight: FontWeight.bold,
-                        color:
-                            caught ? colors.text : colors.text.withValues(alpha: 0.2),
+                        color: caught
+                            ? colors.text
+                            : colors.text.withValues(alpha: 0.2),
                         letterSpacing: 1,
                       ),
                     ),
@@ -443,7 +499,9 @@ class _GrimoireScreenState extends State<GrimoireScreen>
                       fontFamily: 'Orbitron',
                       fontSize: 18,
                       fontWeight: FontWeight.w900,
-                      color: caught ? colors.text : colors.text.withValues(alpha: 0.1),
+                      color: caught
+                          ? colors.text
+                          : colors.text.withValues(alpha: 0.1),
                     ),
                   ),
                   Text(
@@ -477,22 +535,28 @@ class _GrimoireScreenState extends State<GrimoireScreen>
     );
   }
 
-  Widget _buildLoreSection(_CreatureInfo info, int count, AppThemeColors colors) {
+  Widget _buildLoreSection(
+      _CreatureInfo info, int count, AppThemeColors colors) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         for (int i = 0; i < info.fragments.length; i++) ...[
-          if (i == 0 && count >= 1) _loreTile(info.fragments[i], info.color, colors),
-          if (i == 1 && count >= 5) _loreTile(info.fragments[i], info.color, colors),
-          if (i == 2 && count >= 10) _loreTile(info.fragments[i], info.color, colors),
+          if (i == 0 && count >= 1)
+            _loreTile(info.fragments[i], info.color, colors),
+          if (i == 1 && count >= 5)
+            _loreTile(info.fragments[i], info.color, colors),
+          if (i == 2 && count >= 10)
+            _loreTile(info.fragments[i], info.color, colors),
         ],
         if (count < 10)
           Padding(
             padding: const EdgeInsets.only(top: 8),
             child: Text(
-              count < 1 ? '• Capture to reveal Fragment I' :
-              count < 5 ? '• Capture 5 to reveal Fragment II' :
-              '• Capture 10 to reveal Fragment III',
+              count < 1
+                  ? '• Capture to reveal Fragment I'
+                  : count < 5
+                      ? '• Capture 5 to reveal Fragment II'
+                      : '• Capture 10 to reveal Fragment III',
               style: TextStyle(
                 fontSize: 9,
                 color: info.color.withValues(alpha: 0.4),
@@ -591,9 +655,11 @@ class _GrimoireScreenState extends State<GrimoireScreen>
         children: [
           _statRow('LIFETIME REAPINGS', '$total', colors),
           const SizedBox(height: 12),
-          _statRow('BEASTS CATALOGUED', '$species / ${_creatures.length}', colors),
+          _statRow(
+              'BEASTS CATALOGUED', '$species / ${_creatures.length}', colors),
           const SizedBox(height: 12),
-          _statRow('GRIMOIRE COMPLETION', '${((species / _creatures.length) * 100).toInt()}%', colors),
+          _statRow('GRIMOIRE COMPLETION',
+              '${((species / _creatures.length) * 100).toInt()}%', colors),
         ],
       ),
     );

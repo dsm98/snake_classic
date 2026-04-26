@@ -96,11 +96,11 @@ extension SnakeSkinExtension on SnakeSkin {
       case SnakeSkin.golden:
         return '+25% Coin multiplier';
       case SnakeSkin.jadeSerpent:
-        return 'Lizards award +50% points';
+        return 'Lizard prey points +50%';
       case SnakeSkin.monarchWyrm:
-        return 'Butterfly timer lasts 2× longer';
+        return 'Butterfly lifespan +100% (15s -> 30s)';
       case SnakeSkin.crocBane:
-        return 'Immune to croc stun';
+        return 'Croc stun immunity (100%)';
     }
   }
 

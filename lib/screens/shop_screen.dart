@@ -14,7 +14,8 @@ import '../widgets/ui/dynamic_background.dart';
 class ShopScreen extends StatefulWidget {
   final ThemeType themeType;
   final bool isEmbedded;
-  const ShopScreen({super.key, required this.themeType, this.isEmbedded = false});
+  const ShopScreen(
+      {super.key, required this.themeType, this.isEmbedded = false});
 
   @override
   State<ShopScreen> createState() => _ShopScreenState();
@@ -27,7 +28,7 @@ class _ShopScreenState extends State<ShopScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
   }
 
   @override
@@ -107,18 +108,55 @@ class _ShopScreenState extends State<ShopScreen>
               ],
             ),
           ),
-        TabBar(
-          controller: _tabController,
-          labelColor: colors.accent,
-          unselectedLabelColor: colors.text.withValues(alpha: 0.5),
-          indicatorColor: colors.accent,
-          dividerColor: Colors.transparent,
-          tabs: const [
-            Tab(text: '🐍 Skins'),
-            Tab(text: '🎒 Gear'),
-            Tab(text: '💎 Relics'),
-          ],
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
+          child: _buildStoreHero(colors, coins, gems),
         ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Container(
+            decoration: BoxDecoration(
+              color: colors.hudBg.withValues(alpha: 0.6),
+              borderRadius: BorderRadius.circular(16),
+              border:
+                  Border.all(color: colors.buttonBorder.withValues(alpha: 0.2)),
+            ),
+            child: TabBar(
+              controller: _tabController,
+              labelColor: colors.background,
+              unselectedLabelColor: colors.text.withValues(alpha: 0.58),
+              indicatorSize: TabBarIndicatorSize.tab,
+              dividerColor: Colors.transparent,
+              indicator: BoxDecoration(
+                color: colors.accent.withValues(alpha: 0.88),
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: colors.accent.withValues(alpha: 0.22),
+                    blurRadius: 10,
+                  ),
+                ],
+              ),
+              labelStyle: const TextStyle(
+                fontFamily: AppTypography.modernFont,
+                fontWeight: FontWeight.bold,
+                fontSize: 11,
+              ),
+              unselectedLabelStyle: const TextStyle(
+                fontFamily: AppTypography.modernFont,
+                fontSize: 11,
+              ),
+              tabs: const [
+                Tab(text: '🐍 Skins'),
+                Tab(text: '🎒 Gear'),
+                Tab(text: '💎 Relics'),
+                Tab(text: '🛕 Altar'),
+              ],
+              isScrollable: true,
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
         Expanded(
           child: TabBarView(
             controller: _tabController,
@@ -128,6 +166,7 @@ class _ShopScreenState extends State<ShopScreen>
                   onGacha: () => _showGachaDialog(context, userProvider)),
               _GearTab(colors: colors),
               _RelicsTab(colors: colors),
+              _AltarTab(colors: colors),
             ],
           ),
         ),
@@ -201,6 +240,102 @@ class _ShopScreenState extends State<ShopScreen>
     );
   }
 
+  Widget _buildStoreHero(AppThemeColors colors, int coins, int gems) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            colors.buttonBorder.withValues(alpha: 0.26),
+            colors.accent.withValues(alpha: 0.14),
+            colors.hudBg.withValues(alpha: 0.75),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: colors.buttonBorder.withValues(alpha: 0.35)),
+        boxShadow: [
+          BoxShadow(
+            color: colors.buttonBorder.withValues(alpha: 0.12),
+            blurRadius: 18,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: colors.hudBg.withValues(alpha: 0.75),
+              border: Border.all(
+                  color: colors.buttonBorder.withValues(alpha: 0.45)),
+            ),
+            child: const Center(
+              child: Text('🛍️', style: TextStyle(fontSize: 22)),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'BLACK MARKET BAZAAR',
+                  style: TextStyle(
+                    fontFamily: AppTypography.modernFont,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: colors.text,
+                    letterSpacing: 1.3,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  'Spend coins and souls on style, power, and permanent upgrades.',
+                  style: TextStyle(
+                    fontFamily: AppTypography.modernFont,
+                    fontSize: 9,
+                    color: colors.text.withValues(alpha: 0.7),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                '💰 $coins',
+                style: const TextStyle(
+                  fontFamily: AppTypography.modernFont,
+                  fontSize: 10,
+                  color: Colors.amber,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                '💎 $gems',
+                style: const TextStyle(
+                  fontFamily: AppTypography.modernFont,
+                  fontSize: 10,
+                  color: Colors.cyanAccent,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showGachaDialog(BuildContext context, UserProvider userProvider) {
     bool spinning = false;
     SnakeSkin? wonSkin;
@@ -251,11 +386,12 @@ class _ShopScreenState extends State<ShopScreen>
                                     padding: const EdgeInsets.all(20),
                                     decoration: BoxDecoration(
                                         shape: BoxShape.circle,
-                                        color: Colors.amber.withValues(alpha: 0.1),
+                                        color:
+                                            Colors.amber.withValues(alpha: 0.1),
                                         boxShadow: [
                                           BoxShadow(
-                                              color: Colors.amber
-                                                  .withValues(alpha: 0.3 * value),
+                                              color: Colors.amber.withValues(
+                                                  alpha: 0.3 * value),
                                               blurRadius: 20 * value,
                                               spreadRadius: 5 * value)
                                         ]),
@@ -274,7 +410,8 @@ class _ShopScreenState extends State<ShopScreen>
                                       style: TextStyle(
                                           fontFamily: AppTypography.modernFont,
                                           fontSize: 10,
-                                          color: colors.text.withValues(alpha: 0.5))),
+                                          color: colors.text
+                                              .withValues(alpha: 0.5))),
                                 ]),
                               );
                             },
@@ -342,7 +479,8 @@ class _ShopScreenState extends State<ShopScreen>
                           onPressed: () => Navigator.pop(ctx),
                           child: Text('CLOSE',
                               style: TextStyle(
-                                  fontFamily: AppTypography.modernFont, color: colors.text)),
+                                  fontFamily: AppTypography.modernFont,
+                                  color: colors.text)),
                         ),
                     ],
                   ),
@@ -647,9 +785,8 @@ class _RelicsTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final userProvider = context.watch<UserProvider>();
     final coins = userProvider.coins;
-    // Owned relics stored as list of ids
-    final ownedRelics =
-        StorageService().equippedGear; // reuse storage for now (placeholder)
+    final ownedRelics = userProvider.ownedRelics;
+    final equippedRelic = userProvider.equippedRelicId;
 
     return ListView(
       padding: const EdgeInsets.all(20),
@@ -678,17 +815,24 @@ class _RelicsTab extends StatelessWidget {
         const SizedBox(height: 20),
         ..._relics.map((relic) {
           final owned = ownedRelics.contains(relic.id);
+          final equipped = equippedRelic == relic.id;
           final canAfford = coins >= relic.coinPrice;
           return Container(
             margin: const EdgeInsets.only(bottom: 14),
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: owned
-                  ? Colors.purple.withValues(alpha: 0.12)
-                  : const Color(0xFF141418),
+              color: equipped
+                  ? Colors.deepPurple.withValues(alpha: 0.20)
+                  : owned
+                      ? Colors.purple.withValues(alpha: 0.12)
+                      : const Color(0xFF141418),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: owned ? Colors.purple.withValues(alpha: 0.6) : Colors.white24,
+                color: equipped
+                    ? Colors.deepPurpleAccent.withValues(alpha: 0.7)
+                    : owned
+                        ? Colors.purple.withValues(alpha: 0.6)
+                        : Colors.white24,
               ),
             ),
             child: Row(
@@ -713,13 +857,24 @@ class _RelicsTab extends StatelessWidget {
                         style: const TextStyle(
                             color: Colors.white60, fontSize: 12),
                       ),
-                      if (owned)
+                      if (equipped)
                         const Padding(
                           padding: EdgeInsets.only(top: 6),
                           child: Text(
-                            '✅ OWNED',
+                            '✅ EQUIPPED',
                             style: TextStyle(
                                 color: Colors.greenAccent,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold),
+                          ),
+                        )
+                      else if (owned)
+                        const Padding(
+                          padding: EdgeInsets.only(top: 6),
+                          child: Text(
+                            'OWNED',
+                            style: TextStyle(
+                                color: Colors.purpleAccent,
                                 fontSize: 11,
                                 fontWeight: FontWeight.bold),
                           ),
@@ -727,45 +882,76 @@ class _RelicsTab extends StatelessWidget {
                     ],
                   ),
                 ),
-                if (!owned) ...[
-                  const SizedBox(width: 10),
-                  GestureDetector(
-                    onTap: canAfford
-                        ? () async {
-                            await StorageService().deductCoins(relic.coinPrice);
-                            final existing = StorageService().equippedGear;
-                            await StorageService()
-                                .setEquippedGear([...existing, relic.id]);
-                            (context as Element).markNeedsBuild();
-                          }
-                        : null,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: canAfford
-                            ? Colors.amber.withValues(alpha: 0.15)
-                            : Colors.white10,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                            color: canAfford ? Colors.amber : Colors.white24),
-                      ),
-                      child: Column(
-                        children: [
-                          const Text('💰', style: TextStyle(fontSize: 16)),
-                          Text(
-                            '${relic.coinPrice}',
-                            style: TextStyle(
-                              color: canAfford ? Colors.amber : Colors.white38,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ],
+                const SizedBox(width: 10),
+                GestureDetector(
+                  onTap: () async {
+                    if (owned) {
+                      await userProvider.equipRelic(relic.id);
+                      return;
+                    }
+                    if (!canAfford) {
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Not enough coins!')),
+                      );
+                      return;
+                    }
+                    await userProvider.buyRelic(relic.id, relic.coinPrice);
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: equipped
+                          ? Colors.green.withValues(alpha: 0.16)
+                          : owned
+                              ? Colors.purple.withValues(alpha: 0.15)
+                              : canAfford
+                                  ? Colors.amber.withValues(alpha: 0.15)
+                                  : Colors.white10,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: equipped
+                            ? Colors.greenAccent
+                            : owned
+                                ? Colors.purpleAccent
+                                : canAfford
+                                    ? Colors.amber
+                                    : Colors.white24,
                       ),
                     ),
+                    child: Column(
+                      children: [
+                        Text(
+                          equipped
+                              ? '✓'
+                              : owned
+                                  ? 'E'
+                                  : '💰',
+                          style: const TextStyle(fontSize: 16),
+                        ),
+                        Text(
+                          equipped
+                              ? 'ON'
+                              : owned
+                                  ? 'USE'
+                                  : '${relic.coinPrice}',
+                          style: TextStyle(
+                            color: equipped
+                                ? Colors.greenAccent
+                                : owned
+                                    ? Colors.purpleAccent
+                                    : canAfford
+                                        ? Colors.amber
+                                        : Colors.white38,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ],
+                ),
               ],
             ),
           );
@@ -805,7 +991,8 @@ class _ShopHero extends StatelessWidget {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: colors.hudBg.withValues(alpha: 0.7),
-              border: Border.all(color: colors.buttonBorder.withValues(alpha: 0.35)),
+              border: Border.all(
+                  color: colors.buttonBorder.withValues(alpha: 0.35)),
             ),
             child: const Center(
               child: Text('✨', style: TextStyle(fontSize: 24)),
@@ -863,6 +1050,12 @@ class _SkinCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final safariCount =
+        StorageService().safariCounts[skin.safariUnlockPreyType] ?? 0;
+    final safariTarget = skin.safariUnlockTarget;
+    final safariProgress =
+        safariTarget > 0 ? (safariCount / safariTarget).clamp(0.0, 1.0) : 0.0;
+
     return GestureDetector(
         onTap: onTap,
         child: AnimatedContainer(
@@ -899,24 +1092,7 @@ class _SkinCard extends StatelessWidget {
                       border: Border.all(
                           color: colors.buttonBorder.withValues(alpha: 0.3))),
                   child: Center(
-                      child: Text(
-                          skin == SnakeSkin.ghost
-                              ? '👻'
-                              : skin == SnakeSkin.skeleton
-                                  ? '💀'
-                                  : skin == SnakeSkin.robot
-                                      ? '🤖'
-                                      : skin == SnakeSkin.rainbow
-                                          ? '🌈'
-                                          : skin == SnakeSkin.ninja
-                                              ? '🥷'
-                                              : skin == SnakeSkin.dragon
-                                                  ? '🐉'
-                                                  : skin == SnakeSkin.vampire
-                                                      ? '🧛'
-                                                      : skin == SnakeSkin.golden
-                                                          ? '✨'
-                                                          : '🐍',
+                      child: Text(skin.emoji,
                           style: const TextStyle(fontSize: 30)))),
               Text(skin.displayName,
                   style: TextStyle(
@@ -959,6 +1135,56 @@ class _SkinCard extends StatelessWidget {
                             fontSize: 9,
                             color: colors.buttonBorder,
                             fontWeight: FontWeight.bold)))
+              else if (skin.isSafariExclusive)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'MILESTONE',
+                        style: TextStyle(
+                          fontFamily: AppTypography.modernFont,
+                          fontSize: 9,
+                          color: Colors.cyanAccent.withValues(alpha: 0.9),
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.8,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${skin.safariUnlockPreyType.toUpperCase()}  $safariCount/$safariTarget',
+                        style: TextStyle(
+                          fontFamily: AppTypography.modernFont,
+                          fontSize: 8,
+                          color: colors.text.withValues(alpha: 0.8),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: safariProgress,
+                          minHeight: 4,
+                          backgroundColor:
+                              colors.background.withValues(alpha: 0.5),
+                          color: Colors.cyanAccent.withValues(alpha: 0.85),
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        skin.safariUnlockHint,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontFamily: AppTypography.modernFont,
+                          fontSize: 7,
+                          color: colors.text.withValues(alpha: 0.45),
+                        ),
+                      ),
+                    ],
+                  ),
+                )
               else
                 Column(
                   mainAxisSize: MainAxisSize.min,
@@ -1011,5 +1237,205 @@ class _SkinCard extends StatelessWidget {
                   ],
                 )
             ])));
+  }
+}
+
+// ── Altar Tab ─────────────────────────────────────────────────────────────────
+class _AltarTab extends StatefulWidget {
+  final AppThemeColors colors;
+  const _AltarTab({required this.colors});
+
+  @override
+  State<_AltarTab> createState() => _AltarTabState();
+}
+
+class _AltarTabState extends State<_AltarTab> {
+  final StorageService _storage = StorageService();
+
+  int get gems => _storage.snakeSouls;
+  int get thickScales => _storage.skillThickScales;
+  int get greed => _storage.skillGreed;
+  int get dashMastery => _storage.skillDashMastery;
+
+  int _costForLevel(int level) => (level + 1) * 150;
+
+  Future<void> _upgradeSkill(String title, int currentLvl, int maxLvl,
+      Future<void> Function(int) saveFunc) async {
+    if (currentLvl >= maxLvl) return;
+    final cost = _costForLevel(currentLvl);
+    if (gems >= cost) {
+      AudioService().play(SoundEffect.powerUp);
+      await _storage.deductSnakeSouls(cost);
+      await saveFunc(currentLvl + 1);
+      setState(() {});
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Not enough Snake Souls!',
+                style: TextStyle(fontFamily: AppTypography.modernFont)),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Widget _buildSkillCard(String title, String desc, String icon, int currentLvl,
+      int maxLvl, Future<void> Function(int) saveFunc) {
+    final colors = widget.colors;
+    final bool isMax = currentLvl >= maxLvl;
+    final int cost = _costForLevel(currentLvl);
+    final bool canAfford = !isMax && gems >= cost;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colors.hudBg.withValues(alpha: 0.6),
+        border: Border.all(
+            color: colors.buttonBorder.withValues(alpha: 0.5), width: 1.5),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Text(icon, style: const TextStyle(fontSize: 32)),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                      fontFamily: AppTypography.modernFont,
+                      color: colors.text,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  'Lvl $currentLvl / $maxLvl',
+                  style: TextStyle(
+                      color: colors.accent,
+                      fontFamily: AppTypography.modernFont,
+                      fontSize: 10),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  desc,
+                  style: TextStyle(
+                      color: colors.text.withValues(alpha: 0.6), fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: isMax
+                  ? colors.hudBg
+                  : (canAfford
+                      ? colors.buttonBorder
+                      : colors.hudBg.withValues(alpha: 0.8)),
+              foregroundColor: isMax
+                  ? colors.text.withValues(alpha: 0.4)
+                  : colors.background,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: isMax
+                ? null
+                : () => _upgradeSkill(title, currentLvl, maxLvl, saveFunc),
+            child: isMax
+                ? Text('MAX',
+                    style: TextStyle(
+                        fontFamily: AppTypography.modernFont,
+                        fontWeight: FontWeight.bold))
+                : Text('💎 $cost',
+                    style: TextStyle(
+                        fontFamily: AppTypography.modernFont,
+                        fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = widget.colors;
+    return ListView(
+      padding: const EdgeInsets.all(20),
+      children: [
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: colors.buttonBorder.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(14),
+            border:
+                Border.all(color: colors.buttonBorder.withValues(alpha: 0.35)),
+          ),
+          child: Row(
+            children: [
+              const Text('🛕', style: TextStyle(fontSize: 22)),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Offer Snake Souls to gain permanent power across all game modes.',
+                  style: TextStyle(
+                      fontFamily: AppTypography.modernFont,
+                      color: colors.text.withValues(alpha: 0.7),
+                      fontSize: 12),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 14),
+        Center(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            decoration: BoxDecoration(
+              color: colors.buttonBorder.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(20),
+              border:
+                  Border.all(color: colors.buttonBorder.withValues(alpha: 0.6)),
+            ),
+            child: Text(
+              '💎 $gems Souls Available',
+              style: TextStyle(
+                  fontFamily: AppTypography.modernFont,
+                  fontSize: 14,
+                  color: colors.accent,
+                  fontWeight: FontWeight.bold),
+            ),
+          ),
+        ),
+        const SizedBox(height: 20),
+        _buildSkillCard(
+          'Thick Scales',
+          'Absorb wall hits in Explore Mode without dying.',
+          '🛡️',
+          thickScales,
+          3,
+          _storage.setSkillThickScales,
+        ),
+        _buildSkillCard(
+          'Greed',
+          'Earn bonus coins from Prey and Bosses.',
+          '💰',
+          greed,
+          5,
+          _storage.setSkillGreed,
+        ),
+        _buildSkillCard(
+          'Dash Mastery',
+          'Start Explore Mode with instant dash charges.',
+          '⚡',
+          dashMastery,
+          2,
+          _storage.setSkillDashMastery,
+        ),
+      ],
+    );
   }
 }

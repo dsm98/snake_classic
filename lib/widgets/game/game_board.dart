@@ -422,11 +422,13 @@ class _SnakePainter extends CustomPainter {
         radiusBase = cellSize * 0.09;
         break;
       case BiomeType.tundra:
+      case BiomeType.frozenLake:
         particleCount = 18;
         color = const Color(0xFFDDF3FF).withValues(alpha: 0.16);
         radiusBase = cellSize * 0.08;
         break;
       case BiomeType.lavaField:
+      case BiomeType.ashlands:
         particleCount = 14;
         color = const Color(0xFFFF7A45).withValues(alpha: 0.16);
         radiusBase = cellSize * 0.11;
@@ -472,7 +474,9 @@ class _SnakePainter extends CustomPainter {
     final viewH = AppConstants.exploreViewportRows.toDouble();
 
     // Cinematic boost for rare biomes only.
-    if (biome == BiomeType.crystalCave || biome == BiomeType.lavaField) {
+    if (biome == BiomeType.crystalCave ||
+        biome == BiomeType.lavaField ||
+        biome == BiomeType.ashlands) {
       final center = Offset(viewW * cellSize * 0.5, viewH * cellSize * 0.5);
       final rareTint = biome == BiomeType.crystalCave
           ? const Color(0xFF8F82FF).withValues(alpha: 0.10)
@@ -505,7 +509,7 @@ class _SnakePainter extends CustomPainter {
 
       canvas.drawCircle(Offset(x, y), r, Paint()..color = color);
 
-      if (biome == BiomeType.lavaField) {
+      if (biome == BiomeType.lavaField || biome == BiomeType.ashlands) {
         // Heat shimmer streaks
         final shimmer = Paint()
           ..color = const Color(0xFFFFB199).withValues(alpha: 0.05)
@@ -658,6 +662,7 @@ class _SnakePainter extends CustomPainter {
         );
         break;
       case BiomeType.tundra:
+      case BiomeType.frozenLake:
         canvas.drawCircle(
           Offset(cx, cy),
           cellSize * (0.05 + rng.nextDouble() * 0.05),
@@ -665,6 +670,7 @@ class _SnakePainter extends CustomPainter {
         );
         break;
       case BiomeType.lavaField:
+      case BiomeType.ashlands:
         final len = cellSize * (0.15 + rng.nextDouble() * 0.14);
         final angle = rng.nextDouble() * pi;
         canvas.drawLine(
@@ -842,6 +848,7 @@ class _SnakePainter extends CustomPainter {
         );
         break;
       case BiomeType.tundra:
+      case BiomeType.frozenLake:
         // Frost-covered conifer
         final treePath = Path()
           ..moveTo(cx, cy - cellSize * 1.0)
@@ -859,6 +866,7 @@ class _SnakePainter extends CustomPainter {
         );
         break;
       case BiomeType.lavaField:
+      case BiomeType.ashlands:
         // Obsidian spire
         final spire = Path()
           ..moveTo(cx, cy - cellSize * 1.0)
@@ -1318,8 +1326,12 @@ class _SnakePainter extends CustomPainter {
         return const Color(0xFF3A3128);
       case BiomeType.tundra:
         return const Color(0xFF2B3B48);
+      case BiomeType.frozenLake:
+        return const Color(0xFF2A465A);
       case BiomeType.lavaField:
         return const Color(0xFF331515);
+      case BiomeType.ashlands:
+        return const Color(0xFF2C2020);
       case BiomeType.mushroom:
         return const Color(0xFF2D2239);
     }
@@ -1363,10 +1375,12 @@ class _SnakePainter extends CustomPainter {
         accent = const Color(0xFF8A79D6);
         break;
       case BiomeType.tundra:
+      case BiomeType.frozenLake:
         base = const Color(0xFF4A5F73);
         accent = const Color(0xFF9FC7D6);
         break;
       case BiomeType.lavaField:
+      case BiomeType.ashlands:
         base = const Color(0xFF271818);
         accent = const Color(0xFFFF5A36);
         break;
@@ -1499,6 +1513,7 @@ class _SnakePainter extends CustomPainter {
         );
         break;
       case BiomeType.tundra:
+      case BiomeType.frozenLake:
         // Ice shard
         final c = rect.center;
         final shard = Path()
@@ -1509,6 +1524,7 @@ class _SnakePainter extends CustomPainter {
         canvas.drawPath(shard, Paint()..color = accent.withValues(alpha: 0.8));
         break;
       case BiomeType.lavaField:
+      case BiomeType.ashlands:
         // Obsidian with lava fissure
         canvas.drawRRect(
           RRect.fromRectAndRadius(rect.deflate(2.2), const Radius.circular(2)),
@@ -1567,6 +1583,15 @@ class _SnakePainter extends CustomPainter {
         break;
       case FoodType.croc:
         _drawCroc(canvas, prey);
+        break;
+      case FoodType.elite:
+        _drawElite(canvas, prey);
+        break;
+      case FoodType.biomeEvent:
+        _drawBiomeEvent(canvas, prey);
+        break;
+      case FoodType.fruit:
+        _drawFruit(canvas, prey);
         break;
       default:
         _drawMouse(canvas, prey);
@@ -1708,6 +1733,153 @@ class _SnakePainter extends CustomPainter {
               ..strokeWidth = 2.0);
       }
     }
+  }
+
+  void _drawFruit(Canvas canvas, FoodModel prey) {
+    final center = _cellRect(prey.position).center;
+    final r = cellSize * (0.27 + pulse * 0.03);
+
+    // Glow halo
+    canvas.drawCircle(
+      center,
+      r * 1.6,
+      Paint()
+        ..color = const Color(0xFFE53935).withValues(alpha: 0.18)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5),
+    );
+
+    // Main body – red circle (apple-like)
+    canvas.drawCircle(center, r, Paint()..color = const Color(0xFFE53935));
+
+    // Highlight
+    canvas.drawCircle(
+      center + Offset(-r * 0.28, -r * 0.28),
+      r * 0.28,
+      Paint()..color = Colors.white.withValues(alpha: 0.45),
+    );
+
+    // Stem
+    final stemTop = center + Offset(r * 0.08, -r * 1.05);
+    canvas.drawLine(
+      center + Offset(r * 0.08, -r),
+      stemTop,
+      Paint()
+        ..color = const Color(0xFF5D4037)
+        ..strokeWidth = cellSize * 0.08
+        ..strokeCap = StrokeCap.round,
+    );
+
+    // Leaf
+    final leafPath = Path()
+      ..moveTo(stemTop.dx, stemTop.dy)
+      ..quadraticBezierTo(
+        stemTop.dx + r * 0.55,
+        stemTop.dy - r * 0.25,
+        stemTop.dx + r * 0.28,
+        stemTop.dy + r * 0.1,
+      )
+      ..close();
+    canvas.drawPath(
+      leafPath,
+      Paint()..color = const Color(0xFF43A047).withValues(alpha: 0.9),
+    );
+
+    // Expiry ring
+    if (prey.expiresAtMs != null) {
+      final now = DateTime.now().millisecondsSinceEpoch;
+      final fraction = ((prey.expiresAtMs! - now) / 20000.0).clamp(0.0, 1.0);
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: r * 1.45),
+        -pi / 2,
+        2 * pi * fraction,
+        false,
+        Paint()
+          ..color = Colors.white.withValues(alpha: 0.55)
+          ..strokeWidth = 1.4
+          ..style = PaintingStyle.stroke,
+      );
+    }
+  }
+
+  void _drawElite(Canvas canvas, FoodModel prey) {
+    final center = _cellRect(prey.position).center;
+    final ringR = cellSize * (0.5 + pulse * 0.08);
+
+    canvas.drawCircle(
+      center,
+      ringR * 1.3,
+      Paint()
+        ..color = const Color(0xFFFF7043).withValues(alpha: 0.18)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
+    );
+
+    canvas.drawCircle(
+      center,
+      ringR,
+      Paint()
+        ..color = Colors.orange.withValues(alpha: 0.85)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.2,
+    );
+
+    final body = RRect.fromRectAndRadius(
+      Rect.fromCenter(
+        center: center,
+        width: cellSize * 0.52,
+        height: cellSize * 0.52,
+      ),
+      Radius.circular(cellSize * 0.12),
+    );
+    canvas.drawRRect(body, Paint()..color = const Color(0xFFEF6C00));
+
+    final blade = Path()
+      ..moveTo(center.dx - cellSize * 0.06, center.dy + cellSize * 0.18)
+      ..lineTo(center.dx + cellSize * 0.16, center.dy - cellSize * 0.18)
+      ..lineTo(center.dx + cellSize * 0.22, center.dy - cellSize * 0.12)
+      ..lineTo(center.dx, center.dy + cellSize * 0.24)
+      ..close();
+    canvas.drawPath(
+        blade, Paint()..color = Colors.white.withValues(alpha: 0.9));
+  }
+
+  void _drawBiomeEvent(Canvas canvas, FoodModel prey) {
+    final center = _cellRect(prey.position).center;
+    final r = cellSize * 0.42;
+    final glow = Paint()
+      ..shader = RadialGradient(
+        colors: [
+          const Color(0xFF80DEEA).withValues(alpha: 0.8),
+          const Color(0xFF4DD0E1).withValues(alpha: 0.12),
+        ],
+      ).createShader(Rect.fromCircle(center: center, radius: r * 2.0));
+    canvas.drawCircle(center, r * 1.9, glow);
+
+    final pulseScale = 0.78 + pulse * 0.16;
+    for (int i = 0; i < 4; i++) {
+      final angle = (pi / 2) * i + pulse * 0.6;
+      final tip = center + Offset(cos(angle), sin(angle)) * (r * 1.05);
+      canvas.drawCircle(
+        tip,
+        cellSize * 0.1 * pulseScale,
+        Paint()..color = Colors.white.withValues(alpha: 0.92),
+      );
+    }
+
+    final core = Path()
+      ..moveTo(center.dx, center.dy - r)
+      ..lineTo(center.dx + r * 0.62, center.dy)
+      ..lineTo(center.dx, center.dy + r)
+      ..lineTo(center.dx - r * 0.62, center.dy)
+      ..close();
+    canvas.drawPath(core, Paint()..color = const Color(0xFF00ACC1));
+
+    canvas.drawPath(
+      core,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.6
+        ..color = Colors.white.withValues(alpha: 0.85),
+    );
   }
 
   void _drawPowerUps(Canvas canvas) {

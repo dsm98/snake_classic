@@ -47,36 +47,34 @@ class TopBar extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Container(
-            width: 46,
-            height: 46,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: LinearGradient(
-                colors: [
-                  colors.buttonBorder.withValues(alpha: 0.6),
-                  colors.buttonBorder.withValues(alpha: 0.2),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+          GestureDetector(
+            onTap: () =>
+                goTo(context, ProfileScreen(themeType: settings.theme)),
+            child: Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  colors: [
+                    colors.buttonBorder.withValues(alpha: 0.6),
+                    colors.buttonBorder.withValues(alpha: 0.2),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                border: Border.all(
+                    color: colors.buttonBorder.withValues(alpha: 0.5)),
               ),
-              border:
-                  Border.all(color: colors.buttonBorder.withValues(alpha: 0.5)),
-            ),
-            child: Center(
-              child: Text(
-                userProvider.rankEmoji,
-                style: const TextStyle(fontSize: 22),
+              child: Center(
+                child: Text(
+                  userProvider.rankEmoji,
+                  style: const TextStyle(fontSize: 22),
+                ),
               ),
             ),
           ),
-          const SizedBox(width: 4),
-          IconButton(
-            onPressed: () => goTo(context, ProfileScreen(themeType: settings.theme)),
-            icon: Icon(Icons.person_outline_rounded, color: colors.text, size: 24),
-            tooltip: 'Profile',
-          ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -86,7 +84,9 @@ class TopBar extends StatelessWidget {
                   children: [
                     Flexible(
                       child: Text(
-                        auth.isSignedIn ? auth.playerName.toUpperCase() : 'GUEST PLAYER',
+                        auth.isSignedIn
+                            ? auth.playerName.toUpperCase()
+                            : 'GUEST PLAYER',
                         style: TextStyle(
                           fontFamily: font,
                           fontSize: 10,
@@ -101,11 +101,13 @@ class TopBar extends StatelessWidget {
                       GestureDetector(
                         onTap: onShowReborn,
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
                             color: Colors.amber.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.amber.withValues(alpha: 0.5)),
+                            border: Border.all(
+                                color: Colors.amber.withValues(alpha: 0.5)),
                           ),
                           child: const Text('REBORN',
                               style: TextStyle(
@@ -116,7 +118,9 @@ class TopBar extends StatelessWidget {
                         )
                             .animate(onPlay: (c) => c.repeat(reverse: true))
                             .shimmer(duration: 2.seconds)
-                            .scale(begin: const Offset(1, 1), end: const Offset(1.1, 1.1)),
+                            .scale(
+                                begin: const Offset(1, 1),
+                                end: const Offset(1.1, 1.1)),
                       ),
                   ],
                 ),
@@ -138,7 +142,8 @@ class TopBar extends StatelessWidget {
                         child: LinearProgressIndicator(
                           value: userProvider.rankProgress,
                           minHeight: 4,
-                          backgroundColor: colors.background.withValues(alpha: 0.5),
+                          backgroundColor:
+                              colors.background.withValues(alpha: 0.5),
                           color: colors.buttonBorder,
                         ),
                       ),
@@ -156,11 +161,13 @@ class TopBar extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
                       color: Colors.amber.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: Colors.amber.withValues(alpha: 0.35)),
+                      border: Border.all(
+                          color: Colors.amber.withValues(alpha: 0.35)),
                     ),
                     child: Text(
                       '💰 ${userProvider.coins}',
@@ -172,20 +179,22 @@ class TopBar extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: 5),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
-                      color: colors.buttonBorder.withValues(alpha: 0.15),
+                      color: Colors.cyanAccent.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: colors.buttonBorder.withValues(alpha: 0.3)),
+                      border: Border.all(
+                          color: Colors.cyanAccent.withValues(alpha: 0.3)),
                     ),
                     child: Text(
-                      '${userProvider.xp} XP',
-                      style: TextStyle(
+                      '💎 ${userProvider.snakeSouls}',
+                      style: const TextStyle(
                         fontFamily: AppTypography.modernFont,
                         fontSize: 9,
-                        color: colors.text,
+                        color: Colors.cyanAccent,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -244,17 +253,20 @@ class HeroTitle extends StatelessWidget {
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    colors.buttonBorder.withValues(alpha: 0.15 + pulseController.value * 0.1),
+                    colors.buttonBorder
+                        .withValues(alpha: 0.15 + pulseController.value * 0.1),
                     colors.buttonBorder.withValues(alpha: 0.0),
                   ],
                 ),
                 border: Border.all(
-                  color: colors.buttonBorder.withValues(alpha: 0.2 + pulseController.value * 0.2),
+                  color: colors.buttonBorder
+                      .withValues(alpha: 0.2 + pulseController.value * 0.2),
                   width: 1.5,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: colors.buttonBorder.withValues(alpha: 0.1 + pulseController.value * 0.15),
+                    color: colors.buttonBorder
+                        .withValues(alpha: 0.1 + pulseController.value * 0.15),
                     blurRadius: 30,
                     spreadRadius: 2,
                   ),
@@ -275,7 +287,8 @@ class HeroTitle extends StatelessWidget {
             'SNAKE',
             style: TextStyle(
               fontFamily: font,
-              fontSize: LayoutUtil.fontSize(context, font == AppTypography.retroFont ? 30 : 38),
+              fontSize: LayoutUtil.fontSize(
+                  context, font == AppTypography.retroFont ? 30 : 38),
               color: Colors.white,
               letterSpacing: 6,
             ),
@@ -339,14 +352,17 @@ class _PlayButtonState extends State<PlayButton> {
               curve: Curves.easeOutQuad,
               width: double.infinity,
               height: 68,
-              transform: _pressed ? (Matrix4.identity()..scale(0.97, 0.97)) : Matrix4.identity(),
+              transform: _pressed
+                  ? (Matrix4.identity()..scale(0.97, 0.97))
+                  : Matrix4.identity(),
               transformAlignment: Alignment.center,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(22),
                 gradient: LinearGradient(
                   colors: [
                     widget.colors.buttonBorder,
-                    Color.lerp(widget.colors.buttonBorder, widget.colors.accent, 0.5)!,
+                    Color.lerp(
+                        widget.colors.buttonBorder, widget.colors.accent, 0.5)!,
                   ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
@@ -355,7 +371,8 @@ class _PlayButtonState extends State<PlayButton> {
                     ? []
                     : [
                         BoxShadow(
-                          color: widget.colors.buttonBorder.withValues(alpha: 0.35 + widget.pulseController.value * 0.2),
+                          color: widget.colors.buttonBorder.withValues(
+                              alpha: 0.35 + widget.pulseController.value * 0.2),
                           blurRadius: 24 + widget.pulseController.value * 12,
                           offset: const Offset(0, 6),
                         ),
@@ -371,7 +388,8 @@ class _PlayButtonState extends State<PlayButton> {
                       builder: (context, _) {
                         return CustomPaint(
                           size: const Size(double.infinity, 68),
-                          painter: _ShimmerPainter(widget.pulseController.value),
+                          painter:
+                              _ShimmerPainter(widget.pulseController.value),
                         );
                       },
                     ),
@@ -379,7 +397,8 @@ class _PlayButtonState extends State<PlayButton> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Text('▶', style: TextStyle(fontSize: 20, color: Colors.white)),
+                      const Text('▶',
+                          style: TextStyle(fontSize: 20, color: Colors.white)),
                       const SizedBox(width: 16),
                       Text(
                         'PLAY NOW',
@@ -390,7 +409,9 @@ class _PlayButtonState extends State<PlayButton> {
                           fontWeight: FontWeight.w900,
                           letterSpacing: 3,
                           shadows: [
-                            Shadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 8),
+                            Shadow(
+                                color: Colors.black.withValues(alpha: 0.3),
+                                blurRadius: 8),
                           ],
                         ),
                       ),
@@ -424,6 +445,7 @@ class _ShimmerPainter extends CustomPainter {
     );
     canvas.drawRect(rect, Paint()..shader = gradient.createShader(rect));
   }
+
   @override
   bool shouldRepaint(covariant _ShimmerPainter old) => old.progress != progress;
 }
@@ -442,80 +464,91 @@ class GhostChallengeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<GhostRacingService>(
-      builder: (context, ghostService, _) {
-        final rival = ghostService.activeRivalGhost;
+    return Consumer<GhostRacingService>(builder: (context, ghostService, _) {
+      final rival = ghostService.activeRivalGhost;
 
-        return Container(
-          margin: const EdgeInsets.symmetric(vertical: 8),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: colors.hudBg.withValues(alpha: 0.4),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: (rival != null ? Colors.cyanAccent : colors.buttonBorder).withValues(alpha: 0.3),
-            ),
+      return Container(
+        margin: const EdgeInsets.symmetric(vertical: 8),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: colors.hudBg.withValues(alpha: 0.4),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: (rival != null ? Colors.cyanAccent : colors.buttonBorder)
+                .withValues(alpha: 0.3),
           ),
-          child: Column(
-            children: [
-              Row(
-                children: [
-                  const Text('👻', style: TextStyle(fontSize: 24)),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          rival != null ? 'ACTIVE RIVAL: ${rival.rivalName.toUpperCase()}' : 'GHOST CHALLENGE',
-                          style: TextStyle(
-                            fontFamily: AppTypography.modernFont,
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: rival != null ? Colors.cyanAccent : colors.text,
-                            letterSpacing: 1.5,
-                          ),
+        ),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                const Text('👻', style: TextStyle(fontSize: 24)),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        rival != null
+                            ? 'ACTIVE RIVAL: ${rival.rivalName.toUpperCase()}'
+                            : 'GHOST CHALLENGE',
+                        style: TextStyle(
+                          fontFamily: AppTypography.modernFont,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color:
+                              rival != null ? Colors.cyanAccent : colors.text,
+                          letterSpacing: 1.5,
                         ),
-                        const SizedBox(height: 2),
-                        Text(
-                          rival != null 
-                            ? 'Target Score: ${rival.rivalScore} pts' 
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        rival != null
+                            ? 'Target Score: ${rival.rivalScore} pts'
                             : 'Import a friend\'s ghost to race them!',
-                          style: TextStyle(
-                            color: colors.text.withValues(alpha: 0.6),
-                            fontSize: 10,
-                          ),
+                        style: TextStyle(
+                          color: colors.text.withValues(alpha: 0.6),
+                          fontSize: 10,
                         ),
-                      ],
-                    ),
-                  ),
-                  if (rival != null)
-                    IconButton(
-                      onPressed: () => ghostService.setRivalGhost(null as dynamic), // Clearing via casting null to RivalGhost
-                      icon: const Icon(Icons.close, size: 18, color: Colors.white24),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                height: 40,
-                child: ElevatedButton(
-                  onPressed: onImport,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: rival != null ? Colors.cyan[700] : colors.buttonBorder.withValues(alpha: 0.5),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                  child: Text(
-                    rival != null ? 'CHALLENGE RIVAL' : 'IMPORT GHOST CODE',
-                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1, color: Colors.white),
+                      ),
+                    ],
                   ),
                 ),
+                if (rival != null)
+                  IconButton(
+                    onPressed: () => ghostService.setRivalGhost(null
+                        as dynamic), // Clearing via casting null to RivalGhost
+                    icon: const Icon(Icons.close,
+                        size: 18, color: Colors.white24),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              height: 40,
+              child: ElevatedButton(
+                onPressed: onImport,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: rival != null
+                      ? Colors.cyan[700]
+                      : colors.buttonBorder.withValues(alpha: 0.5),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                ),
+                child: Text(
+                  rival != null ? 'CHALLENGE RIVAL' : 'IMPORT GHOST CODE',
+                  style: const TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1,
+                      color: Colors.white),
+                ),
               ),
-            ],
-          ),
-        );
-      }
-    );
+            ),
+          ],
+        ),
+      );
+    });
   }
 }

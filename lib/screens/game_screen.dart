@@ -19,6 +19,7 @@ import '../core/models/game_modifier.dart';
 import '../core/enums/snake_skin.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import '../services/game_engine.dart';
+import '../core/models/food_model.dart';
 import '../providers/user_provider.dart';
 import '../services/audio_service.dart';
 import '../services/storage_service.dart';
@@ -1003,6 +1004,14 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                   child: _ExploreMinimapWidget(engine: _engine),
                 ),
               ),
+            if (widget.mode == GameMode.explore)
+              Positioned(
+                top: 6,
+                left: 6,
+                child: IgnorePointer(
+                  child: _BiomeEventBadge(engine: _engine),
+                ),
+              ),
           ],
         ),
       ),
@@ -1642,6 +1651,12 @@ class _MinimapPainter extends CustomPainter {
         return Colors.orange;
       case 'FoodType.croc':
         return Colors.red;
+      case 'FoodType.elite':
+        return Colors.deepOrange;
+      case 'FoodType.biomeEvent':
+        return Colors.cyanAccent;
+      case 'FoodType.fruit':
+        return const Color(0xFFE53935);
       default:
         return Colors.yellowAccent;
     }
@@ -1649,4 +1664,88 @@ class _MinimapPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_MinimapPainter old) => true;
+}
+
+class _BiomeEventBadge extends StatefulWidget {
+  final GameEngine engine;
+  const _BiomeEventBadge({required this.engine});
+
+  @override
+  State<_BiomeEventBadge> createState() => _BiomeEventBadgeState();
+}
+
+class _BiomeEventBadgeState extends State<_BiomeEventBadge>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+  late Animation<double> _pulse;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 900))
+      ..repeat(reverse: true);
+    _pulse = Tween<double>(begin: 0.85, end: 1.0)
+        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: widget.engine,
+      builder: (_, __) {
+        final hasEvent =
+            widget.engine.preyList.any((p) => p.type == FoodType.biomeEvent);
+        if (!hasEvent) return const SizedBox.shrink();
+
+        return AnimatedBuilder(
+          animation: _pulse,
+          builder: (_, __) => Transform.scale(
+            scale: _pulse.value,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: const Color(0xFF00ACC1).withValues(alpha: 0.88),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: Colors.cyanAccent.withValues(alpha: 0.7),
+                  width: 1.4,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.cyanAccent.withValues(alpha: 0.5),
+                    blurRadius: 10,
+                    spreadRadius: 1,
+                  ),
+                ],
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('\u26a1', style: TextStyle(fontSize: 13)),
+                  SizedBox(width: 5),
+                  Text(
+                    'BIOME EVENT',
+                    style: TextStyle(
+                      fontFamily: 'Orbitron',
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
 }

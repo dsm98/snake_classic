@@ -31,8 +31,10 @@ class EntityManager {
       case BiomeType.ruins:
         return [FoodType.mouse, FoodType.butterfly, FoodType.lizard];
       case BiomeType.tundra:
+      case BiomeType.frozenLake:
         return [FoodType.rabbit, FoodType.mouse];
       case BiomeType.lavaField:
+      case BiomeType.ashlands:
         return [FoodType.lizard, FoodType.croc];
       case BiomeType.mushroom:
         return [FoodType.butterfly, FoodType.mouse, FoodType.rabbit];
@@ -125,7 +127,19 @@ class EntityManager {
           _moveButterfly(
               i, preyList, head, snakeSet, obstacleSet, gridCols, gridRows);
           break;
-        default:
+        case FoodType.elite:
+          _moveElite(
+              i, preyList, head, snakeSet, obstacleSet, gridCols, gridRows);
+          break;
+        case FoodType.biomeEvent:
+        case FoodType.fruit:
+        case FoodType.portal:
+        case FoodType.shrine:
+        case FoodType.merchant:
+        case FoodType.standard:
+        case FoodType.golden:
+        case FoodType.poison:
+        case FoodType.boss:
           break;
       }
     }
@@ -195,6 +209,27 @@ class EntityManager {
     if (dist > 4) return;
     _preySingleStep(
         idx, preyList, head, snakeSet, obstacleSet, gridCols, gridRows);
+  }
+
+  void _moveElite(
+      int idx,
+      List<FoodModel> preyList,
+      Position head,
+      Set<Position> snakeSet,
+      Set<Position> obstacleSet,
+      int gridCols,
+      int gridRows) {
+    final prey = preyList[idx];
+    final dist =
+        (prey.position.x - head.x).abs() + (prey.position.y - head.y).abs();
+    if (dist > 10) return;
+
+    _preySingleStep(
+        idx, preyList, head, snakeSet, obstacleSet, gridCols, gridRows);
+    if (_rng.nextDouble() < 0.45) {
+      _preySingleStep(
+          idx, preyList, head, snakeSet, obstacleSet, gridCols, gridRows);
+    }
   }
 
   void _moveButterfly(

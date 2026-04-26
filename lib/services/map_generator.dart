@@ -19,9 +19,11 @@ class MapGenerator {
     BiomeType.cave: 9,
     BiomeType.ruins: 8,
     BiomeType.tundra: 6,
+    BiomeType.frozenLake: 5,
     BiomeType.mushroom: 5,
     BiomeType.crystalCave: 2,
     BiomeType.lavaField: 1,
+    BiomeType.ashlands: 2,
   };
 
   BiomeType _pickWeightedBiome() {
@@ -156,7 +158,10 @@ class MapGenerator {
       for (int ry = 0; ry < roomRows; ry++) {
         final key = rx * roomRows + ry;
         final biome = roomBiomes[key]!;
-        final chance = biome == BiomeType.lavaField ? 0.35 : 0.15;
+        final chance =
+            (biome == BiomeType.lavaField || biome == BiomeType.ashlands)
+                ? 0.35
+                : 0.15;
         if (_rng.nextDouble() < chance) {
           final int sx = rx * bs + 3 + _rng.nextInt(3);
           final int sy = ry * bs + 3 + _rng.nextInt(3);
@@ -281,6 +286,16 @@ class MapGenerator {
           if (dx + 1 <= 7) add(bx + dx + 1, by + dy);
         }
         break;
+      case BiomeType.frozenLake:
+        // Cracked ice lines
+        for (int t = 0; t < 2 + _rng.nextInt(2); t++) {
+          final dx = sdx();
+          final dy = sdy();
+          add(bx + dx, by + dy);
+          if (_rng.nextBool() && dx + 1 <= 7) add(bx + dx + 1, by + dy);
+          if (_rng.nextBool() && dy + 1 <= 7) add(bx + dx, by + dy + 1);
+        }
+        break;
       case BiomeType.lavaField:
         // 1-2 obsidian spires (1×2 vertical)
         for (int t = 0; t < 1 + _rng.nextInt(2); t++) {
@@ -288,6 +303,12 @@ class MapGenerator {
           final dy = sdy();
           add(bx + dx, by + dy);
           if (dy + 1 <= 7) add(bx + dx, by + dy + 1);
+        }
+        break;
+      case BiomeType.ashlands:
+        // Jagged volcanic rubble
+        for (int t = 0; t < 2 + _rng.nextInt(3); t++) {
+          add(bx + sdx(), by + sdy());
         }
         break;
       case BiomeType.coral:

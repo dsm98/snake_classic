@@ -89,6 +89,10 @@ class StorageService {
   // Equipped gear slots (up to 2, stored as list of GearType names)
   static const _keyEquippedGear = 'equipped_gear';
 
+  // Relics
+  static const _keyOwnedRelics = 'owned_relics';
+  static const _keyEquippedRelic = 'equipped_relic';
+
   // Safari lifetime stats
   static const _keySafariTotalPrey = 'safari_total_prey';
   static const _keySafariRoomsVisited = 'safari_rooms_visited';
@@ -99,6 +103,12 @@ class StorageService {
   static const _keySkillThickScales = 'skill_thick_scales';
   static const _keySkillGreed = 'skill_greed';
   static const _keySkillDashMastery = 'skill_dash_mastery';
+
+  // Explore session resume
+  static const _keyExploreSnakeX = 'explore_resume_x';
+  static const _keyExploreSnakeY = 'explore_resume_y';
+  static const _keyExploreFloor = 'explore_resume_floor';
+  static const _keyExploreScore = 'explore_resume_score';
 
   late SharedPreferences _prefs;
 
@@ -693,6 +703,46 @@ class StorageService {
   Future<void> setSkillDashMastery(int level) =>
       _prefs.setInt(_keySkillDashMastery, level);
 
+  // ── Explore Session Resume ───────────────────────────────────────────────────
+
+  /// Saves the last known snake head position and floor for Explore mode.
+  Future<void> saveExploreResume({
+    required int headX,
+    required int headY,
+    required int floor,
+    required int score,
+  }) async {
+    await Future.wait([
+      _prefs.setInt(_keyExploreSnakeX, headX),
+      _prefs.setInt(_keyExploreSnakeY, headY),
+      _prefs.setInt(_keyExploreFloor, floor),
+      _prefs.setInt(_keyExploreScore, score),
+    ]);
+  }
+
+  /// Clears the saved explore resume data (call on game-over or portal exit).
+  Future<void> clearExploreResume() async {
+    await Future.wait([
+      _prefs.remove(_keyExploreSnakeX),
+      _prefs.remove(_keyExploreSnakeY),
+      _prefs.remove(_keyExploreFloor),
+      _prefs.remove(_keyExploreScore),
+    ]);
+  }
+
+  /// Returns the saved explore head position, or null if none exists.
+  ({int x, int y, int floor, int score})? get exploreResume {
+    final x = _prefs.getInt(_keyExploreSnakeX);
+    final y = _prefs.getInt(_keyExploreSnakeY);
+    if (x == null || y == null) return null;
+    return (
+      x: x,
+      y: y,
+      floor: _prefs.getInt(_keyExploreFloor) ?? 1,
+      score: _prefs.getInt(_keyExploreScore) ?? 0,
+    );
+  }
+
   // ── Expedition Gear ──────────────────────────────────────────────────────────
   Map<String, int> get gearCounts {
     final raw = _prefs.getString(_keyGearCounts);
@@ -722,6 +772,31 @@ class StorageService {
 
   Future<void> setEquippedGear(List<String> gear) =>
       _prefs.setStringList(_keyEquippedGear, gear.take(2).toList());
+
+  Set<String> get ownedRelics {
+    final list = _prefs.getStringList(_keyOwnedRelics) ?? const [];
+    return list.toSet();
+  }
+
+  Future<void> unlockRelic(String relicId) async {
+    final owned = ownedRelics;
+    if (owned.add(relicId)) {
+      await _prefs.setStringList(_keyOwnedRelics, owned.toList());
+    }
+  }
+
+  bool hasRelic(String relicId) => ownedRelics.contains(relicId);
+
+  String? get equippedRelicId => _prefs.getString(_keyEquippedRelic);
+
+  Future<void> setEquippedRelic(String? relicId) async {
+    if (relicId == null) {
+      await _prefs.remove(_keyEquippedRelic);
+      return;
+    }
+    if (!hasRelic(relicId)) return;
+    await _prefs.setString(_keyEquippedRelic, relicId);
+  }
 
   // ── Safari Lifetime Stats ─────────────────────────────────────────────────
   int get safariTotalPrey => _prefs.getInt(_keySafariTotalPrey) ?? 0;
@@ -809,8 +884,17 @@ class StorageService {
           DateTime.now()
               .difference(DateTime(DateTime.now().year, 1, 1))
               .inDays);
-      const types = ['mouse', 'rabbit', 'lizard', 'butterfly', 'croc'];
-      final targets = [5, 3, 2, 2, 1];
+      const types = [
+        'mouse',
+        'rabbit',
+        'lizard',
+        'butterfly',
+        'croc',
+        'fruit',
+        'elite',
+        'biomeEvent'
+      ];
+      final targets = [5, 3, 2, 2, 1, 4, 1, 2];
       final idx = rng.nextInt(types.length);
       return {
         'type': types[idx],

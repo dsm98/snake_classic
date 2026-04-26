@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../core/constants/app_colors.dart';
+import '../core/enums/theme_type.dart';
 import '../core/models/expedition_gear.dart';
+import '../core/theme/app_typography.dart';
+import '../providers/settings_provider.dart';
 import '../providers/user_provider.dart';
 import '../services/storage_service.dart';
+import '../widgets/ui/dynamic_background.dart';
 
 class LoadoutResult {
   final List<String> gear; // up to 2 GearType names
@@ -30,10 +35,31 @@ class _LoadoutScreenState extends State<LoadoutScreen> {
     }
   }
 
+  AppThemeColors _colors(BuildContext context) {
+    final t = context.read<SettingsProvider>().theme;
+    switch (t) {
+      case ThemeType.retro:
+        return AppThemeColors.retro;
+      case ThemeType.neon:
+        return AppThemeColors.neon;
+      case ThemeType.nature:
+        return AppThemeColors.nature;
+      case ThemeType.arcade:
+        return AppThemeColors.arcade;
+      case ThemeType.cyber:
+        return AppThemeColors.cyber;
+      case ThemeType.volcano:
+        return AppThemeColors.volcano;
+      case ThemeType.ice:
+        return AppThemeColors.ice;
+    }
+  }
+
   void _pickGear(int slot) {
+    final colors = _colors(context);
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF1C2A1C),
+      backgroundColor: colors.hudBg,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -46,19 +72,21 @@ class _LoadoutScreenState extends State<LoadoutScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Choose Gear',
                   style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
+                    fontFamily: AppTypography.modernFont,
+                    color: colors.text,
+                    fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 const SizedBox(height: 12),
                 ListTile(
                   leading: const Text('❌', style: TextStyle(fontSize: 24)),
-                  title: const Text('None',
-                      style: TextStyle(color: Colors.white70)),
+                  title: Text('None',
+                      style:
+                          TextStyle(color: colors.text.withValues(alpha: 0.6))),
                   onTap: () {
                     Navigator.pop(context);
                     setState(() => _slots[slot] = null);
@@ -74,7 +102,9 @@ class _LoadoutScreenState extends State<LoadoutScreen> {
                     title: Text(
                       def.name,
                       style: TextStyle(
-                        color: unavailable ? Colors.white30 : Colors.white,
+                        color: unavailable
+                            ? colors.text.withValues(alpha: 0.3)
+                            : colors.text,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -85,8 +115,9 @@ class _LoadoutScreenState extends State<LoadoutScreen> {
                               ? 'Already in other slot'
                               : 'Owned: $count',
                       style: TextStyle(
-                        color:
-                            unavailable ? Colors.red[300] : Colors.green[300],
+                        color: unavailable
+                            ? colors.accent.withValues(alpha: 0.4)
+                            : colors.accent,
                         fontSize: 12,
                       ),
                     ),
@@ -108,33 +139,42 @@ class _LoadoutScreenState extends State<LoadoutScreen> {
   @override
   Widget build(BuildContext context) {
     final userProvider = context.watch<UserProvider>();
+    final settings = context.watch<SettingsProvider>();
+    final colors = _colors(context);
+    final font = settings.theme == ThemeType.retro
+        ? AppTypography.retroFont
+        : AppTypography.modernFont;
     final gems = userProvider.snakeSouls;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0D1B0D),
+      backgroundColor: colors.background,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1C2A1C),
-        title: const Text(
-          '🌿 SAFARI EXPEDITION',
+        backgroundColor: colors.hudBg.withValues(alpha: 0.9),
+        elevation: 0,
+        iconTheme: IconThemeData(color: colors.text),
+        title: Text(
+          'EXPLORE LOADOUT',
           style: TextStyle(
-            color: Colors.white,
+            fontFamily: font,
+            color: colors.text,
             fontWeight: FontWeight.bold,
+            fontSize: 14,
             letterSpacing: 1.5,
           ),
         ),
-        iconTheme: const IconThemeData(color: Colors.white),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 16),
             child: Row(
               children: [
-                const Text('💎', style: TextStyle(fontSize: 18)),
+                const Text('💎', style: TextStyle(fontSize: 16)),
                 const SizedBox(width: 4),
                 Text(
                   '$gems',
-                  style: const TextStyle(
-                    color: Colors.cyanAccent,
-                    fontSize: 16,
+                  style: TextStyle(
+                    fontFamily: font,
+                    color: colors.accent,
+                    fontSize: 14,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -143,71 +183,78 @@ class _LoadoutScreenState extends State<LoadoutScreen> {
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Text(
-              'EXPEDITION GEAR',
-              style: TextStyle(
-                color: Colors.green,
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 2,
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Equip up to 2 one-use items for this run.',
-              style: TextStyle(color: Colors.white60, fontSize: 13),
-            ),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(child: _buildSlotCard(0)),
-                const SizedBox(width: 12),
-                Expanded(child: _buildSlotCard(1)),
-              ],
-            ),
-            const Spacer(),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green[700],
-                padding: const EdgeInsets.symmetric(vertical: 18),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-              onPressed: () async {
-                final gear = _slots.whereType<String>().toList();
-                await userProvider.setEquippedGear(gear);
-                // Consume gear items used
-                for (final typeName in gear) {
-                  await StorageService().useGear(typeName);
-                }
-                if (mounted) {
-                  Navigator.pop(context, LoadoutResult(gear: gear));
-                }
-              },
-              child: const Text(
-                '🌿 START HUNT',
+      body: DynamicBackground(
+        themeType: settings.theme,
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'EXPEDITION GEAR',
                 style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
+                  fontFamily: font,
+                  color: colors.accent,
+                  fontSize: 12,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 2,
                 ),
               ),
-            ),
-            const SizedBox(height: 16),
-          ],
+              const SizedBox(height: 8),
+              Text(
+                'Equip up to 2 one-use items for this run.',
+                style: TextStyle(
+                    color: colors.text.withValues(alpha: 0.6), fontSize: 13),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(child: _buildSlotCard(0)),
+                  const SizedBox(width: 12),
+                  Expanded(child: _buildSlotCard(1)),
+                ],
+              ),
+              const Spacer(),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: colors.buttonBorder,
+                  foregroundColor: colors.background,
+                  padding: const EdgeInsets.symmetric(vertical: 18),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                onPressed: () async {
+                  final gear = _slots.whereType<String>().toList();
+                  await userProvider.setEquippedGear(gear);
+                  for (final typeName in gear) {
+                    await StorageService().useGear(typeName);
+                  }
+                  if (mounted) {
+                    Navigator.pop(context, LoadoutResult(gear: gear));
+                  }
+                },
+                child: Text(
+                  '🌍 START EXPLORE',
+                  style: TextStyle(
+                    fontFamily: font,
+                    color: colors.background,
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 2,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
         ),
       ),
     );
   }
 
   Widget _buildSlotCard(int slot) {
+    final colors = _colors(context);
     final typeName = _slots[slot];
     GearDef? def;
     if (typeName != null) {
@@ -223,11 +270,14 @@ class _LoadoutScreenState extends State<LoadoutScreen> {
       child: Container(
         height: 140,
         decoration: BoxDecoration(
-          color:
-              def != null ? const Color(0xFF1A3A1A) : const Color(0xFF151F15),
+          color: def != null
+              ? colors.buttonBorder.withValues(alpha: 0.12)
+              : colors.hudBg.withValues(alpha: 0.5),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: def != null ? Colors.green.withValues(alpha: 0.6) : Colors.white24,
+            color: def != null
+                ? colors.buttonBorder.withValues(alpha: 0.7)
+                : colors.buttonBorder.withValues(alpha: 0.2),
             width: 1.5,
           ),
         ),
@@ -235,11 +285,15 @@ class _LoadoutScreenState extends State<LoadoutScreen> {
             ? Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.add, color: Colors.white38, size: 36),
+                  Icon(Icons.add,
+                      color: colors.text.withValues(alpha: 0.35), size: 36),
                   const SizedBox(height: 6),
                   Text(
                     'Slot ${slot + 1}',
-                    style: const TextStyle(color: Colors.white38, fontSize: 13),
+                    style: TextStyle(
+                      color: colors.text.withValues(alpha: 0.35),
+                      fontSize: 13,
+                    ),
                   ),
                 ],
               )
@@ -253,8 +307,8 @@ class _LoadoutScreenState extends State<LoadoutScreen> {
                     Text(
                       def.name,
                       textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: colors.text,
                         fontWeight: FontWeight.bold,
                         fontSize: 13,
                       ),
@@ -263,8 +317,10 @@ class _LoadoutScreenState extends State<LoadoutScreen> {
                     Text(
                       def.description,
                       textAlign: TextAlign.center,
-                      style:
-                          const TextStyle(color: Colors.white60, fontSize: 11),
+                      style: TextStyle(
+                        color: colors.text.withValues(alpha: 0.6),
+                        fontSize: 11,
+                      ),
                     ),
                   ],
                 ),

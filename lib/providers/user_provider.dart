@@ -30,6 +30,8 @@ class UserProvider extends ChangeNotifier {
   int _coins = 0;
   int _snakeSouls = 0;
   List<String> _equippedGear = [];
+  Set<String> _ownedRelics = {};
+  String? _equippedRelicId;
   SnakeSkin _equippedSkin = SnakeSkin.classic;
   List<SnakeSkin> _unlockedSkins = [SnakeSkin.classic];
   List<DailyQuest> _quests = [];
@@ -61,6 +63,8 @@ class UserProvider extends ChangeNotifier {
   int get coins => _coins;
   int get snakeSouls => _snakeSouls;
   List<String> get equippedGear => _equippedGear;
+  Set<String> get ownedRelics => _ownedRelics;
+  String? get equippedRelicId => _equippedRelicId;
   SnakeSkin get equippedSkin => _equippedSkin;
   List<SnakeSkin> get unlockedSkins => _unlockedSkins;
   List<DailyQuest> get quests => _quests;
@@ -118,6 +122,8 @@ class UserProvider extends ChangeNotifier {
     _coins = _storage.coins;
     _snakeSouls = _storage.snakeSouls;
     _equippedGear = _storage.equippedGear;
+    _ownedRelics = _storage.ownedRelics;
+    _equippedRelicId = _storage.equippedRelicId;
     _equippedSkin = _storage.equippedSkin;
     _unlockedSkins = _storage.unlockedSkins;
     _highestCampaignLevel = _storage.highestCampaignLevel;
@@ -450,6 +456,25 @@ class UserProvider extends ChangeNotifier {
 
   Future<void> setEquippedGear(List<String> gear) async {
     await _storage.setEquippedGear(gear);
+    _loadFromStorage();
+  }
+
+  Future<bool> buyRelic(String relicId, int coinCost) async {
+    if (_ownedRelics.contains(relicId)) {
+      await equipRelic(relicId);
+      return true;
+    }
+    if (_coins < coinCost) return false;
+    await _storage.deductCoins(coinCost);
+    await _storage.unlockRelic(relicId);
+    await _storage.setEquippedRelic(relicId);
+    _loadFromStorage();
+    return true;
+  }
+
+  Future<void> equipRelic(String relicId) async {
+    if (!_ownedRelics.contains(relicId)) return;
+    await _storage.setEquippedRelic(relicId);
     _loadFromStorage();
   }
 

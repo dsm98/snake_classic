@@ -1,7 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../core/constants/app_colors.dart';
+import '../core/enums/theme_type.dart';
+import '../core/theme/app_typography.dart';
+import '../providers/settings_provider.dart';
 import '../services/storage_service.dart';
 import '../services/audio_service.dart';
 import '../services/vibration_service.dart';
+import '../widgets/ui/dynamic_background.dart';
 
 class AltarScreen extends StatefulWidget {
   const AltarScreen({Key? key}) : super(key: key);
@@ -62,23 +68,46 @@ class _AltarScreenState extends State<AltarScreen>
     }
   }
 
+  AppThemeColors _colors(BuildContext context) {
+    final t = context.read<SettingsProvider>().theme;
+    switch (t) {
+      case ThemeType.retro:
+        return AppThemeColors.retro;
+      case ThemeType.neon:
+        return AppThemeColors.neon;
+      case ThemeType.nature:
+        return AppThemeColors.nature;
+      case ThemeType.arcade:
+        return AppThemeColors.arcade;
+      case ThemeType.cyber:
+        return AppThemeColors.cyber;
+      case ThemeType.volcano:
+        return AppThemeColors.volcano;
+      case ThemeType.ice:
+        return AppThemeColors.ice;
+    }
+  }
+
   Widget _buildSkillCard(String title, String desc, String icon, int currentLvl,
       int maxLvl, Future<void> Function(int) saveFunc) {
-    bool isMax = currentLvl >= maxLvl;
-    int cost = _costForLevel(currentLvl);
-    bool canAfford = !isMax && gems >= cost;
-
+    final colors = _colors(context);
+    final font = context.read<SettingsProvider>().theme == ThemeType.retro
+        ? AppTypography.retroFont
+        : AppTypography.modernFont;
+    final bool isMax = currentLvl >= maxLvl;
+    final int cost = _costForLevel(currentLvl);
+    final bool canAfford = !isMax && gems >= cost;
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.6),
+        color: colors.hudBg.withValues(alpha: 0.6),
         border: Border.all(
-            color: Colors.redAccent.withValues(alpha: 0.5), width: 1.5),
+            color: colors.buttonBorder.withValues(alpha: 0.5), width: 1.5),
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.redAccent.withValues(alpha: 0.1),
+            color: colors.buttonBorder.withValues(alpha: 0.08),
             blurRadius: 8,
             spreadRadius: 2,
           )
@@ -94,21 +123,22 @@ class _AltarScreenState extends State<AltarScreen>
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
-                      fontFamily: 'Orbitron',
-                      color: Colors.white,
-                      fontSize: 18,
+                  style: TextStyle(
+                      fontFamily: font,
+                      color: colors.text,
+                      fontSize: 14,
                       fontWeight: FontWeight.bold),
                 ),
                 Text(
                   'Lvl $currentLvl / $maxLvl',
-                  style: const TextStyle(
-                      color: Colors.redAccent, fontFamily: 'Orbitron'),
+                  style: TextStyle(
+                      color: colors.accent, fontFamily: font, fontSize: 10),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   desc,
-                  style: const TextStyle(color: Colors.white70, fontSize: 12),
+                  style: TextStyle(
+                      color: colors.text.withValues(alpha: 0.6), fontSize: 12),
                 ),
               ],
             ),
@@ -116,9 +146,13 @@ class _AltarScreenState extends State<AltarScreen>
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: isMax
-                  ? Colors.grey[800]
-                  : (canAfford ? Colors.red[900] : Colors.grey[900]),
-              foregroundColor: Colors.white,
+                  ? colors.hudBg
+                  : (canAfford
+                      ? colors.buttonBorder
+                      : colors.hudBg.withValues(alpha: 0.8)),
+              foregroundColor: isMax
+                  ? colors.text.withValues(alpha: 0.4)
+                  : colors.background,
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8)),
             ),
@@ -126,12 +160,12 @@ class _AltarScreenState extends State<AltarScreen>
                 ? null
                 : () => _upgradeSkill(title, currentLvl, maxLvl, saveFunc),
             child: isMax
-                ? const Text('MAX',
+                ? Text('MAX',
                     style: TextStyle(
-                        fontFamily: 'Orbitron', fontWeight: FontWeight.bold))
+                        fontFamily: font, fontWeight: FontWeight.bold))
                 : Text('💎 $cost',
-                    style: const TextStyle(
-                        fontFamily: 'Orbitron', fontWeight: FontWeight.bold)),
+                    style: TextStyle(
+                        fontFamily: font, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -140,106 +174,118 @@ class _AltarScreenState extends State<AltarScreen>
 
   @override
   Widget build(BuildContext context) {
+    final settings = context.watch<SettingsProvider>();
+    final colors = _colors(context);
+    final font = settings.theme == ThemeType.retro
+        ? AppTypography.retroFont
+        : AppTypography.modernFont;
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0205),
+      backgroundColor: colors.background,
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'ALTAR OF SERPENTS',
           style: TextStyle(
-              fontFamily: 'Orbitron',
-              color: Colors.redAccent,
-              fontWeight: FontWeight.bold),
+              fontFamily: font,
+              color: colors.accent,
+              fontWeight: FontWeight.bold,
+              fontSize: 14),
         ),
-        backgroundColor: Colors.black,
+        backgroundColor: colors.hudBg.withValues(alpha: 0.9),
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.redAccent),
+        iconTheme: IconThemeData(color: colors.text),
       ),
-      body: Stack(
-        children: [
-          // Background Glow
-          AnimatedBuilder(
-            animation: _pulseController,
-            builder: (context, child) {
-              return Positioned(
-                top: -100,
-                left: MediaQuery.of(context).size.width / 2 - 200,
-                child: Container(
-                  width: 400,
-                  height: 400,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: RadialGradient(
-                      colors: [
-                        Colors.red.withValues(
-                            alpha: 0.15 + (_pulseController.value * 0.1)),
-                        Colors.transparent,
-                      ],
+      body: DynamicBackground(
+        themeType: settings.theme,
+        child: Stack(
+          children: [
+            // Background Glow
+            AnimatedBuilder(
+              animation: _pulseController,
+              builder: (context, child) {
+                return Positioned(
+                  top: -100,
+                  left: MediaQuery.of(context).size.width / 2 - 200,
+                  child: Container(
+                    width: 400,
+                    height: 400,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(
+                        colors: [
+                          colors.buttonBorder.withValues(
+                              alpha: 0.12 + (_pulseController.value * 0.08)),
+                          Colors.transparent,
+                        ],
+                      ),
                     ),
                   ),
+                );
+              },
+            ),
+            Column(
+              children: [
+                const SizedBox(height: 20),
+                Text(
+                  'Offer Snake Souls to gain permanent power.',
+                  style: TextStyle(
+                      color: colors.text.withValues(alpha: 0.5),
+                      fontStyle: FontStyle.italic,
+                      fontSize: 12),
                 ),
-              );
-            },
-          ),
-          Column(
-            children: [
-              const SizedBox(height: 20),
-              const Text(
-                'Offer Snake Souls to gain permanent power.',
-                style: TextStyle(
-                    color: Colors.white54, fontStyle: FontStyle.italic),
-              ),
-              const SizedBox(height: 16),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                decoration: BoxDecoration(
-                  color: Colors.red[900]!.withValues(alpha: 0.3),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Colors.redAccent),
+                const SizedBox(height: 16),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: colors.buttonBorder.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                        color: colors.buttonBorder.withValues(alpha: 0.6)),
+                  ),
+                  child: Text(
+                    '💎 $gems Souls Available',
+                    style: TextStyle(
+                        fontFamily: font,
+                        fontSize: 16,
+                        color: colors.accent,
+                        fontWeight: FontWeight.bold),
+                  ),
                 ),
-                child: Text(
-                  '💎 $gems Souls Available',
-                  style: const TextStyle(
-                      fontFamily: 'Orbitron',
-                      fontSize: 20,
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold),
+                const SizedBox(height: 32),
+                Expanded(
+                  child: ListView(
+                    children: [
+                      _buildSkillCard(
+                        'Thick Scales',
+                        'Absorb wall hits in Explore Mode without dying.',
+                        '🛡️',
+                        thickScales,
+                        maxThickScales,
+                        _storage.setSkillThickScales,
+                      ),
+                      _buildSkillCard(
+                        'Greed',
+                        'Earn bonus coins from Prey and Bosses.',
+                        '💰',
+                        greed,
+                        maxGreed,
+                        _storage.setSkillGreed,
+                      ),
+                      _buildSkillCard(
+                        'Dash Mastery',
+                        'Start Explore Mode with instant dash charges.',
+                        '⚡',
+                        dashMastery,
+                        maxDashMastery,
+                        _storage.setSkillDashMastery,
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(height: 32),
-              Expanded(
-                child: ListView(
-                  children: [
-                    _buildSkillCard(
-                      'Thick Scales',
-                      'Absorb wall hits in Explore Mode without dying.',
-                      '🛡️',
-                      thickScales,
-                      maxThickScales,
-                      _storage.setSkillThickScales,
-                    ),
-                    _buildSkillCard(
-                      'Greed',
-                      'Earn bonus coins from Prey and Bosses.',
-                      '💰',
-                      greed,
-                      maxGreed,
-                      _storage.setSkillGreed,
-                    ),
-                    _buildSkillCard(
-                      'Dash Mastery',
-                      'Start Explore Mode with instant dash charges.',
-                      '⚡',
-                      dashMastery,
-                      maxDashMastery,
-                      _storage.setSkillDashMastery,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ],
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

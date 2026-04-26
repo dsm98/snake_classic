@@ -79,6 +79,41 @@ class _HowToPlayScreenState extends State<HowToPlayScreen> {
         accentColor: Color(0xFF7E57C2),
       ),
       const _TipData(
+        icon: '🗺️',
+        title: 'Explore Mode',
+        body:
+            'Roam a vast procedural map split into biomes. Hunt different creatures for points. Catch enough prey to open a portal to the next floor. Your position is saved — pick up right where you left off!',
+        accentColor: Color(0xFF26A69A),
+      ),
+      const _TipData(
+        icon: '🐾',
+        title: 'Explore Prey',
+        body:
+            '🐭 Mouse — slow, nearby\n🐇 Rabbit — dashes away (3 charges)\n🦎 Lizard — hides while still\n🦋 Butterfly — flutters, expires\n🐊 Croc Boss — multi-tile, high value\n🍎 Fruit — static, limited time\n⚔ Elite — aggressive, rare, big reward\n✨ Biome Event — special anomaly with a biome effect',
+        accentColor: Color(0xFF66BB6A),
+      ),
+      const _TipData(
+        icon: '🌋',
+        title: 'Biomes',
+        body:
+            'Each biome has unique prey, hazards, and weather. New biomes grant a bonus Soul gem on first visit.\n\n🔥 Lava / Ashlands — rare elites, inferno bonus\n❄️ Frozen Lake / Tundra — frost surge events\n🍄 Mushroom — fruit spawns, primal cache events\n🏛 Ruins — common elites, relic echo events\n🐊 Swamp — croc hunts, primal cache rewards',
+        accentColor: Color(0xFFEF6C00),
+      ),
+      const _TipData(
+        icon: '⚡',
+        title: 'Elite Encounters',
+        body:
+            'Elites are aggressive prey marked by an orange glow. They move faster and expire in 22s. Catch them for 320+ pts.\n\n• Lava/Ashlands elites grant 1.6× bonus pts + 30 coins\n• Ruins elites grant 1.3× pts + 15 coins\nElites only spawn in high-danger biomes.',
+        accentColor: Color(0xFFFF7043),
+      ),
+      const _TipData(
+        icon: '✨',
+        title: 'Biome Events',
+        body:
+            'A cyan diamond appears when a biome anomaly triggers. An ⚡ BIOME EVENT badge flashes on screen. Catch it within 12s for a biome-exclusive effect:\n\n🔥 Lava → Shield +1\n❄️ Frozen → Dash +2 & Ghost\n🍄 Swamp/Mushroom → +1 Soul gem\n🏛 Cave/Ruins → Extra prey spawn',
+        accentColor: Color(0xFF00ACC1),
+      ),
+      const _TipData(
         icon: '💡',
         title: 'Pro Tips',
         body:
@@ -98,8 +133,8 @@ class _HowToPlayScreenState extends State<HowToPlayScreen> {
               decoration: BoxDecoration(
                 color: colors.hudBg.withValues(alpha: 0.7),
                 border: Border(
-                  bottom:
-                      BorderSide(color: colors.buttonBorder.withValues(alpha: 0.1)),
+                  bottom: BorderSide(
+                      color: colors.buttonBorder.withValues(alpha: 0.1)),
                 ),
               ),
               child: Row(

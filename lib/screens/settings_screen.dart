@@ -5,7 +5,6 @@ import '../core/constants/app_colors.dart';
 import '../core/enums/haptic_intensity.dart';
 import '../core/enums/theme_type.dart';
 import '../providers/settings_provider.dart';
-import '../services/auth_service.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -49,23 +48,11 @@ class SettingsScreen extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 30),
                 physics: const BouncingScrollPhysics(),
                 children: [
-                  // Account section
-                  _SectionLabel(title: 'ACCOUNT', colors: colors, font: font),
-                  const SizedBox(height: 10),
+                  // Settings hero
                   _SettingsHero(colors: colors, font: font)
                       .animate()
                       .fadeIn(duration: 300.ms)
                       .slideY(begin: 0.08, end: 0),
-                  const SizedBox(height: 10),
-                  Consumer<AuthService>(
-                    builder: (context, auth, _) {
-                      return _AccountCard(
-                        auth: auth,
-                        colors: colors,
-                        font: font,
-                      ).animate().fadeIn().slideY(begin: 0.1, end: 0);
-                    },
-                  ),
 
                   const SizedBox(height: 28),
 
@@ -115,7 +102,7 @@ class SettingsScreen extends StatelessWidget {
                   // Version footer
                   Center(
                     child: Text(
-                      'Snake Classic Reborn  •  v1.0',
+                      'Snake Classic Reborn  •  v1.1.0',
                       style: TextStyle(
                         fontFamily: 'Orbitron',
                         fontSize: 9,
@@ -150,7 +137,8 @@ class _PremiumAppBar extends StatelessWidget {
       decoration: BoxDecoration(
         color: colors.hudBg.withValues(alpha: 0.7),
         border: Border(
-          bottom: BorderSide(color: colors.buttonBorder.withValues(alpha: 0.15)),
+          bottom:
+              BorderSide(color: colors.buttonBorder.withValues(alpha: 0.15)),
         ),
       ),
       child: Row(
@@ -271,7 +259,8 @@ class _SettingsHero extends StatelessWidget {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: colors.hudBg.withValues(alpha: 0.8),
-              border: Border.all(color: colors.buttonBorder.withValues(alpha: 0.45)),
+              border: Border.all(
+                  color: colors.buttonBorder.withValues(alpha: 0.45)),
             ),
             child: const Center(
               child: Text('🎮', style: TextStyle(fontSize: 20)),
@@ -306,172 +295,6 @@ class _SettingsHero extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _AccountCard extends StatelessWidget {
-  final AuthService auth;
-  final AppThemeColors colors;
-  final String font;
-  const _AccountCard(
-      {required this.auth, required this.colors, required this.font});
-
-  @override
-  Widget build(BuildContext context) {
-    final isSignedIn = auth.isSignedIn;
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: colors.hudBg.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: colors.buttonBorder.withValues(alpha: 0.2)),
-        boxShadow: [
-          BoxShadow(
-            color: colors.buttonBorder.withValues(alpha: 0.06),
-            blurRadius: 20,
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          // Avatar
-          Container(
-            width: 54,
-            height: 54,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: LinearGradient(
-                colors: [
-                  colors.buttonBorder.withValues(alpha: 0.5),
-                  colors.buttonBorder.withValues(alpha: 0.15),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              border: Border.all(color: colors.buttonBorder.withValues(alpha: 0.4)),
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: auth.currentUser?.photoURL != null
-                ? Image.network(auth.currentUser!.photoURL!, fit: BoxFit.cover)
-                : const Center(
-                    child: Text('👤', style: TextStyle(fontSize: 26))),
-          ),
-
-          const SizedBox(width: 16),
-
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  isSignedIn ? 'SIGNED IN AS' : 'GUEST MODE',
-                  style: TextStyle(
-                    fontFamily: 'Orbitron',
-                    fontSize: 8,
-                    color: colors.text.withValues(alpha: 0.45),
-                    letterSpacing: 1,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  isSignedIn ? auth.playerName : 'Login to save scores',
-                  style: TextStyle(
-                    fontFamily: font,
-                    fontSize: 12,
-                    color: colors.text,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(width: 12),
-
-          if (isSignedIn)
-            _IconBtn(
-              icon: Icons.logout_rounded,
-              color: Colors.red.withValues(alpha: 0.7),
-              onTap: () => auth.signOut(),
-            )
-          else
-            _TextBtn(
-              label: 'SIGN IN',
-              colors: colors,
-              onTap: () => auth.signInWithGoogle(),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _IconBtn extends StatelessWidget {
-  final IconData icon;
-  final Color color;
-  final VoidCallback onTap;
-  const _IconBtn(
-      {required this.icon, required this.color, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: color.withValues(alpha: 0.1),
-          border: Border.all(color: color.withValues(alpha: 0.3)),
-        ),
-        child: Icon(icon, color: color, size: 20),
-      ),
-    );
-  }
-}
-
-class _TextBtn extends StatelessWidget {
-  final String label;
-  final AppThemeColors colors;
-  final VoidCallback onTap;
-  const _TextBtn(
-      {required this.label, required this.colors, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              colors.buttonBorder,
-              Color.lerp(colors.buttonBorder, colors.accent, 0.4)!,
-            ],
-          ),
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: colors.buttonBorder.withValues(alpha: 0.3),
-              blurRadius: 12,
-            ),
-          ],
-        ),
-        child: Text(
-          label,
-          style: const TextStyle(
-            fontFamily: 'Orbitron',
-            fontSize: 10,
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 1,
-          ),
-        ),
       ),
     );
   }
@@ -539,8 +362,9 @@ class _ThemeSelector extends StatelessWidget {
                         style: TextStyle(
                           fontFamily: 'Orbitron',
                           fontSize: 8,
-                          color:
-                              sel ? colors.text : colors.text.withValues(alpha: 0.42),
+                          color: sel
+                              ? colors.text
+                              : colors.text.withValues(alpha: 0.42),
                           fontWeight: sel ? FontWeight.bold : FontWeight.normal,
                         ),
                       ),
@@ -662,7 +486,9 @@ class _DifficultyTile extends StatelessWidget {
                     style: TextStyle(
                       fontFamily: 'Orbitron',
                       fontSize: 12,
-                      color: sel ? colors.text : colors.text.withValues(alpha: 0.4),
+                      color: sel
+                          ? colors.text
+                          : colors.text.withValues(alpha: 0.4),
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -852,7 +678,8 @@ class _OptionsCard extends StatelessWidget {
                       label: Text(_hapticLabel(intensity)),
                       selected: selected,
                       onSelected: (_) => settings.setHapticIntensity(intensity),
-                      selectedColor: colors.buttonBorder.withValues(alpha: 0.25),
+                      selectedColor:
+                          colors.buttonBorder.withValues(alpha: 0.25),
                       backgroundColor: colors.background.withValues(alpha: 0.4),
                       labelStyle: TextStyle(
                         fontFamily: 'Orbitron',
@@ -928,7 +755,8 @@ class _ToggleTile extends StatelessWidget {
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: colors.buttonBorder.withValues(alpha: 0.2)),
+              border:
+                  Border.all(color: colors.buttonBorder.withValues(alpha: 0.2)),
             ),
             child:
                 Center(child: Text(icon, style: const TextStyle(fontSize: 20))),

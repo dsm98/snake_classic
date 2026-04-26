@@ -83,6 +83,7 @@ class GameEngine extends ChangeNotifier {
   // Cursed Relics & Events
   bool hasWraithsEye = false;
   bool hasShrineSpawnedThisFloor = false;
+  String? activeRelicId;
   int combo = 0;
   int comboLastFoodMs = 0;
   bool isPlaying = false;
@@ -130,6 +131,7 @@ class GameEngine extends ChangeNotifier {
   FoodType? lastCaughtType;
   bool isSuperHunter = false; // streak ≥ 5
   int superHunterEndMs = 0;
+  int biomeEventCooldownMs = 0;
 
   // Croc stun
   bool isCrocStunned = false;
@@ -246,6 +248,7 @@ class GameEngine extends ChangeNotifier {
     activeCampaignLevel = campaignLevel;
     activeDailyEvent = dailyEvent;
     activeModifier = modifier;
+    activeRelicId = StorageService().equippedRelicId;
 
     final gamesPlayed = StorageService().gamesPlayed;
     _newPlayerGrace = gamesPlayed < 5;
@@ -271,6 +274,10 @@ class GameEngine extends ChangeNotifier {
     // Explore mode: start slower so the large map is enjoyable to navigate
     if (gameMode == GameMode.explore) {
       currentTickMs = (currentTickMs * 1.5).round();
+    }
+
+    if (activeRelicId == 'swamp_walker') {
+      currentTickMs = (currentTickMs * 1.15).round();
     }
 
     // Apply daily event modifiers
@@ -351,6 +358,10 @@ class GameEngine extends ChangeNotifier {
       greedLevel = StorageService().skillGreed;
     }
 
+    if (activeRelicId == 'swamp_walker') {
+      wallHitsLeft += 1;
+    }
+
     if (withComebackBonus) {
       comebackBonus = true;
       comebackBonusEndMs = gameTimeMs + 30000;
@@ -408,6 +419,7 @@ class GameEngine extends ChangeNotifier {
     lastCaughtType = null;
     isSuperHunter = false;
     superHunterEndMs = 0;
+    biomeEventCooldownMs = 0;
     currentFloor = 1;
     preyCaughtThisFloor = 0;
     isCampfirePhase = false;
@@ -473,6 +485,24 @@ class GameEngine extends ChangeNotifier {
       spikeTraps: spikeTraps,
       snakeSet: snakeSet,
     );
+    // Restore snake position if a saved explore session exists
+    final resume = StorageService().exploreResume;
+    if (resume != null) {
+      final rx = resume.x.clamp(0, gridCols - 1);
+      final ry = resume.y.clamp(0, gridRows - 1);
+      snake = [
+        Position(rx, ry),
+        Position((rx - 1).clamp(0, gridCols - 1), ry),
+        Position((rx - 2).clamp(0, gridCols - 1), ry),
+      ];
+      snakeSet = HashSet<Position>.from(snake);
+      cameraX = rx - AppConstants.exploreViewportCols ~/ 2;
+      cameraY = ry - AppConstants.exploreViewportRows ~/ 2;
+      prevCameraX = cameraX;
+      prevCameraY = cameraY;
+      currentFloor = resume.floor;
+      score = resume.score;
+    }
   }
 
   void _generateCampaignObstacles() {
@@ -496,6 +526,14 @@ class GameEngine extends ChangeNotifier {
     isPaused = true;
     _ticker?.stop();
     _timeAttackTimer?.cancel();
+    if (gameMode == GameMode.explore && snake.isNotEmpty) {
+      StorageService().saveExploreResume(
+        headX: snake.first.x,
+        headY: snake.first.y,
+        floor: currentFloor,
+        score: score,
+      );
+    }
     notifyListeners();
   }
 
@@ -526,6 +564,8 @@ class GameEngine extends ChangeNotifier {
     preyCaughtThisFloor = 0;
     isCampfirePhase = false;
     hasShrineSpawnedThisFloor = false;
+    biomeEventCooldownMs = gameTimeMs + 8000;
+    StorageService().clearExploreResume();
 
     // Board reset logic (keep score, gear, stats)
     snake = [
@@ -677,6 +717,8 @@ class GameEngine extends ChangeNotifier {
         _preyTickCounter = 0;
         _movePrey();
       }
+      _trySpawnBiomeMiniEvent();
+      _ensureExplorePreyPopulation();
 
       // Update spike traps state every 12 ticks (~2.5 seconds)
       _spikeTickCounter++;
@@ -697,16 +739,21 @@ class GameEngine extends ChangeNotifier {
     // Weather effects in specific explore biomes
     if (gameMode == GameMode.explore &&
         (currentBiome == BiomeType.desert ||
+            currentBiome == BiomeType.savanna ||
             currentBiome == BiomeType.tundra ||
-            currentBiome == BiomeType.lavaField)) {
+            currentBiome == BiomeType.frozenLake ||
+            currentBiome == BiomeType.lavaField ||
+            currentBiome == BiomeType.ashlands)) {
       _weatherTickCounter++;
       if (_weatherTickCounter >= 10) {
         _weatherTickCounter = 0;
         final head = snake.first;
         final String weatherText;
-        if (currentBiome == BiomeType.tundra) {
+        if (currentBiome == BiomeType.tundra ||
+            currentBiome == BiomeType.frozenLake) {
           weatherText = '❄ BLIZZARD!';
-        } else if (currentBiome == BiomeType.lavaField) {
+        } else if (currentBiome == BiomeType.lavaField ||
+            currentBiome == BiomeType.ashlands) {
           weatherText = '🔥 HEAT WAVE!';
         } else {
           weatherText = '💨 WIND!';
@@ -723,6 +770,8 @@ class GameEngine extends ChangeNotifier {
     _updateBiomeAmbientAudio();
 
     if (isFeverMode) {
+      _attractFood();
+    } else if (activeRelicId == 'eagle_eye' && food != null) {
       _attractFood();
     } else if (_hasPowerUp(PowerUpType.magnet) && food != null) {
       _attractFood();
@@ -1140,7 +1189,8 @@ class GameEngine extends ChangeNotifier {
       feverMeter += (equippedSkin == SnakeSkin.rainbow) ? 40 : 20;
       if (feverMeter >= 100 && !isFeverMode) {
         isFeverMode = true;
-        feverEndMs = now + 8000;
+        final feverDurationMs = activeRelicId == 'fever_heart' ? 12000 : 8000;
+        feverEndMs = now + feverDurationMs;
         feverMeter = 0;
         AudioService().play(SoundEffect.powerUp);
         VibrationService().vibrate(duration: 500, amplitude: 255);
@@ -1156,6 +1206,7 @@ class GameEngine extends ChangeNotifier {
     int points = AppConstants.baseScore;
     points = (points * (1 + combo * 0.5)).round();
     points = (points * difficulty.scoreMultiplier).round();
+    if (activeRelicId == 'serrated_fangs') points = (points * 1.15).round();
     if (_hasPowerUp(PowerUpType.scoreMultiplier)) points *= 2;
     if (hasWraithsEye) points *= 3;
     if (equippedSkin == SnakeSkin.skeleton) points = (points * 1.05).round();
@@ -1302,11 +1353,13 @@ class GameEngine extends ChangeNotifier {
         allowPoison = activeCampaignLevel!.hasPoisonApples;
       }
 
+      final int goldenUpper = activeRelicId == 'hunters_luck' ? 12 : 9;
+
       if (r < 4 && allowBoss) {
         t = FoodType.boss;
         expires = gameTimeMs + 15000; // 15s window
         _bossMoveTick = 0;
-      } else if (r >= 4 && r < 9 && allowGold) {
+      } else if (r >= 4 && r < goldenUpper && allowGold) {
         t = FoodType.golden;
         expires = gameTimeMs + 8000;
       } else if (r >= 9 && r < 19 && allowPoison) {
@@ -1406,6 +1459,7 @@ class GameEngine extends ChangeNotifier {
             obstacleSet.contains(pos) ||
             boardPowerUps.any((pu) => pu.position == pos) ||
             boardPortals.containsKey(pos) ||
+            preyList.any((p) => p.position == pos) ||
             food?.position == pos)) {
       pos = Position(_rng.nextInt(gridCols), _rng.nextInt(gridRows));
       attempts++;
@@ -1489,6 +1543,9 @@ class GameEngine extends ChangeNotifier {
     _vibrate(200, 255);
     _ticker?.stop();
     _timeAttackTimer?.cancel();
+    if (gameMode == GameMode.explore) {
+      StorageService().clearExploreResume();
+    }
     onGameOver?.call();
     notifyListeners();
   }
@@ -1615,21 +1672,44 @@ class GameEngine extends ChangeNotifier {
 
   // ── Explore mode: Prey system ──────────────────────────────────
 
+  /// Returns elite spawn chance (%) for a biome. Rarer in high-risk biomes but higher reward.
+  int _eliteSpawnChance(BiomeType biome) {
+    switch (biome) {
+      case BiomeType.lavaField:
+      case BiomeType.ashlands:
+        return 7; // rarer → compensated by 1.6× reward bonus in _onPreyEaten
+      case BiomeType.ruins:
+        return 15;
+      case BiomeType.frozenLake:
+        return 11;
+      case BiomeType.cave:
+      case BiomeType.crystalCave:
+        return 10;
+      default:
+        return 12;
+    }
+  }
+
   /// Returns which prey types are valid to spawn given a biome.
   List<FoodType> _preyTypesForBiome(BiomeType biome) {
     switch (biome) {
       case BiomeType.forest:
-        return [FoodType.mouse, FoodType.rabbit];
+        return [FoodType.mouse, FoodType.rabbit, FoodType.fruit];
       case BiomeType.jungle:
-        return [FoodType.rabbit, FoodType.lizard, FoodType.butterfly];
+        return [
+          FoodType.rabbit,
+          FoodType.lizard,
+          FoodType.butterfly,
+          FoodType.fruit
+        ];
       case BiomeType.desert:
         return [FoodType.lizard, FoodType.mouse];
       case BiomeType.savanna:
         return [FoodType.rabbit, FoodType.lizard];
       case BiomeType.swamp:
-        return [FoodType.croc, FoodType.lizard];
+        return [FoodType.croc, FoodType.lizard, FoodType.fruit];
       case BiomeType.coral:
-        return [FoodType.butterfly, FoodType.lizard];
+        return [FoodType.butterfly, FoodType.lizard, FoodType.fruit];
       case BiomeType.cave:
         return [FoodType.butterfly, FoodType.lizard];
       case BiomeType.crystalCave:
@@ -1638,15 +1718,28 @@ class GameEngine extends ChangeNotifier {
         return [FoodType.mouse, FoodType.butterfly, FoodType.lizard];
       case BiomeType.tundra:
         return [FoodType.rabbit, FoodType.mouse];
+      case BiomeType.frozenLake:
+        return [FoodType.rabbit, FoodType.butterfly, FoodType.mouse];
       case BiomeType.lavaField:
         return [FoodType.lizard, FoodType.croc];
+      case BiomeType.ashlands:
+        return [FoodType.lizard, FoodType.mouse, FoodType.croc];
       case BiomeType.mushroom:
-        return [FoodType.butterfly, FoodType.mouse, FoodType.rabbit];
+        return [
+          FoodType.butterfly,
+          FoodType.mouse,
+          FoodType.rabbit,
+          FoodType.fruit
+        ];
     }
   }
 
   void _spawnInitialPrey() {
-    for (int i = 0; i < 3; i++) {
+    preyList.clear();
+    if (snake.isNotEmpty) {
+      _spawnSinglePrey(nearPos: snake.first);
+    }
+    while (preyList.length < 3) {
       _spawnSinglePrey();
     }
   }
@@ -1684,7 +1777,18 @@ class GameEngine extends ChangeNotifier {
     final candidates = biome != null
         ? _preyTypesForBiome(biome)
         : [FoodType.mouse, FoodType.rabbit];
-    final type = candidates[_rng.nextInt(candidates.length)];
+    FoodType type = candidates[_rng.nextInt(candidates.length)];
+
+    if (biome != null &&
+        (biome == BiomeType.lavaField ||
+            biome == BiomeType.ashlands ||
+            biome == BiomeType.cave ||
+            biome == BiomeType.crystalCave ||
+            biome == BiomeType.frozenLake ||
+            biome == BiomeType.ruins) &&
+        _rng.nextInt(100) < _eliteSpawnChance(biome)) {
+      type = FoodType.elite;
+    }
 
     switch (type) {
       case FoodType.rabbit:
@@ -1716,6 +1820,19 @@ class GameEngine extends ChangeNotifier {
         ];
         preyList
             .add(FoodModel(position: pos, type: FoodType.croc, crocBody: body));
+        break;
+      case FoodType.elite:
+        preyList.add(FoodModel(
+            position: pos,
+            type: FoodType.elite,
+            expiresAtMs: gameTimeMs + 22000,
+            dashChargesLeft: 2));
+        break;
+      case FoodType.fruit:
+        preyList.add(FoodModel(
+            position: pos,
+            type: FoodType.fruit,
+            expiresAtMs: gameTimeMs + 20000));
         break;
       default:
         preyList.add(FoodModel(position: pos, type: FoodType.mouse));
@@ -1757,6 +1874,68 @@ class GameEngine extends ChangeNotifier {
     );
   }
 
+  void _ensureExplorePreyPopulation() {
+    if (gameMode != GameMode.explore) return;
+
+    final now = gameTimeMs;
+    preyList.removeWhere((p) {
+      final expired =
+          p.expiresAtMs != null && p.expiresAtMs! > 0 && now > p.expiresAtMs!;
+      final invalidCell = p.position.x < 0 ||
+          p.position.x >= gridCols ||
+          p.position.y < 0 ||
+          p.position.y >= gridRows ||
+          obstacleSet.contains(p.position) ||
+          snakeSet.contains(p.position);
+      return expired || invalidCell;
+    });
+
+    if (preyList.isEmpty && snake.isNotEmpty) {
+      _spawnSinglePrey(nearPos: snake.first);
+    }
+    while (preyList.length < 3) {
+      _spawnSinglePrey();
+    }
+  }
+
+  void _trySpawnBiomeMiniEvent() {
+    if (gameMode != GameMode.explore || snake.isEmpty) return;
+    if (gameTimeMs < biomeEventCooldownMs) return;
+    if (preyList.any((p) => p.type == FoodType.biomeEvent)) return;
+
+    final biome = currentBiome;
+    if (biome == null) return;
+
+    final rollChance = switch (biome) {
+      BiomeType.lavaField || BiomeType.ashlands => 30,
+      BiomeType.frozenLake || BiomeType.tundra => 24,
+      BiomeType.cave || BiomeType.crystalCave => 24,
+      BiomeType.swamp || BiomeType.mushroom => 20,
+      _ => 16,
+    };
+
+    if (_rng.nextInt(100) >= rollChance) {
+      biomeEventCooldownMs = gameTimeMs + 6000;
+      return;
+    }
+
+    final spawn = _getEmptyPosNear(snake.first, radius: 9);
+    preyList.add(FoodModel(
+      position: spawn,
+      type: FoodType.biomeEvent,
+      expiresAtMs: gameTimeMs + 12000,
+    ));
+
+    effects.add(GameEffect(
+      position: spawn,
+      type: EffectType.comboBurst,
+      value: 'BIOME EVENT!',
+      startTimeMs: gameTimeMs,
+    ));
+
+    biomeEventCooldownMs = gameTimeMs + 18000;
+  }
+
   void _onPreyEaten(FoodModel prey) {
     if (prey.type == FoodType.portal) {
       isCampfirePhase = true;
@@ -1766,6 +1945,11 @@ class GameEngine extends ChangeNotifier {
 
     if (prey.type == FoodType.shrine) {
       _activateShrine(prey);
+      return;
+    }
+
+    if (prey.type == FoodType.biomeEvent) {
+      _activateBiomeMiniEvent(prey);
       return;
     }
 
@@ -1823,7 +2007,28 @@ class GameEngine extends ChangeNotifier {
 
     int points =
         (basePoints * streakMultiplier * difficulty.scoreMultiplier).round();
+    if (activeRelicId == 'serrated_fangs') {
+      points = (points * 1.15).round();
+    }
     if (_hasPowerUp(PowerUpType.scoreMultiplier)) points *= 2;
+
+    // Elite: biome-specific reward bonus
+    if (prey.type == FoodType.elite) {
+      final eliteBiome = _roomBiomeAt(prey.position);
+      if (eliteBiome == BiomeType.lavaField ||
+          eliteBiome == BiomeType.ashlands) {
+        points = (points * 1.6).round();
+        coinsEarnedSession += 30;
+        effects.add(GameEffect(
+            position: snake.first,
+            type: EffectType.comboBurst,
+            value: '🔥 INFERNO ELITE! BONUS',
+            startTimeMs: now));
+      } else if (eliteBiome == BiomeType.ruins) {
+        points = (points * 1.3).round();
+        coinsEarnedSession += 15;
+      }
+    }
 
     // Safari skin passives
     if (equippedSkin == SnakeSkin.jadeSerpent && prey.type.name == 'lizard') {
@@ -1840,8 +2045,30 @@ class GameEngine extends ChangeNotifier {
     final typeName = prey.type.name;
     StorageService().incrementSafariCount(typeName);
     final room = _roomBiomeAt(snake.first);
-    if (room != null) StorageService().recordBiomeVisit(room.name);
+    if (room != null) {
+      final storage = StorageService();
+      final isFirstVisit = !storage.safariVisitedBiomes.contains(room.name);
+      storage.recordBiomeVisit(room.name);
+      if (isFirstVisit) {
+        storage.addSnakeSouls(1);
+        coinsEarnedSession += 30;
+        effects.add(GameEffect(
+            position: snake.first,
+            type: EffectType.comboBurst,
+            value: 'NEW BIOME! +1💎',
+            startTimeMs: now));
+      }
+    }
     StorageService().incrementSafariMissionProgress();
+
+    if (huntStreak > 0 && huntStreak % 4 == 0) {
+      dashCharges += 1;
+      effects.add(GameEffect(
+          position: snake.first,
+          type: EffectType.comboBurst,
+          value: 'DASH +1',
+          startTimeMs: now));
+    }
 
     if (score > highestScoreOnRecord &&
         !isHighScoreCelebrated &&
@@ -1935,6 +2162,83 @@ class GameEngine extends ChangeNotifier {
     notifyListeners();
   }
 
+  void _activateBiomeMiniEvent(FoodModel prey) {
+    final now = gameTimeMs;
+    final biome = _roomBiomeAt(prey.position) ?? currentBiome;
+    if (biome == null) return;
+
+    AudioService().play(SoundEffect.powerUp);
+    VibrationService().ripple();
+
+    switch (biome) {
+      case BiomeType.lavaField:
+      case BiomeType.ashlands:
+        wallHitsLeft += 1;
+        score += 260;
+        effects.add(GameEffect(
+          position: snake.first,
+          type: EffectType.comboBurst,
+          value: 'HEAT CORE! SHIELD +1',
+          startTimeMs: now,
+        ));
+        break;
+      case BiomeType.tundra:
+      case BiomeType.frozenLake:
+        dashCharges += 2;
+        activePowerUps.removeWhere((ap) => ap.type == PowerUpType.ghostMode);
+        activePowerUps.add(ActivePowerUp(
+          type: PowerUpType.ghostMode,
+          endsAtMs: now + 4000,
+        ));
+        effects.add(GameEffect(
+          position: snake.first,
+          type: EffectType.comboBurst,
+          value: 'FROST SURGE! DASH +2',
+          startTimeMs: now,
+        ));
+        break;
+      case BiomeType.swamp:
+      case BiomeType.mushroom:
+        coinsEarnedSession += 80;
+        StorageService().addSnakeSouls(1);
+        effects.add(GameEffect(
+          position: snake.first,
+          type: EffectType.comboBurst,
+          value: 'PRIMAL CACHE +1💎',
+          startTimeMs: now,
+        ));
+        break;
+      case BiomeType.cave:
+      case BiomeType.crystalCave:
+      case BiomeType.ruins:
+        _spawnSinglePrey(nearPos: snake.first);
+        _spawnSinglePrey(nearPos: snake.first);
+        score += 180;
+        effects.add(GameEffect(
+          position: snake.first,
+          type: EffectType.comboBurst,
+          value: 'RELIC ECHO! EXTRA PREY',
+          startTimeMs: now,
+        ));
+        break;
+      default:
+        score += 120;
+        if (huntStreak >= 2) {
+          dashCharges += 1;
+        }
+        effects.add(GameEffect(
+          position: snake.first,
+          type: EffectType.comboBurst,
+          value: 'BIOME BLESSING!',
+          startTimeMs: now,
+        ));
+        break;
+    }
+
+    onFoodEaten?.call();
+    notifyListeners();
+  }
+
   BiomeType? get currentBiome {
     if (snake.isEmpty) return null;
     return _roomBiomeAt(snake.first);
@@ -1964,11 +2268,13 @@ class GameEngine extends ChangeNotifier {
         }
         break;
       case BiomeType.tundra:
+      case BiomeType.frozenLake:
         if (_rng.nextDouble() < 0.18) {
           AudioService().play(SoundEffect.countdown, volume: 0.06);
         }
         break;
       case BiomeType.lavaField:
+      case BiomeType.ashlands:
         if (_rng.nextDouble() < 0.15) {
           AudioService().play(SoundEffect.gameOver, volume: 0.04);
         }
@@ -2020,6 +2326,12 @@ class GameEngine extends ChangeNotifier {
         return 150;
       case FoodType.croc:
         return 250;
+      case FoodType.elite:
+        return 320;
+      case FoodType.biomeEvent:
+        return 120;
+      case FoodType.fruit:
+        return 55;
       default:
         return 20;
     }
@@ -2037,6 +2349,12 @@ class GameEngine extends ChangeNotifier {
         return '🦋 BUTTERFLY! +$pts';
       case FoodType.croc:
         return '🐊 CROC BOSS! +$pts';
+      case FoodType.elite:
+        return '⚔ ELITE HUNT! +$pts';
+      case FoodType.biomeEvent:
+        return '✨ BIOME ANOMALY +$pts';
+      case FoodType.fruit:
+        return '🍎 FRUIT! +$pts';
       default:
         return '+$pts';
     }

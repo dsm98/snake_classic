@@ -54,7 +54,25 @@ class _MultiplayerScreenState extends State<MultiplayerScreen> {
         child: Container(
           padding: const EdgeInsets.all(28),
           decoration: BoxDecoration(
-            color: const Color(0xFF1E2638),
+            color: (() {
+              final t = context.read<SettingsProvider>().theme;
+              switch (t) {
+                case ThemeType.retro:
+                  return AppThemeColors.retro.hudBg;
+                case ThemeType.neon:
+                  return AppThemeColors.neon.hudBg;
+                case ThemeType.nature:
+                  return AppThemeColors.nature.hudBg;
+                case ThemeType.arcade:
+                  return AppThemeColors.arcade.hudBg;
+                case ThemeType.cyber:
+                  return AppThemeColors.cyber.hudBg;
+                case ThemeType.volcano:
+                  return AppThemeColors.volcano.hudBg;
+                case ThemeType.ice:
+                  return AppThemeColors.ice.hudBg;
+              }
+            })(),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: color, width: 2),
             boxShadow: [
