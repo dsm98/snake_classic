@@ -58,7 +58,7 @@ class _MultiplayerScreenState extends State<MultiplayerScreen> {
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: color, width: 2),
             boxShadow: [
-              BoxShadow(color: color.withOpacity(0.4), blurRadius: 40)
+              BoxShadow(color: color.withValues(alpha: 0.4), blurRadius: 40)
             ],
           ),
           child: Column(
@@ -161,16 +161,21 @@ class _MultiplayerScreenState extends State<MultiplayerScreen> {
     final dx = details.velocity.pixelsPerSecond.dx;
     final dy = details.velocity.pixelsPerSecond.dy;
 
+    // P2 area is RotatedBox(quarterTurns:2) — both axes are flipped for P2.
+    // Physical left swipe → dx < 0 on screen → Direction.left for P2.
+    // Physical up swipe   → dy < 0 on screen → Direction.up for P2.
     if (dx.abs() > dy.abs()) {
       if (dx > threshold) {
-        _engine.changeDirection2(Direction.left); // opposite
-      } else if (dx < -threshold)
-        _engine.changeDirection2(Direction.right); // opposite
+        _engine.changeDirection2(Direction.right);
+      } else if (dx < -threshold) {
+        _engine.changeDirection2(Direction.left);
+      }
     } else {
       if (dy > threshold) {
-        _engine.changeDirection2(Direction
-            .up); // swipe down physically means moving up the screen, which is "up" relative to P2 looking from top.
-      } else if (dy < -threshold) _engine.changeDirection2(Direction.down);
+        _engine.changeDirection2(Direction.down);
+      } else if (dy < -threshold) {
+        _engine.changeDirection2(Direction.up);
+      }
     }
   }
 
@@ -207,99 +212,108 @@ class _MultiplayerScreenState extends State<MultiplayerScreen> {
     return Scaffold(
       backgroundColor: colors.background,
       body: SafeArea(
-        child: Column(
+        child: Stack(
           children: [
-            // P2 Control Area (Top half)
-            Expanded(
-              child: GestureDetector(
-                onPanEnd: _handleSwipe2,
-                behavior: HitTestBehavior.opaque,
-                child: RotatedBox(
-                  quarterTurns: 2,
-                  child: Container(
-                    width: double.infinity,
-                    color: Colors.transparent,
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        ListenableBuilder(
-                          listenable: _engine,
-                          builder: (c, _) => Text(
-                            'SCORE: ${_engine.score2}',
-                            style: const TextStyle(
-                              fontFamily: 'Orbitron',
-                              color: Color(0xFFFF3366),
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
+            Column(
+              children: [
+                // P2 Control Area (Top half)
+                Expanded(
+                  child: GestureDetector(
+                    onPanEnd: _handleSwipe2,
+                    behavior: HitTestBehavior.opaque,
+                    child: RotatedBox(
+                      quarterTurns: 2,
+                      child: Container(
+                        width: double.infinity,
+                        color: Colors.transparent,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            ListenableBuilder(
+                              listenable: _engine,
+                              builder: (c, _) => Text(
+                                'SCORE: ${_engine.score2}',
+                                style: const TextStyle(
+                                  fontFamily: 'Orbitron',
+                                  color: Color(0xFFFF3366),
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                             ),
-                          ),
+                            const SizedBox(height: 10),
+                            const Text('READY',
+                                style: TextStyle(
+                                    color: Colors.white24, letterSpacing: 5)),
+                            const SizedBox(height: 20),
+                          ],
                         ),
-                        const SizedBox(height: 10),
-                        const Text('READY',
-                            style: TextStyle(
-                                color: Colors.white24, letterSpacing: 5)),
-                        const SizedBox(height: 20),
-                      ],
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ),
 
-            // Game Board Center
-            Container(
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.white24, width: 4),
-                boxShadow: const [
-                  BoxShadow(color: Colors.black54, blurRadius: 20)
-                ],
-              ),
-              child: AspectRatio(
-                aspectRatio: 20 / 28,
-                child: MultiplayerBoard(engine: _engine),
-              ),
-            ),
+                // Game Board Center
+                AspectRatio(
+                  aspectRatio: 20 / 28,
+                  child: MultiplayerBoard(engine: _engine),
+                ),
 
-            // P1 Control Area (Bottom half)
-            Expanded(
-              child: GestureDetector(
-                onPanEnd: _handleSwipe1,
-                behavior: HitTestBehavior.opaque,
-                child: Container(
-                  width: double.infinity,
-                  color: Colors.transparent,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: 20),
-                      if (!_started)
-                        const Text('SWIPE TO START',
-                            style: TextStyle(
-                                color: Colors.white,
+                // P1 Control Area (Bottom half)
+                Expanded(
+                  child: GestureDetector(
+                    onPanEnd: _handleSwipe1,
+                    behavior: HitTestBehavior.opaque,
+                    child: Container(
+                      width: double.infinity,
+                      color: Colors.transparent,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 20),
+                          if (!_started)
+                            const Text('SWIPE TO START',
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontFamily: 'Orbitron',
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 2))
+                          else
+                            const Text('PLAYING',
+                                style: TextStyle(
+                                    color: Colors.white24, letterSpacing: 5)),
+                          const SizedBox(height: 10),
+                          ListenableBuilder(
+                            listenable: _engine,
+                            builder: (c, _) => Text(
+                              'SCORE: ${_engine.score1}',
+                              style: const TextStyle(
                                 fontFamily: 'Orbitron',
-                                fontSize: 18,
+                                color: Color(0xFF00E5FF),
+                                fontSize: 16,
                                 fontWeight: FontWeight.bold,
-                                letterSpacing: 2))
-                      else
-                        const Text('PLAYING',
-                            style: TextStyle(
-                                color: Colors.white24, letterSpacing: 5)),
-                      const SizedBox(height: 10),
-                      ListenableBuilder(
-                        listenable: _engine,
-                        builder: (c, _) => Text(
-                          'SCORE: ${_engine.score1}',
-                          style: const TextStyle(
-                            fontFamily: 'Orbitron',
-                            color: Color(0xFF00E5FF),
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
+                              ),
+                            ),
                           ),
-                        ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
                 ),
+              ],
+            ),
+            // Back Button
+            Positioned(
+              top: 10,
+              left: 10,
+              child: IconButton(
+                icon: const Icon(Icons.close_rounded,
+                    color: Colors.white54, size: 28),
+                onPressed: () {
+                  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+                  Navigator.pop(context);
+                },
               ),
             ),
           ],

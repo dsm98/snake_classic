@@ -13,7 +13,8 @@ import '../widgets/ui/dynamic_background.dart';
 
 class ShopScreen extends StatefulWidget {
   final ThemeType themeType;
-  const ShopScreen({super.key, required this.themeType});
+  final bool isEmbedded;
+  const ShopScreen({super.key, required this.themeType, this.isEmbedded = false});
 
   @override
   State<ShopScreen> createState() => _ShopScreenState();
@@ -58,18 +59,98 @@ class _ShopScreenState extends State<ShopScreen>
   Widget build(BuildContext context) {
     final userProvider = context.watch<UserProvider>();
     final coins = userProvider.coins;
-    final gems = userProvider.safariGems;
+    final gems = userProvider.snakeSouls;
+
+    final bodyContent = Column(
+      children: [
+        if (widget.isEmbedded)
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+            color: colors.hudBg.withValues(alpha: 0.4),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  '🛒 SHOP',
+                  style: TextStyle(
+                    fontFamily: AppTypography.modernFont,
+                    fontSize: 16,
+                    color: colors.text,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Row(
+                  children: [
+                    Row(children: [
+                      const Text('💰', style: TextStyle(fontSize: 12)),
+                      const SizedBox(width: 4),
+                      Text('$coins',
+                          style: const TextStyle(
+                              fontFamily: AppTypography.modernFont,
+                              fontSize: 11,
+                              color: Colors.amber,
+                              fontWeight: FontWeight.bold)),
+                    ]),
+                    const SizedBox(width: 16),
+                    Row(children: [
+                      const Text('💎', style: TextStyle(fontSize: 12)),
+                      const SizedBox(width: 4),
+                      Text('$gems',
+                          style: const TextStyle(
+                              fontFamily: AppTypography.modernFont,
+                              fontSize: 11,
+                              color: Colors.cyanAccent,
+                              fontWeight: FontWeight.bold)),
+                    ]),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        TabBar(
+          controller: _tabController,
+          labelColor: colors.accent,
+          unselectedLabelColor: colors.text.withValues(alpha: 0.5),
+          indicatorColor: colors.accent,
+          dividerColor: Colors.transparent,
+          tabs: const [
+            Tab(text: '🐍 Skins'),
+            Tab(text: '🎒 Gear'),
+            Tab(text: '💎 Relics'),
+          ],
+        ),
+        Expanded(
+          child: TabBarView(
+            controller: _tabController,
+            children: [
+              _SkinsTab(
+                  colors: colors,
+                  onGacha: () => _showGachaDialog(context, userProvider)),
+              _GearTab(colors: colors),
+              _RelicsTab(colors: colors),
+            ],
+          ),
+        ),
+      ],
+    );
+
+    if (widget.isEmbedded) {
+      return bodyContent;
+    }
 
     return Scaffold(
       backgroundColor: colors.background,
       appBar: AppBar(
-        backgroundColor: colors.hudBg.withOpacity(0.7),
+        backgroundColor: colors.hudBg.withValues(alpha: 0.7),
         elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new_rounded,
-              color: colors.text, size: 20),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
+        automaticallyImplyLeading: !widget.isEmbedded,
+        leading: widget.isEmbedded
+            ? null
+            : IconButton(
+                icon: Icon(Icons.arrow_back_ios_new_rounded,
+                    color: colors.text, size: 20),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
         title: Text(
           '🛒 SHOP',
           style: TextStyle(
@@ -110,31 +191,11 @@ class _ShopScreenState extends State<ShopScreen>
             ),
           ),
         ],
-        bottom: TabBar(
-          controller: _tabController,
-          labelColor: colors.accent,
-          unselectedLabelColor: colors.text.withOpacity(0.5),
-          indicatorColor: colors.accent,
-          tabs: const [
-            Tab(text: '🐍 Skins'),
-            Tab(text: '🎒 Gear'),
-            Tab(text: '💎 Relics'),
-          ],
-        ),
       ),
       body: DynamicBackground(
         themeType: widget.themeType,
         child: SafeArea(
-          child: TabBarView(
-            controller: _tabController,
-            children: [
-              _SkinsTab(
-                  colors: colors,
-                  onGacha: () => _showGachaDialog(context, userProvider)),
-              _GearTab(colors: colors),
-              _RelicsTab(colors: colors),
-            ],
-          ),
+          child: bodyContent,
         ),
       ),
     );
@@ -190,11 +251,11 @@ class _ShopScreenState extends State<ShopScreen>
                                     padding: const EdgeInsets.all(20),
                                     decoration: BoxDecoration(
                                         shape: BoxShape.circle,
-                                        color: Colors.amber.withOpacity(0.1),
+                                        color: Colors.amber.withValues(alpha: 0.1),
                                         boxShadow: [
                                           BoxShadow(
                                               color: Colors.amber
-                                                  .withOpacity(0.3 * value),
+                                                  .withValues(alpha: 0.3 * value),
                                               blurRadius: 20 * value,
                                               spreadRadius: 5 * value)
                                         ]),
@@ -213,7 +274,7 @@ class _ShopScreenState extends State<ShopScreen>
                                       style: TextStyle(
                                           fontFamily: AppTypography.modernFont,
                                           fontSize: 10,
-                                          color: colors.text.withOpacity(0.5))),
+                                          color: colors.text.withValues(alpha: 0.5))),
                                 ]),
                               );
                             },
@@ -229,7 +290,7 @@ class _ShopScreenState extends State<ShopScreen>
                           style: TextStyle(
                             fontFamily: AppTypography.modernFont,
                             fontSize: 10,
-                            color: colors.text.withOpacity(0.7),
+                            color: colors.text.withValues(alpha: 0.7),
                             height: 1.5,
                           ),
                         ),
@@ -240,7 +301,7 @@ class _ShopScreenState extends State<ShopScreen>
                           style: TextStyle(
                             fontFamily: AppTypography.modernFont,
                             fontSize: 9,
-                            color: colors.text.withOpacity(0.5),
+                            color: colors.text.withValues(alpha: 0.5),
                           ),
                         ),
                       ],
@@ -323,7 +384,7 @@ class _SkinsTab extends StatelessWidget {
                   style: TextStyle(
                     fontFamily: AppTypography.modernFont,
                     fontSize: 11,
-                    color: colors.text.withOpacity(0.6),
+                    color: colors.text.withValues(alpha: 0.6),
                     letterSpacing: 2,
                   ),
                 ),
@@ -405,7 +466,7 @@ class _GearTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final userProvider = context.watch<UserProvider>();
-    final gems = userProvider.safariGems;
+    final gems = userProvider.snakeSouls;
 
     return ListView(
       padding: const EdgeInsets.all(20),
@@ -413,9 +474,9 @@ class _GearTab extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: Colors.cyan.withOpacity(0.08),
+            color: Colors.cyan.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: Colors.cyanAccent.withOpacity(0.3)),
+            border: Border.all(color: Colors.cyanAccent.withValues(alpha: 0.3)),
           ),
           child: Row(
             children: [
@@ -425,7 +486,7 @@ class _GearTab extends StatelessWidget {
                 child: Text(
                   'Expedition Gear is consumed on use. Equip before a Safari run from the Loadout screen.',
                   style: TextStyle(
-                      color: colors.text.withOpacity(0.7), fontSize: 12),
+                      color: colors.text.withValues(alpha: 0.7), fontSize: 12),
                 ),
               ),
             ],
@@ -441,7 +502,7 @@ class _GearTab extends StatelessWidget {
             decoration: BoxDecoration(
               color: const Color(0xFF141F14),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.green.withOpacity(0.25)),
+              border: Border.all(color: Colors.green.withValues(alpha: 0.25)),
             ),
             child: Row(
               children: [
@@ -496,7 +557,7 @@ class _GearTab extends StatelessWidget {
                         horizontal: 14, vertical: 10),
                     decoration: BoxDecoration(
                       color: canAfford
-                          ? Colors.cyanAccent.withOpacity(0.15)
+                          ? Colors.cyanAccent.withValues(alpha: 0.15)
                           : Colors.white10,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
@@ -596,9 +657,9 @@ class _RelicsTab extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: Colors.purple.withOpacity(0.08),
+            color: Colors.purple.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: Colors.purple.withOpacity(0.3)),
+            border: Border.all(color: Colors.purple.withValues(alpha: 0.3)),
           ),
           child: Row(
             children: [
@@ -608,7 +669,7 @@ class _RelicsTab extends StatelessWidget {
                 child: Text(
                   'Relics grant passive bonuses to every run. Own one at a time — only the latest purchased applies.',
                   style: TextStyle(
-                      color: colors.text.withOpacity(0.7), fontSize: 12),
+                      color: colors.text.withValues(alpha: 0.7), fontSize: 12),
                 ),
               ),
             ],
@@ -623,11 +684,11 @@ class _RelicsTab extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: owned
-                  ? Colors.purple.withOpacity(0.12)
+                  ? Colors.purple.withValues(alpha: 0.12)
                   : const Color(0xFF141418),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: owned ? Colors.purple.withOpacity(0.6) : Colors.white24,
+                color: owned ? Colors.purple.withValues(alpha: 0.6) : Colors.white24,
               ),
             ),
             child: Row(
@@ -683,7 +744,7 @@ class _RelicsTab extends StatelessWidget {
                           horizontal: 14, vertical: 10),
                       decoration: BoxDecoration(
                         color: canAfford
-                            ? Colors.amber.withOpacity(0.15)
+                            ? Colors.amber.withValues(alpha: 0.15)
                             : Colors.white10,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
@@ -726,15 +787,15 @@ class _ShopHero extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            colors.buttonBorder.withOpacity(0.25),
-            colors.accent.withOpacity(0.12),
-            colors.hudBg.withOpacity(0.65),
+            colors.buttonBorder.withValues(alpha: 0.25),
+            colors.accent.withValues(alpha: 0.12),
+            colors.hudBg.withValues(alpha: 0.65),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: colors.buttonBorder.withOpacity(0.3)),
+        border: Border.all(color: colors.buttonBorder.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
@@ -743,8 +804,8 @@ class _ShopHero extends StatelessWidget {
             height: 44,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: colors.hudBg.withOpacity(0.7),
-              border: Border.all(color: colors.buttonBorder.withOpacity(0.35)),
+              color: colors.hudBg.withValues(alpha: 0.7),
+              border: Border.all(color: colors.buttonBorder.withValues(alpha: 0.35)),
             ),
             child: const Center(
               child: Text('✨', style: TextStyle(fontSize: 24)),
@@ -771,7 +832,7 @@ class _ShopHero extends StatelessWidget {
                   style: TextStyle(
                     fontFamily: AppTypography.modernFont,
                     fontSize: 9,
-                    color: colors.text.withOpacity(0.72),
+                    color: colors.text.withValues(alpha: 0.72),
                   ),
                 ),
               ],
@@ -808,21 +869,21 @@ class _SkinCard extends StatelessWidget {
             duration: const Duration(milliseconds: 300),
             decoration: BoxDecoration(
               color: isEquipped
-                  ? colors.buttonBorder.withOpacity(0.15)
-                  : colors.hudBg.withOpacity(0.5),
+                  ? colors.buttonBorder.withValues(alpha: 0.15)
+                  : colors.hudBg.withValues(alpha: 0.5),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
                 color: isEquipped
                     ? colors.buttonBorder
                     : (isUnlocked
-                        ? colors.buttonBorder.withOpacity(0.3)
-                        : colors.buttonBorder.withOpacity(0.1)),
+                        ? colors.buttonBorder.withValues(alpha: 0.3)
+                        : colors.buttonBorder.withValues(alpha: 0.1)),
                 width: isEquipped ? 2 : 1,
               ),
               boxShadow: isEquipped
                   ? [
                       BoxShadow(
-                          color: colors.buttonBorder.withOpacity(0.2),
+                          color: colors.buttonBorder.withValues(alpha: 0.2),
                           blurRadius: 15)
                     ]
                   : [],
@@ -836,7 +897,7 @@ class _SkinCard extends StatelessWidget {
                       shape: BoxShape.circle,
                       color: colors.background,
                       border: Border.all(
-                          color: colors.buttonBorder.withOpacity(0.3))),
+                          color: colors.buttonBorder.withValues(alpha: 0.3))),
                   child: Center(
                       child: Text(
                           skin == SnakeSkin.ghost
@@ -890,7 +951,7 @@ class _SkinCard extends StatelessWidget {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                        color: colors.buttonBorder.withOpacity(0.2),
+                        color: colors.buttonBorder.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(10)),
                     child: Text('USE',
                         style: TextStyle(
@@ -927,8 +988,8 @@ class _SkinCard extends StatelessWidget {
                                   (availableCoins / skin.price).clamp(0.0, 1.0),
                               minHeight: 4,
                               backgroundColor:
-                                  colors.background.withOpacity(0.5),
-                              color: Colors.amber.withOpacity(0.7),
+                                  colors.background.withValues(alpha: 0.5),
+                              color: Colors.amber.withValues(alpha: 0.7),
                             ),
                           ),
                           const SizedBox(height: 3),
@@ -941,7 +1002,7 @@ class _SkinCard extends StatelessWidget {
                               fontSize: 7,
                               color: availableCoins >= skin.price
                                   ? Colors.greenAccent
-                                  : colors.text.withOpacity(0.4),
+                                  : colors.text.withValues(alpha: 0.4),
                             ),
                           ),
                         ],

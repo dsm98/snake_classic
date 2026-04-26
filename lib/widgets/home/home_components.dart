@@ -244,17 +244,17 @@ class HeroTitle extends StatelessWidget {
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    colors.buttonBorder.withOpacity(0.15 + pulseController.value * 0.1),
-                    colors.buttonBorder.withOpacity(0.0),
+                    colors.buttonBorder.withValues(alpha: 0.15 + pulseController.value * 0.1),
+                    colors.buttonBorder.withValues(alpha: 0.0),
                   ],
                 ),
                 border: Border.all(
-                  color: colors.buttonBorder.withOpacity(0.2 + pulseController.value * 0.2),
+                  color: colors.buttonBorder.withValues(alpha: 0.2 + pulseController.value * 0.2),
                   width: 1.5,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: colors.buttonBorder.withOpacity(0.1 + pulseController.value * 0.15),
+                    color: colors.buttonBorder.withValues(alpha: 0.1 + pulseController.value * 0.15),
                     blurRadius: 30,
                     spreadRadius: 2,
                   ),
@@ -355,7 +355,7 @@ class _PlayButtonState extends State<PlayButton> {
                     ? []
                     : [
                         BoxShadow(
-                          color: widget.colors.buttonBorder.withOpacity(0.35 + widget.pulseController.value * 0.2),
+                          color: widget.colors.buttonBorder.withValues(alpha: 0.35 + widget.pulseController.value * 0.2),
                           blurRadius: 24 + widget.pulseController.value * 12,
                           offset: const Offset(0, 6),
                         ),
@@ -417,9 +417,9 @@ class _ShimmerPainter extends CustomPainter {
       begin: Alignment(x / size.width, 0),
       end: Alignment((x + 80) / size.width, 0),
       colors: [
-        Colors.white.withOpacity(0),
-        Colors.white.withOpacity(0.12),
-        Colors.white.withOpacity(0),
+        Colors.white.withValues(alpha: 0),
+        Colors.white.withValues(alpha: 0.12),
+        Colors.white.withValues(alpha: 0),
       ],
     );
     canvas.drawRect(rect, Paint()..shader = gradient.createShader(rect));

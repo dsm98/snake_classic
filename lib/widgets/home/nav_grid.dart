@@ -179,7 +179,7 @@ class _NavTileState extends State<_NavTile> {
                   height: 36,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: widget.item.color.withOpacity(0.12),
+                    color: widget.item.color.withValues(alpha: 0.12),
                   ),
                   child: Center(
                     child: Text(widget.item.icon,
@@ -192,7 +192,7 @@ class _NavTileState extends State<_NavTile> {
                   style: TextStyle(
                     fontFamily: AppTypography.modernFont,
                     fontSize: 10,
-                    color: widget.colors.text.withOpacity(0.85),
+                    color: widget.colors.text.withValues(alpha: 0.85),
                     fontWeight: FontWeight.w700,
                     letterSpacing: 1,
                   ),

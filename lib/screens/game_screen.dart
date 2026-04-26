@@ -11,7 +11,7 @@ import '../core/enums/game_mode.dart';
 import '../core/enums/theme_type.dart';
 import '../core/models/high_score.dart';
 import '../providers/settings_provider.dart';
-import 'grimoire_screen.dart';
+
 import '../services/ghost_racing_service.dart';
 import '../core/models/campaign_level.dart';
 import '../core/models/daily_event.dart';
@@ -303,7 +303,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     showDialog(
       context: context,
       barrierDismissible: false,
-      barrierColor: Colors.black.withOpacity(0.7),
+      barrierColor: Colors.black.withValues(alpha: 0.7),
       builder: (c) {
         return Dialog(
           backgroundColor: Colors.transparent,
@@ -313,10 +313,11 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               color: colors.hudBg,
               borderRadius: BorderRadius.circular(28),
               border: Border.all(
-                  color: colors.buttonBorder.withOpacity(0.4), width: 1.5),
+                  color: colors.buttonBorder.withValues(alpha: 0.4),
+                  width: 1.5),
               boxShadow: [
                 BoxShadow(
-                  color: colors.buttonBorder.withOpacity(0.2),
+                  color: colors.buttonBorder.withValues(alpha: 0.2),
                   blurRadius: 40,
                   spreadRadius: 2,
                 ),
@@ -344,7 +345,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                   style: TextStyle(
                     fontFamily: 'Orbitron',
                     fontSize: 11,
-                    color: colors.text.withOpacity(0.5),
+                    color: colors.text.withValues(alpha: 0.5),
                   ),
                 ),
                 const SizedBox(height: 24),
@@ -688,8 +689,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                         listenable: _engine,
                         builder: (context, child) {
                           final timeCritical =
-                              (widget.mode == GameMode.timeAttack ||
-                                      widget.mode == GameMode.blitz) &&
+                              widget.mode == GameMode.timeAttack &&
                                   _engine.timeRemainingSeconds <= 10 &&
                                   !_engine.isGameOver;
 
@@ -714,7 +714,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                               },
                               child: Container(
                                 color: flashRed
-                                    ? Colors.red.withOpacity(0.12)
+                                    ? Colors.red.withValues(alpha: 0.12)
                                     : colors.grid,
                                 child: SwipeController(
                                   onDirectionChanged: _onDirectionChanged,
@@ -739,6 +739,10 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                 ),
                 if (widget.tutorialMode) _buildTutorialOverlay(),
                 if (_engine.isCampfirePhase) _buildCampfireOverlay(),
+                ListenableBuilder(
+                  listenable: _engine,
+                  builder: (context, _) => _buildEventBanner(),
+                ),
               ],
             );
           },
@@ -747,10 +751,58 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     );
   }
 
+  Widget _buildEventBanner() {
+    final event = _engine.activeEvent;
+    if (event == BoardEvent.none) return const SizedBox.shrink();
+
+    final (String label, Color color, String icon) = switch (event) {
+      BoardEvent.lightsOut => ('LIGHTS OUT', const Color(0xFF7C4DFF), '💡'),
+      BoardEvent.iceBoard => ('ICE BOARD', const Color(0xFF00BCD4), '🧊'),
+      BoardEvent.goldenRush => ('GOLDEN RUSH', const Color(0xFFFFAB00), '🌟'),
+      BoardEvent.invertControls => (
+          'MIRROR MIND',
+          const Color(0xFFEC407A),
+          '🔄'
+        ),
+      BoardEvent.scoreBoost => ('SCORE STORM', const Color(0xFF69F0AE), '💎'),
+      BoardEvent.none => ('', Colors.transparent, ''),
+    };
+
+    return Positioned(
+      top: 56,
+      left: 0,
+      right: 0,
+      child: IgnorePointer(
+        child: Center(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.85),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(color: color.withValues(alpha: 0.5), blurRadius: 12),
+              ],
+            ),
+            child: Text(
+              '$icon  $label',
+              style: const TextStyle(
+                fontFamily: 'Orbitron',
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+                letterSpacing: 1.5,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildCampfireOverlay() {
     return Positioned.fill(
       child: Container(
-        color: Colors.black.withOpacity(0.85),
+        color: Colors.black.withValues(alpha: 0.85),
         child: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -775,15 +827,21 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               ),
               Text(
                 'Coins Gathered: 🪙 ${_engine.coinsEarnedSession}',
-                style: const TextStyle(fontFamily: 'Orbitron', fontSize: 18, color: Colors.amber),
+                style: const TextStyle(
+                    fontFamily: 'Orbitron', fontSize: 18, color: Colors.amber),
               ),
               const SizedBox(height: 32),
               const Text(
                 'THE MERCHANT',
-                style: TextStyle(fontFamily: 'Orbitron', fontSize: 20, color: Colors.purpleAccent, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                    fontFamily: 'Orbitron',
+                    fontSize: 20,
+                    color: Colors.purpleAccent,
+                    fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 16),
-              _buildMerchantItem('Ghost Shell (Extra Life: ${_engine.wallHitsLeft})', 50, () {
+              _buildMerchantItem(
+                  'Ghost Shell (Extra Life: ${_engine.wallHitsLeft})', 50, () {
                 if (_engine.coinsEarnedSession >= 50) {
                   setState(() {
                     _engine.coinsEarnedSession -= 50;
@@ -792,10 +850,13 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                 }
               }),
               _buildMerchantItem(
-                _engine.hasCrocBane ? 'Croc Bane (Owned)' : 'Croc Bane (Stun Immunity)',
+                _engine.hasCrocBane
+                    ? 'Croc Bane (Owned)'
+                    : 'Croc Bane (Stun Immunity)',
                 100,
                 () {
-                  if (_engine.coinsEarnedSession >= 100 && !_engine.hasCrocBane) {
+                  if (_engine.coinsEarnedSession >= 100 &&
+                      !_engine.hasCrocBane) {
                     setState(() {
                       _engine.coinsEarnedSession -= 100;
                       _engine.hasCrocBane = true;
@@ -823,7 +884,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: colors.accent,
                   foregroundColor: colors.background,
-                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
                 ),
                 onPressed: () {
                   setState(() {
@@ -832,7 +894,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                 },
                 child: Text(
                   'DESCEND TO FLOOR ${_engine.currentFloor + 1}',
-                  style: const TextStyle(fontFamily: 'Orbitron', fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                      fontFamily: 'Orbitron', fontWeight: FontWeight.bold),
                 ),
               ),
             ],
@@ -842,21 +905,26 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildMerchantItem(String name, int cost, VoidCallback onBuy, {bool disabled = false}) {
+  Widget _buildMerchantItem(String name, int cost, VoidCallback onBuy,
+      {bool disabled = false}) {
     final canAfford = _engine.coinsEarnedSession >= cost;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(name, style: const TextStyle(fontFamily: 'Orbitron', color: Colors.white70)),
+          Text(name,
+              style: const TextStyle(
+                  fontFamily: 'Orbitron', color: Colors.white70)),
           const SizedBox(width: 16),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: disabled || !canAfford ? Colors.grey[800] : Colors.green[700],
+              backgroundColor:
+                  disabled || !canAfford ? Colors.grey[800] : Colors.green[700],
             ),
             onPressed: disabled || !canAfford ? null : onBuy,
-            child: Text('🪙 $cost', style: const TextStyle(fontFamily: 'Orbitron')),
+            child: Text('🪙 $cost',
+                style: const TextStyle(fontFamily: 'Orbitron')),
           ),
         ],
       ),
@@ -875,8 +943,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
           if (widget.themeType != ThemeType.retro)
             BoxShadow(
               color: widget.themeType == ThemeType.neon
-                  ? colors.buttonBorder.withOpacity(0.4)
-                  : Colors.black.withOpacity(0.4),
+                  ? colors.buttonBorder.withValues(alpha: 0.4)
+                  : Colors.black.withValues(alpha: 0.4),
               blurRadius: widget.themeType == ThemeType.neon ? 24 : 12,
               spreadRadius: widget.themeType == ThemeType.neon ? 3 : 2,
             ),
@@ -962,9 +1030,9 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: colors.hudBg.withOpacity(0.9),
+          color: colors.hudBg.withValues(alpha: 0.9),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: colors.buttonBorder.withOpacity(0.4)),
+          border: Border.all(color: colors.buttonBorder.withValues(alpha: 0.4)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1012,8 +1080,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            Colors.red.withOpacity(0.8),
-            Colors.deepOrange.withOpacity(0.8),
+            Colors.red.withValues(alpha: 0.8),
+            Colors.deepOrange.withValues(alpha: 0.8),
           ],
         ),
       ),
@@ -1068,17 +1136,17 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                   shape: BoxShape.circle,
                   gradient: RadialGradient(
                     colors: [
-                      colors.hudBg.withOpacity(0.95),
-                      colors.background.withOpacity(0.7),
+                      colors.hudBg.withValues(alpha: 0.95),
+                      colors.background.withValues(alpha: 0.7),
                     ],
                   ),
                   border: Border.all(
-                    color: colors.buttonBorder.withOpacity(0.5),
+                    color: colors.buttonBorder.withValues(alpha: 0.5),
                     width: 2,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: colors.buttonBorder.withOpacity(0.3),
+                      color: colors.buttonBorder.withValues(alpha: 0.3),
                       blurRadius: 30,
                     ),
                   ],
@@ -1095,7 +1163,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                         color: _countdown == 0 ? colors.accent : colors.text,
                         shadows: [
                           Shadow(
-                            color: colors.buttonBorder.withOpacity(0.5),
+                            color: colors.buttonBorder.withValues(alpha: 0.5),
                             blurRadius: 20,
                           ),
                         ],
@@ -1111,14 +1179,14 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         if (_engine.isPaused)
           Positioned.fill(
             child: Container(
-              color: Colors.black.withOpacity(0.4),
+              color: Colors.black.withValues(alpha: 0.4),
               child: Center(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
                       Icons.pause_circle_filled_rounded,
-                      color: colors.text.withOpacity(0.9),
+                      color: colors.text.withValues(alpha: 0.9),
                       size: 40,
                     ),
                     const SizedBox(height: 8),
@@ -1130,7 +1198,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                         color: colors.text,
                         shadows: [
                           Shadow(
-                              color: colors.buttonBorder.withOpacity(0.4),
+                              color: colors.buttonBorder.withValues(alpha: 0.4),
                               blurRadius: 12),
                         ],
                       ),
@@ -1148,7 +1216,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     showDialog(
       context: context,
       barrierDismissible: false,
-      barrierColor: Colors.black.withOpacity(0.55),
+      barrierColor: Colors.black.withValues(alpha: 0.55),
       builder: (ctx) => Dialog(
         backgroundColor: Colors.transparent,
         child: ClipRRect(
@@ -1158,18 +1226,19 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
             child: Container(
               padding: const EdgeInsets.all(28),
               decoration: BoxDecoration(
-                color: colors.hudBg.withOpacity(0.55),
+                color: colors.hudBg.withValues(alpha: 0.55),
                 borderRadius: BorderRadius.circular(32),
                 border: Border.all(
-                    color: colors.buttonBorder.withOpacity(0.35), width: 1.5),
+                    color: colors.buttonBorder.withValues(alpha: 0.35),
+                    width: 1.5),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.35),
+                    color: Colors.black.withValues(alpha: 0.35),
                     blurRadius: 50,
                     spreadRadius: 5,
                   ),
                   BoxShadow(
-                    color: colors.buttonBorder.withOpacity(0.12),
+                    color: colors.buttonBorder.withValues(alpha: 0.12),
                     blurRadius: 30,
                     spreadRadius: 2,
                   ),
@@ -1184,10 +1253,11 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                       Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: colors.buttonBorder.withOpacity(0.18),
+                          color: colors.buttonBorder.withValues(alpha: 0.18),
                           shape: BoxShape.circle,
                           border: Border.all(
-                              color: colors.buttonBorder.withOpacity(0.3)),
+                              color:
+                                  colors.buttonBorder.withValues(alpha: 0.3)),
                         ),
                         child: Icon(Icons.pause_rounded,
                             color: colors.accent, size: 24),
@@ -1330,16 +1400,17 @@ class _PremiumDialogButtonState extends State<_PremiumDialogButton> {
               : null,
           color: widget.isPrimary
               ? null
-              : widget.colors.background.withOpacity(0.5),
+              : widget.colors.background.withValues(alpha: 0.5),
           borderRadius: BorderRadius.circular(16),
           border: widget.isPrimary
               ? null
-              : Border.all(color: widget.colors.buttonBorder.withOpacity(0.25)),
+              : Border.all(
+                  color: widget.colors.buttonBorder.withValues(alpha: 0.25)),
           boxShadow: _pressed || !widget.isPrimary
               ? []
               : [
                   BoxShadow(
-                    color: widget.colors.buttonBorder.withOpacity(0.35),
+                    color: widget.colors.buttonBorder.withValues(alpha: 0.35),
                     blurRadius: 16,
                     offset: const Offset(0, 4),
                   )
@@ -1399,7 +1470,7 @@ class _KeyboardHint extends StatelessWidget {
             'Arrow keys  or  WASD  •  P / Esc = pause',
             style: TextStyle(
               fontSize: 9,
-              color: colors.text.withOpacity(0.5),
+              color: colors.text.withValues(alpha: 0.5),
               fontFamily: 'Orbitron',
               letterSpacing: 0.5,
             ),
@@ -1422,13 +1493,13 @@ class _KeyCap extends StatelessWidget {
       height: 34,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: colors.buttonBg.withOpacity(0.7),
+        color: colors.buttonBg.withValues(alpha: 0.7),
         borderRadius: BorderRadius.circular(8),
-        border:
-            Border.all(color: colors.buttonBorder.withOpacity(0.6), width: 1.5),
+        border: Border.all(
+            color: colors.buttonBorder.withValues(alpha: 0.6), width: 1.5),
         boxShadow: [
           BoxShadow(
-            color: colors.buttonBorder.withOpacity(0.3),
+            color: colors.buttonBorder.withValues(alpha: 0.3),
             offset: const Offset(0, 3),
             blurRadius: 0,
           ),
@@ -1481,7 +1552,7 @@ class _MinimapPainter extends CustomPainter {
     // Background
     canvas.drawRRect(
       RRect.fromRectAndRadius(Offset.zero & size, Radius.circular(6)),
-      Paint()..color = Colors.black.withOpacity(0.55),
+      Paint()..color = Colors.black.withValues(alpha: 0.55),
     );
 
     // Biome rooms
@@ -1496,7 +1567,7 @@ class _MinimapPainter extends CustomPainter {
 
     // Room grid lines
     final gridPaint = Paint()
-      ..color = Colors.white.withOpacity(0.06)
+      ..color = Colors.white.withValues(alpha: 0.06)
       ..strokeWidth = 0.5;
     for (int rx = 1; rx < cols; rx++) {
       canvas.drawLine(
@@ -1527,7 +1598,7 @@ class _MinimapPainter extends CustomPainter {
           Offset(hx, hy),
           3.5,
           Paint()
-            ..color = Colors.white.withOpacity(0.9)
+            ..color = Colors.white.withValues(alpha: 0.9)
             ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2));
       canvas.drawCircle(Offset(hx, hy), 2.5, Paint()..color = Colors.white);
     }
@@ -1536,7 +1607,7 @@ class _MinimapPainter extends CustomPainter {
     canvas.drawRRect(
       RRect.fromRectAndRadius(Offset.zero & size, Radius.circular(6)),
       Paint()
-        ..color = Colors.white.withOpacity(0.2)
+        ..color = Colors.white.withValues(alpha: 0.2)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1,
     );
@@ -1545,15 +1616,15 @@ class _MinimapPainter extends CustomPainter {
   Color _biomeColor(dynamic biome) {
     switch (biome.toString()) {
       case 'BiomeType.forest':
-        return const Color(0xFF00FF00).withOpacity(0.18);
+        return const Color(0xFF00FF00).withValues(alpha: 0.18);
       case 'BiomeType.desert':
-        return const Color(0xFFFF8C00).withOpacity(0.22);
+        return const Color(0xFFFF8C00).withValues(alpha: 0.22);
       case 'BiomeType.swamp':
-        return const Color(0xFF008080).withOpacity(0.25);
+        return const Color(0xFF008080).withValues(alpha: 0.25);
       case 'BiomeType.cave':
-        return const Color(0xFF4B0082).withOpacity(0.30);
+        return const Color(0xFF4B0082).withValues(alpha: 0.30);
       case 'BiomeType.ruins':
-        return const Color(0xFF808080).withOpacity(0.22);
+        return const Color(0xFF808080).withValues(alpha: 0.22);
       default:
         return Colors.transparent;
     }

@@ -16,7 +16,6 @@ class ScreenShakeService extends ChangeNotifier {
   double _magnitude = 0;
   int _durationMs = 0;
   int _startMs = 0;
-  int _tickCount = 0;
   final Random _rng = Random();
 
   bool get isActive => _active;
@@ -29,7 +28,6 @@ class ScreenShakeService extends ChangeNotifier {
     _durationMs = durationMs;
     _startMs = DateTime.now().millisecondsSinceEpoch;
     _active = true;
-    _tickCount = 0;
     _nextTick();
   }
 
@@ -60,7 +58,6 @@ class ScreenShakeService extends ChangeNotifier {
 
     final angle = _rng.nextDouble() * 2 * pi;
     _offset = Offset(cos(angle) * mag, sin(angle) * mag);
-    _tickCount++;
 
     notifyListeners();
 

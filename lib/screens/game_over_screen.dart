@@ -19,6 +19,10 @@ import 'package:flutter/services.dart';
 import '../core/models/campaign_level.dart';
 import '../core/models/daily_event.dart';
 import '../core/models/expedition_gear.dart';
+import '../services/ad_service.dart';
+
+import 'package:provider/provider.dart';
+import '../providers/user_provider.dart';
 
 class GameOverScreen extends StatefulWidget {
   final int score;
@@ -40,7 +44,7 @@ class GameOverScreen extends StatefulWidget {
   final bool rankLeveledUp;
   final int newRankLevel;
   final int campaignStars; // 0-3, set when isCampaignWon
-  
+
   // Death Card Details
   final String? killerType;
   final int currentFloor;
@@ -82,6 +86,7 @@ class _GameOverScreenState extends State<GameOverScreen>
   final ScreenshotController _screenshotController = ScreenshotController();
   int _displayScore = 0;
   bool _isSharing = false;
+  bool _coinsDoubled = false;
 
   AppThemeColors get colors {
     switch (widget.themeType) {
@@ -102,8 +107,9 @@ class _GameOverScreenState extends State<GameOverScreen>
     }
   }
 
-  String get _fontFamily =>
-      widget.themeType == ThemeType.retro ? AppTypography.retroFont : AppTypography.modernFont;
+  String get _fontFamily => widget.themeType == ThemeType.retro
+      ? AppTypography.retroFont
+      : AppTypography.modernFont;
 
   @override
   void initState() {
@@ -259,7 +265,7 @@ class _GameOverScreenState extends State<GameOverScreen>
               height: 300,
               decoration: BoxDecoration(
                 gradient: RadialGradient(
-                  colors: [accent.withOpacity(0.28), Colors.transparent],
+                  colors: [accent.withValues(alpha: 0.28), Colors.transparent],
                   radius: 0.75,
                 ),
               ),
@@ -283,10 +289,11 @@ class _GameOverScreenState extends State<GameOverScreen>
                           child: Container(
                             padding: const EdgeInsets.all(10),
                             decoration: BoxDecoration(
-                              color: colors.hudBg.withOpacity(0.5),
+                              color: colors.hudBg.withValues(alpha: 0.5),
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
-                                  color: colors.buttonBorder.withOpacity(0.2)),
+                                  color: colors.buttonBorder
+                                      .withValues(alpha: 0.2)),
                             ),
                             child: const Text('📤',
                                 style: TextStyle(fontSize: 18)),
@@ -317,7 +324,7 @@ class _GameOverScreenState extends State<GameOverScreen>
                               fontFamily: _fontFamily,
                               fontSize: 13,
                               letterSpacing: 5,
-                              color: accent.withOpacity(0.85),
+                              color: accent.withValues(alpha: 0.85),
                             ),
                           )
                               .animate()
@@ -362,10 +369,10 @@ class _GameOverScreenState extends State<GameOverScreen>
                                     color: Colors.greenAccent.shade400,
                                     progress: storage.rankProgress,
                                     progressColor: Colors.greenAccent,
-                                    bgColor:
-                                        Colors.greenAccent.withOpacity(0.08),
-                                    borderColor:
-                                        Colors.greenAccent.withOpacity(0.25),
+                                    bgColor: Colors.greenAccent
+                                        .withValues(alpha: 0.08),
+                                    borderColor: Colors.greenAccent
+                                        .withValues(alpha: 0.25),
                                   ),
                                 ),
                               if (widget.xpEarned > 0 && widget.coinsEarned > 0)
@@ -381,8 +388,10 @@ class _GameOverScreenState extends State<GameOverScreen>
                                     color: Colors.amber,
                                     progress: null,
                                     progressColor: Colors.amber,
-                                    bgColor: Colors.amber.withOpacity(0.08),
-                                    borderColor: Colors.amber.withOpacity(0.25),
+                                    bgColor:
+                                        Colors.amber.withValues(alpha: 0.08),
+                                    borderColor:
+                                        Colors.amber.withValues(alpha: 0.25),
                                   ),
                                 ),
                             ],
@@ -433,6 +442,23 @@ class _GameOverScreenState extends State<GameOverScreen>
                                 delay: 520.ms,
                                 curve: Curves.easeOutBack),
                           ],
+
+                          const SizedBox(height: 16),
+
+                          if (widget.coinsEarned > 0 && !_coinsDoubled)
+                            _RewardedDoubleButton(
+                              coins: widget.coinsEarned,
+                              colors: colors,
+                              font: _fontFamily,
+                              onRewarded: () {
+                                context
+                                    .read<UserProvider>()
+                                    .doubleCoinsReward(widget.coinsEarned);
+                                setState(() => _coinsDoubled = true);
+                                AudioService().play(SoundEffect.powerUp);
+                              },
+                            ).animate().fadeIn(delay: 550.ms).scale(
+                                delay: 550.ms, curve: Curves.easeOutBack),
 
                           const SizedBox(height: 32),
 
@@ -545,7 +571,7 @@ class _ShareCard extends StatelessWidget {
   final ThemeType themeType;
   final AppThemeColors colors;
   final String fontFamily;
-  
+
   final String? killerType;
   final int currentFloor;
   final List<String> equippedGear;
@@ -571,11 +597,11 @@ class _ShareCard extends StatelessWidget {
     // when saved/shared regardless of current theme brightness.
     final cardBg =
         Color.lerp(colors.background, const Color(0xFF050505), 0.55)!;
-    final cardBorder = colors.buttonBorder.withOpacity(0.55);
+    final cardBorder = colors.buttonBorder.withValues(alpha: 0.55);
     final scoreGradient = isHighScore
         ? const [Color(0xFFFFD700), Color(0xFFFF6B00)]
         : [colors.accent, colors.text];
-    final labelColor = colors.text.withOpacity(0.55);
+    final labelColor = colors.text.withValues(alpha: 0.55);
 
     String themeLabel() {
       switch (themeType) {
@@ -617,7 +643,7 @@ class _ShareCard extends StatelessWidget {
         border: Border.all(color: cardBorder, width: 1.5),
         boxShadow: [
           BoxShadow(
-            color: colors.buttonBorder.withOpacity(0.3),
+            color: colors.buttonBorder.withValues(alpha: 0.3),
             blurRadius: 40,
             spreadRadius: 2,
           ),
@@ -632,8 +658,8 @@ class _ShareCard extends StatelessWidget {
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  colors.buttonBorder.withOpacity(0.25),
-                  colors.accent.withOpacity(0.12),
+                  colors.buttonBorder.withValues(alpha: 0.25),
+                  colors.accent.withValues(alpha: 0.12),
                 ],
                 begin: Alignment.centerLeft,
                 end: Alignment.centerRight,
@@ -641,7 +667,7 @@ class _ShareCard extends StatelessWidget {
               borderRadius:
                   const BorderRadius.vertical(top: Radius.circular(27)),
               border: Border(
-                bottom: BorderSide(color: cardBorder.withOpacity(0.4)),
+                bottom: BorderSide(color: cardBorder.withValues(alpha: 0.4)),
               ),
             ),
             child: Row(
@@ -655,7 +681,7 @@ class _ShareCard extends StatelessWidget {
                       fontFamily: AppTypography.modernFont,
                       fontSize: 12,
                       fontWeight: FontWeight.w800,
-                      color: colors.text.withOpacity(0.9),
+                      color: colors.text.withValues(alpha: 0.9),
                       letterSpacing: 2.5,
                     ),
                   ),
@@ -664,9 +690,10 @@ class _ShareCard extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: colors.buttonBorder.withOpacity(0.18),
+                    color: colors.buttonBorder.withValues(alpha: 0.18),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: cardBorder.withOpacity(0.5)),
+                    border:
+                        Border.all(color: cardBorder.withValues(alpha: 0.5)),
                   ),
                   child: Text(
                     themeLabel(),
@@ -694,10 +721,11 @@ class _ShareCard extends StatelessWidget {
                         const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
                     margin: const EdgeInsets.only(bottom: 10),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFFD700).withOpacity(0.15),
+                      color: const Color(0xFFFFD700).withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                          color: const Color(0xFFFFD700).withOpacity(0.5)),
+                          color:
+                              const Color(0xFFFFD700).withValues(alpha: 0.5)),
                     ),
                     child: const Row(
                       mainAxisSize: MainAxisSize.min,
@@ -752,7 +780,7 @@ class _ShareCard extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Divider(
-              color: cardBorder.withOpacity(0.4),
+              color: cardBorder.withValues(alpha: 0.4),
               height: 1,
             ),
           ),
@@ -831,7 +859,8 @@ class _ShareCard extends StatelessWidget {
           if (mode == GameMode.explore && equippedGear.isNotEmpty) ...[
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Divider(color: cardBorder.withOpacity(0.3), height: 1),
+              child:
+                  Divider(color: cardBorder.withValues(alpha: 0.3), height: 1),
             ),
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
@@ -867,7 +896,7 @@ class _ShareCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.fromLTRB(20, 10, 20, 18),
             decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.18),
+              color: Colors.black.withValues(alpha: 0.18),
               borderRadius:
                   const BorderRadius.vertical(bottom: Radius.circular(27)),
             ),
@@ -877,9 +906,10 @@ class _ShareCard extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: colors.accent.withOpacity(0.12),
+                    color: colors.accent.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: colors.accent.withOpacity(0.35)),
+                    border: Border.all(
+                        color: colors.accent.withValues(alpha: 0.35)),
                   ),
                   child: Text(
                     diffLabel(),
@@ -966,7 +996,7 @@ class _StatDivider extends StatelessWidget {
     return Container(
       width: 1,
       height: 48,
-      color: color.withOpacity(0.3),
+      color: color.withValues(alpha: 0.3),
     );
   }
 }
@@ -1025,8 +1055,8 @@ class _RewardPill extends StatelessWidget {
                       sublabel,
                       style: TextStyle(
                         fontFamily: AppTypography.modernFont,
-                        fontSize: 8,
-                        color: color.withOpacity(0.65),
+                        fontSize: 10,
+                        color: color.withValues(alpha: 0.7),
                       ),
                     ),
                   ],
@@ -1041,7 +1071,7 @@ class _RewardPill extends StatelessWidget {
               child: LinearProgressIndicator(
                 value: progress,
                 minHeight: 4,
-                backgroundColor: progressColor.withOpacity(0.12),
+                backgroundColor: progressColor.withValues(alpha: 0.12),
                 valueColor: AlwaysStoppedAnimation<Color>(progressColor),
               ),
             ),
@@ -1109,19 +1139,19 @@ class _ActionButtonState extends State<_ActionButton> {
                 : null,
             color: widget.isPrimary
                 ? null
-                : widget.colors.buttonBg.withOpacity(0.75),
+                : widget.colors.buttonBg.withValues(alpha: 0.75),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
               color: widget.isPrimary
                   ? Colors.transparent
-                  : widget.colors.buttonBorder.withOpacity(0.55),
+                  : widget.colors.buttonBorder.withValues(alpha: 0.55),
               width: 1.5,
             ),
             boxShadow: _pressed || !widget.isPrimary
                 ? []
                 : [
                     BoxShadow(
-                      color: widget.colors.buttonBorder.withOpacity(0.35),
+                      color: widget.colors.buttonBorder.withValues(alpha: 0.35),
                       blurRadius: 20,
                       offset: const Offset(0, 6),
                     ),
@@ -1151,7 +1181,7 @@ class _ActionButtonState extends State<_ActionButton> {
             .shimmer(
               duration: 2400.ms,
               delay: 800.ms,
-              color: Colors.white.withOpacity(0.15),
+              color: Colors.white.withValues(alpha: 0.15),
             ),
       ),
     );
@@ -1205,12 +1235,13 @@ class _RankUpBanner extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            colors.food.withOpacity(0.25),
-            colors.snakeHead.withOpacity(0.15),
+            colors.food.withValues(alpha: 0.25),
+            colors.snakeHead.withValues(alpha: 0.15),
           ],
         ),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: colors.food.withOpacity(0.6), width: 1.5),
+        border:
+            Border.all(color: colors.food.withValues(alpha: 0.6), width: 1.5),
       ),
       child: Row(
         children: [
@@ -1226,7 +1257,7 @@ class _RankUpBanner extends StatelessWidget {
                     fontFamily: fontFamily,
                     fontSize: 11,
                     letterSpacing: 3,
-                    color: colors.food.withOpacity(0.8),
+                    color: colors.food.withValues(alpha: 0.8),
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -1262,7 +1293,7 @@ class _AchievementToast extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.amber, width: 2),
         boxShadow: [
-          BoxShadow(color: Colors.amber.withOpacity(0.3), blurRadius: 16)
+          BoxShadow(color: Colors.amber.withValues(alpha: 0.3), blurRadius: 16)
         ],
       ),
       child: Row(
@@ -1347,16 +1378,16 @@ class _SafariSummaryCard extends StatelessWidget {
     final counts = s.safariCounts;
     final totalPrey = counts.values.fold(0, (a, b) => a + b);
     final bestStreak = s.safariBestStreak;
-    final gems = s.safariGems;
+    final gems = s.snakeSouls;
     final biomes = s.safariVisitedBiomes.length;
     final rooms = s.safariRoomsVisited;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: Colors.green.withOpacity(0.08),
+        color: Colors.green.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.green.withOpacity(0.3)),
+        border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1439,9 +1470,9 @@ class _CampaignStarCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: Colors.amber.withOpacity(0.07),
+        color: Colors.amber.withValues(alpha: 0.07),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.amber.withOpacity(0.3)),
+        border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
       ),
       child: Column(
         children: [
@@ -1465,7 +1496,8 @@ class _CampaignStarCard extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 6),
                 child: Icon(
                   lit ? Icons.star_rounded : Icons.star_outline_rounded,
-                  color: lit ? Colors.amber : colors.text.withOpacity(0.2),
+                  color:
+                      lit ? Colors.amber : colors.text.withValues(alpha: 0.2),
                   size: 44,
                 ).animate(delay: Duration(milliseconds: 200 + i * 150)).scale(
                       begin: const Offset(0.4, 0.4),
@@ -1489,11 +1521,11 @@ class _CampaignStarCard extends StatelessWidget {
             style: TextStyle(
               fontFamily: fontFamily,
               fontSize: 10,
-              color: colors.text.withOpacity(0.7),
+              color: colors.text.withValues(alpha: 0.7),
             ),
           ),
           const SizedBox(height: 10),
-          Divider(color: colors.text.withOpacity(0.1), height: 1),
+          Divider(color: colors.text.withValues(alpha: 0.1), height: 1),
           const SizedBox(height: 8),
           // Score thresholds
           Row(
@@ -1552,7 +1584,8 @@ class _GhostCodeShareButton extends StatelessWidget {
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('Ghost Code copied to clipboard! Share it with friends.'),
+                content: Text(
+                    'Ghost Code copied to clipboard! Share it with friends.'),
               ),
             );
           }
@@ -1565,5 +1598,138 @@ class _GhostCodeShareButton extends StatelessWidget {
         }
       },
     );
+  }
+}
+
+class _RewardedDoubleButton extends StatefulWidget {
+  final int coins;
+  final AppThemeColors colors;
+  final String font;
+  final VoidCallback onRewarded;
+
+  const _RewardedDoubleButton({
+    required this.coins,
+    required this.colors,
+    required this.font,
+    required this.onRewarded,
+  });
+
+  @override
+  State<_RewardedDoubleButton> createState() => _RewardedDoubleButtonState();
+}
+
+class _RewardedDoubleButtonState extends State<_RewardedDoubleButton> {
+  bool _loading = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            widget.colors.accent.withValues(alpha: 0.15),
+            Colors.amber.withValues(alpha: 0.1),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: Colors.amber.withValues(alpha: 0.3),
+          width: 1.5,
+        ),
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text('📺', style: TextStyle(fontSize: 22)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'DOUBLE YOUR COINS?',
+                      style: TextStyle(
+                        fontFamily: widget.font,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.amber,
+                        letterSpacing: 1,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Watch a short ad to earn +${widget.coins} more!',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: widget.colors.text.withValues(alpha: 0.6),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            height: 44,
+            child: ElevatedButton(
+              onPressed: _loading ? null : _showAd,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.amber,
+                foregroundColor: Colors.black,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: _loading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation(Colors.black),
+                      ),
+                    )
+                  : Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.play_circle_fill_rounded, size: 18),
+                        const SizedBox(width: 8),
+                        Text(
+                          'CLAIM +${widget.coins} COINS',
+                          style: TextStyle(
+                            fontFamily: widget.font,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showAd() async {
+    setState(() => _loading = true);
+    final success = await AdService().showRewarded(onRewarded: () {
+      widget.onRewarded();
+    });
+
+    if (!success && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Ad not ready yet. Try again in a moment!')),
+      );
+    }
+    if (mounted) setState(() => _loading = false);
   }
 }

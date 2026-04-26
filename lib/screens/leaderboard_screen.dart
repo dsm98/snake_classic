@@ -12,8 +12,10 @@ import '../widgets/ui/dynamic_background.dart';
 
 class LeaderboardScreen extends StatefulWidget {
   final GameMode initialMode;
+  final bool isEmbedded;
 
-  const LeaderboardScreen({super.key, required this.initialMode});
+  const LeaderboardScreen(
+      {super.key, required this.initialMode, this.isEmbedded = false});
 
   @override
   State<LeaderboardScreen> createState() => _LeaderboardScreenState();
@@ -23,10 +25,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
     with SingleTickerProviderStateMixin {
   static const List<GameMode> _rankedModes = [
     GameMode.classic,
-    GameMode.portal,
-    GameMode.maze,
     GameMode.timeAttack,
-    GameMode.blitz,
     GameMode.endless,
   ];
 
@@ -83,56 +82,60 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
     final font =
         settings.theme == ThemeType.retro ? 'PressStart2P' : 'Orbitron';
 
+    final body = SafeArea(
+      child: Column(
+        children: [
+          // ── Header ────────────────────────────────────────────
+          if (!widget.isEmbedded) _buildHeader(colors, font),
+
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
+            child: _LeaderboardHero(
+              colors: colors,
+              mode: _selectedMode,
+              font: font,
+            ),
+          ),
+
+          // ── Mode tabs ─────────────────────────────────────────
+          _buildTabs(colors, font),
+
+          // ── Content ───────────────────────────────────────────
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: _rankedModes.map((mode) {
+                return FutureBuilder<_LeaderboardData>(
+                  future: _fetchLeaderboardData(mode),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return Center(
+                        child: CircularProgressIndicator(
+                          color: colors.accent,
+                          strokeWidth: 2,
+                        ),
+                      );
+                    }
+                    final data = snapshot.data ?? _LeaderboardData([], null);
+                    return _buildScoreList(data, colors, font);
+                  },
+                );
+              }).toList(),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (widget.isEmbedded) {
+      return body;
+    }
+
     return Scaffold(
       backgroundColor: colors.background,
       body: DynamicBackground(
         themeType: settings.theme,
-        child: SafeArea(
-          child: Column(
-            children: [
-              // ── Header ────────────────────────────────────────────
-              _buildHeader(colors, font),
-
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
-                child: _LeaderboardHero(
-                  colors: colors,
-                  mode: _selectedMode,
-                  font: font,
-                ),
-              ),
-
-              // ── Mode tabs ─────────────────────────────────────────
-              _buildTabs(colors, font),
-
-              // ── Content ───────────────────────────────────────────
-              Expanded(
-                child: TabBarView(
-                  controller: _tabController,
-                  children: _rankedModes.map((mode) {
-                    return FutureBuilder<_LeaderboardData>(
-                      future: _fetchLeaderboardData(mode),
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState ==
-                            ConnectionState.waiting) {
-                          return Center(
-                            child: CircularProgressIndicator(
-                              color: colors.accent,
-                              strokeWidth: 2,
-                            ),
-                          );
-                        }
-                        final data =
-                            snapshot.data ?? _LeaderboardData([], null);
-                        return _buildScoreList(data, colors, font);
-                      },
-                    );
-                  }).toList(),
-                ),
-              ),
-            ],
-          ),
-        ),
+        child: body,
       ),
     );
   }
@@ -141,18 +144,19 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       decoration: BoxDecoration(
-        color: colors.hudBg.withOpacity(0.7),
+        color: colors.hudBg.withValues(alpha: 0.7),
         border: Border(
-          bottom: BorderSide(color: colors.buttonBorder.withOpacity(0.1)),
+          bottom: BorderSide(color: colors.buttonBorder.withValues(alpha: 0.1)),
         ),
       ),
       child: Row(
         children: [
-          IconButton(
-            icon: Icon(Icons.arrow_back_ios_new_rounded,
-                color: colors.text, size: 20),
-            onPressed: () => Navigator.of(context).pop(),
-          ),
+          if (!widget.isEmbedded)
+            IconButton(
+              icon: Icon(Icons.arrow_back_ios_new_rounded,
+                  color: colors.text, size: 20),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
           Expanded(
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -171,7 +175,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
               ],
             ),
           ),
-          const SizedBox(width: 48),
+          if (!widget.isEmbedded) const SizedBox(width: 48),
         ],
       ),
     );
@@ -182,9 +186,9 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.symmetric(vertical: 4),
       decoration: BoxDecoration(
-        color: colors.hudBg.withOpacity(0.6),
+        color: colors.hudBg.withValues(alpha: 0.6),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: colors.buttonBorder.withOpacity(0.22)),
+        border: Border.all(color: colors.buttonBorder.withValues(alpha: 0.22)),
       ),
       child: TabBar(
         controller: _tabController,
@@ -192,12 +196,13 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
         tabAlignment: TabAlignment.center,
         indicator: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
-          color: colors.buttonBorder.withOpacity(0.22),
-          border: Border.all(color: colors.buttonBorder.withOpacity(0.35)),
+          color: colors.buttonBorder.withValues(alpha: 0.22),
+          border:
+              Border.all(color: colors.buttonBorder.withValues(alpha: 0.35)),
         ),
         dividerColor: Colors.transparent,
         labelColor: colors.text,
-        unselectedLabelColor: colors.text.withOpacity(0.45),
+        unselectedLabelColor: colors.text.withValues(alpha: 0.45),
         labelStyle: const TextStyle(
           fontFamily: 'Orbitron',
           fontSize: 10,
@@ -262,7 +267,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
               style: TextStyle(
                 fontFamily: font,
                 fontSize: 14,
-                color: colors.text.withOpacity(0.5),
+                color: colors.text.withValues(alpha: 0.5),
               ),
               textAlign: TextAlign.center,
             ),
@@ -272,7 +277,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
               style: TextStyle(
                 fontFamily: 'Orbitron',
                 fontSize: 10,
-                color: colors.text.withOpacity(0.3),
+                color: colors.text.withValues(alpha: 0.3),
               ),
             ),
           ],
@@ -325,15 +330,15 @@ class _LeaderboardHero extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            colors.buttonBorder.withOpacity(0.22),
-            colors.accent.withOpacity(0.1),
-            colors.hudBg.withOpacity(0.58),
+            colors.buttonBorder.withValues(alpha: 0.22),
+            colors.accent.withValues(alpha: 0.1),
+            colors.hudBg.withValues(alpha: 0.58),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: colors.buttonBorder.withOpacity(0.28)),
+        border: Border.all(color: colors.buttonBorder.withValues(alpha: 0.28)),
       ),
       child: Row(
         children: [
@@ -342,8 +347,9 @@ class _LeaderboardHero extends StatelessWidget {
             height: 40,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: colors.hudBg.withOpacity(0.75),
-              border: Border.all(color: colors.buttonBorder.withOpacity(0.35)),
+              color: colors.hudBg.withValues(alpha: 0.75),
+              border: Border.all(
+                  color: colors.buttonBorder.withValues(alpha: 0.35)),
             ),
             child: Center(
               child: Text(mode.icon, style: const TextStyle(fontSize: 22)),
@@ -370,7 +376,7 @@ class _LeaderboardHero extends StatelessWidget {
                   style: TextStyle(
                     fontFamily: 'Orbitron',
                     fontSize: 9,
-                    color: colors.text.withOpacity(0.7),
+                    color: colors.text.withValues(alpha: 0.7),
                   ),
                 ),
               ],
@@ -401,16 +407,16 @@ class _PersonalBestRow extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            colors.buttonBorder.withOpacity(0.18),
-            colors.accent.withOpacity(0.08),
+            colors.buttonBorder.withValues(alpha: 0.18),
+            colors.accent.withValues(alpha: 0.08),
           ],
         ),
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-            color: colors.buttonBorder.withOpacity(0.55), width: 1.5),
+            color: colors.buttonBorder.withValues(alpha: 0.55), width: 1.5),
         boxShadow: [
           BoxShadow(
-            color: colors.buttonBorder.withOpacity(0.14),
+            color: colors.buttonBorder.withValues(alpha: 0.14),
             blurRadius: 18,
           ),
         ],
@@ -421,7 +427,7 @@ class _PersonalBestRow extends StatelessWidget {
             width: 44,
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
             decoration: BoxDecoration(
-              color: colors.buttonBorder.withOpacity(0.18),
+              color: colors.buttonBorder.withValues(alpha: 0.18),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
@@ -458,7 +464,7 @@ class _PersonalBestRow extends StatelessWidget {
                   style: TextStyle(
                     fontFamily: 'Orbitron',
                     fontSize: 8,
-                    color: colors.text.withOpacity(0.4),
+                    color: colors.text.withValues(alpha: 0.4),
                   ),
                 ),
               ],
@@ -491,7 +497,7 @@ class _ScoreRow extends StatelessWidget {
     if (rank == 1) return const Color(0xFFFFD700); // Gold
     if (rank == 2) return const Color(0xFFC0C0C0); // Silver
     if (rank == 3) return const Color(0xFFCD7F32); // Bronze
-    return colors.text.withOpacity(0.4);
+    return colors.text.withValues(alpha: 0.4);
   }
 
   String get _rankLabel {
@@ -512,23 +518,23 @@ class _ScoreRow extends StatelessWidget {
         gradient: isTop3
             ? LinearGradient(
                 colors: [
-                  _rankColor.withOpacity(0.12),
-                  _rankColor.withOpacity(0.03),
+                  _rankColor.withValues(alpha: 0.12),
+                  _rankColor.withValues(alpha: 0.03),
                 ],
               )
             : null,
-        color: isTop3 ? null : colors.hudBg.withOpacity(0.4),
+        color: isTop3 ? null : colors.hudBg.withValues(alpha: 0.4),
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
           color: isTop3
-              ? _rankColor.withOpacity(0.4)
-              : colors.buttonBorder.withOpacity(0.12),
+              ? _rankColor.withValues(alpha: 0.4)
+              : colors.buttonBorder.withValues(alpha: 0.12),
           width: isTop3 ? 1.5 : 1,
         ),
         boxShadow: isTop3
             ? [
                 BoxShadow(
-                  color: _rankColor.withOpacity(0.12),
+                  color: _rankColor.withValues(alpha: 0.12),
                   blurRadius: 16,
                 )
               ]
@@ -549,7 +555,7 @@ class _ScoreRow extends StatelessWidget {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                     decoration: BoxDecoration(
-                      color: colors.buttonBorder.withOpacity(0.1),
+                      color: colors.buttonBorder.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
@@ -557,7 +563,7 @@ class _ScoreRow extends StatelessWidget {
                       style: TextStyle(
                         fontFamily: 'Orbitron',
                         fontSize: 11,
-                        color: colors.text.withOpacity(0.5),
+                        color: colors.text.withValues(alpha: 0.5),
                         fontWeight: FontWeight.bold,
                       ),
                       textAlign: TextAlign.center,
@@ -573,11 +579,11 @@ class _ScoreRow extends StatelessWidget {
             height: 36,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: colors.buttonBorder.withOpacity(0.1),
+              color: colors.buttonBorder.withValues(alpha: 0.1),
               border: Border.all(
                 color: isTop3
-                    ? _rankColor.withOpacity(0.5)
-                    : colors.buttonBorder.withOpacity(0.3),
+                    ? _rankColor.withValues(alpha: 0.5)
+                    : colors.buttonBorder.withValues(alpha: 0.3),
                 width: 1.5,
               ),
             ),
@@ -600,7 +606,9 @@ class _ScoreRow extends StatelessWidget {
                   style: TextStyle(
                     fontFamily: 'Orbitron',
                     fontSize: 12,
-                    color: isTop3 ? colors.text : colors.text.withOpacity(0.8),
+                    color: isTop3
+                        ? colors.text
+                        : colors.text.withValues(alpha: 0.8),
                     fontWeight: isTop3 ? FontWeight.bold : FontWeight.w500,
                   ),
                   maxLines: 1,
@@ -612,7 +620,7 @@ class _ScoreRow extends StatelessWidget {
                   style: TextStyle(
                     fontFamily: 'Orbitron',
                     fontSize: 9,
-                    color: colors.text.withOpacity(0.3),
+                    color: colors.text.withValues(alpha: 0.3),
                   ),
                 ),
               ],
@@ -626,7 +634,7 @@ class _ScoreRow extends StatelessWidget {
               ShaderMask(
                 shaderCallback: (bounds) => LinearGradient(
                   colors: isTop3
-                      ? [_rankColor, _rankColor.withOpacity(0.7)]
+                      ? [_rankColor, _rankColor.withValues(alpha: 0.7)]
                       : [colors.accent, colors.accent],
                 ).createShader(bounds),
                 child: Text(
@@ -644,7 +652,7 @@ class _ScoreRow extends StatelessWidget {
                 style: TextStyle(
                   fontFamily: 'Orbitron',
                   fontSize: 10,
-                  color: colors.text.withOpacity(0.4),
+                  color: colors.text.withValues(alpha: 0.4),
                 ),
               ),
             ],

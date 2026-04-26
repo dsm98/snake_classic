@@ -87,7 +87,7 @@ class ParticleSystemState extends State<ParticleSystem> with SingleTickerProvide
           vx: 0.2,
           vy: 1.5 + _random.nextDouble(),
           life: 1.0,
-          color: Colors.blueAccent.withOpacity(0.5),
+          color: Colors.blueAccent.withValues(alpha: 0.5),
           size: _random.nextDouble() * 2 + 1,
         ));
       }
@@ -99,7 +99,7 @@ class ParticleSystemState extends State<ParticleSystem> with SingleTickerProvide
           vx: 1.5 + _random.nextDouble(),
           vy: 0.1,
           life: 1.5,
-          color: Colors.orangeAccent.withOpacity(0.4),
+          color: Colors.orangeAccent.withValues(alpha: 0.4),
           size: _random.nextDouble() * 3 + 1,
         ));
       }
@@ -177,7 +177,7 @@ class _ParticlePainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     for (final p in particles) {
       final opacity = (p.life / p.initialLife).clamp(0.0, 1.0);
-      final paint = Paint()..color = p.color.withOpacity(opacity);
+      final paint = Paint()..color = p.color.withValues(alpha: opacity);
       canvas.drawCircle(
         Offset(p.x * size.width, p.y * size.height),
         p.size,

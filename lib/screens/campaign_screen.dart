@@ -57,7 +57,7 @@ class _CampaignScreenState extends State<CampaignScreen> {
               fontFamily: 'Orbitron',
               fontWeight: FontWeight.bold),
         ),
-        backgroundColor: colors.hudBg.withOpacity(0.7),
+        backgroundColor: colors.hudBg.withValues(alpha: 0.7),
         elevation: 0,
         leading: IconButton(
           icon: Icon(Icons.arrow_back_ios_new_rounded,
@@ -137,23 +137,23 @@ class _LevelCard extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: isCurrent
-              ? colors.buttonBorder.withOpacity(0.2)
+              ? colors.buttonBorder.withValues(alpha: 0.2)
               : isUnlocked
-                  ? colors.hudBg.withOpacity(0.5)
-                  : colors.background.withOpacity(0.2),
+                  ? colors.hudBg.withValues(alpha: 0.5)
+                  : colors.background.withValues(alpha: 0.2),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: isCurrent
                 ? colors.buttonBorder
                 : isUnlocked
-                    ? colors.buttonBorder.withOpacity(0.4)
-                    : colors.text.withOpacity(0.1),
+                    ? colors.buttonBorder.withValues(alpha: 0.4)
+                    : colors.text.withValues(alpha: 0.1),
             width: isCurrent ? 2 : 1,
           ),
           boxShadow: isCurrent
               ? [
                   BoxShadow(
-                      color: colors.buttonBorder.withOpacity(0.3),
+                      color: colors.buttonBorder.withValues(alpha: 0.3),
                       blurRadius: 10)
                 ]
               : [],
@@ -169,8 +169,8 @@ class _LevelCard extends StatelessWidget {
                   height: 48,
                   decoration: BoxDecoration(
                     color: isUnlocked
-                        ? colors.buttonBorder.withOpacity(0.3)
-                        : colors.text.withOpacity(0.05),
+                        ? colors.buttonBorder.withValues(alpha: 0.3)
+                        : colors.text.withValues(alpha: 0.05),
                     shape: BoxShape.circle,
                   ),
                   child: Center(
@@ -181,7 +181,7 @@ class _LevelCard extends StatelessWidget {
                                 fontSize: 22,
                                 color: colors.text,
                                 fontWeight: FontWeight.bold))
-                        : Icon(Icons.lock, color: colors.text.withOpacity(0.3)),
+                        : Icon(Icons.lock, color: colors.text.withValues(alpha: 0.3)),
                   ),
                 ),
                 const SizedBox(width: 14),
@@ -196,7 +196,7 @@ class _LevelCard extends StatelessWidget {
                           fontSize: 15,
                           color: isUnlocked
                               ? colors.text
-                              : colors.text.withOpacity(0.3),
+                              : colors.text.withValues(alpha: 0.3),
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -214,7 +214,7 @@ class _LevelCard extends StatelessWidget {
                                     : Icons.star_outline_rounded,
                                 color: lit
                                     ? Colors.amber
-                                    : colors.text.withOpacity(0.25),
+                                    : colors.text.withValues(alpha: 0.25),
                                 size: 18,
                               ),
                             );
@@ -233,7 +233,7 @@ class _LevelCard extends StatelessWidget {
             // ── Objectives section (unlocked only) ──────────────
             if (isUnlocked) ...[
               const SizedBox(height: 12),
-              Divider(color: colors.text.withOpacity(0.1), height: 1),
+              Divider(color: colors.text.withValues(alpha: 0.1), height: 1),
               const SizedBox(height: 10),
               ...level.objectives.map(
                 (obj) => Padding(
@@ -242,7 +242,7 @@ class _LevelCard extends StatelessWidget {
                     children: [
                       Icon(Icons.check_circle_outline_rounded,
                           size: 13,
-                          color: colors.buttonBorder.withOpacity(0.8)),
+                          color: colors.buttonBorder.withValues(alpha: 0.8)),
                       const SizedBox(width: 7),
                       Expanded(
                         child: Text(
@@ -250,7 +250,7 @@ class _LevelCard extends StatelessWidget {
                           style: TextStyle(
                             fontFamily: 'Orbitron',
                             fontSize: 10,
-                            color: colors.text.withOpacity(0.75),
+                            color: colors.text.withValues(alpha: 0.75),
                           ),
                         ),
                       ),
@@ -287,7 +287,7 @@ class _LevelCard extends StatelessWidget {
         Text(
           '$score pts',
           style: TextStyle(
-            color: colors.text.withOpacity(0.55),
+            color: colors.text.withValues(alpha: 0.55),
             fontSize: 10,
             fontFamily: 'Orbitron',
           ),

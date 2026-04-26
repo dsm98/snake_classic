@@ -131,11 +131,11 @@ class _JoystickWidgetState extends State<JoystickWidget>
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: isRetro
-                      ? widget.colors.buttonBg.withOpacity(0.15)
-                      : Colors.black.withOpacity(0.15),
+                      ? widget.colors.buttonBg.withValues(alpha: 0.15)
+                      : Colors.black.withValues(alpha: 0.15),
                   border: Border.all(
                     color: widget.colors.buttonBorder
-                        .withOpacity(0.08 + _pulseCtrl.value * 0.08),
+                        .withValues(alpha: 0.08 + _pulseCtrl.value * 0.08),
                     width: 1.5,
                   ),
                   boxShadow: isRetro
@@ -143,7 +143,7 @@ class _JoystickWidgetState extends State<JoystickWidget>
                       : [
                           BoxShadow(
                             color: widget.colors.buttonBorder
-                                .withOpacity(0.04 + _pulseCtrl.value * 0.06),
+                                .withValues(alpha: 0.04 + _pulseCtrl.value * 0.06),
                             blurRadius: 20 + _pulseCtrl.value * 10,
                           ),
                         ],
@@ -166,14 +166,14 @@ class _JoystickWidgetState extends State<JoystickWidget>
                       ? null
                       : RadialGradient(
                           colors: [
-                            widget.colors.buttonBg.withOpacity(0.6),
-                            widget.colors.buttonBg.withOpacity(0.2),
+                            widget.colors.buttonBg.withValues(alpha: 0.6),
+                            widget.colors.buttonBg.withValues(alpha: 0.2),
                           ],
                         ),
                   color:
-                      isRetro ? widget.colors.buttonBg.withOpacity(0.4) : null,
+                      isRetro ? widget.colors.buttonBg.withValues(alpha: 0.4) : null,
                   border: Border.all(
-                    color: widget.colors.buttonBorder.withOpacity(0.2),
+                    color: widget.colors.buttonBorder.withValues(alpha: 0.2),
                     width: 1,
                   ),
                 ),
@@ -183,7 +183,7 @@ class _JoystickWidgetState extends State<JoystickWidget>
                     height: 10,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: widget.colors.buttonBorder.withOpacity(0.3),
+                      color: widget.colors.buttonBorder.withValues(alpha: 0.3),
                     ),
                   ),
                 ),
@@ -285,31 +285,31 @@ class _DpadButton extends StatelessWidget {
               : isActive
                   ? RadialGradient(
                       colors: [
-                        colors.buttonBorder.withOpacity(0.5),
-                        colors.buttonBorder.withOpacity(0.15),
+                        colors.buttonBorder.withValues(alpha: 0.5),
+                        colors.buttonBorder.withValues(alpha: 0.15),
                       ],
                     )
                   : RadialGradient(
                       colors: [
-                        colors.buttonBg.withOpacity(0.7),
-                        colors.buttonBg.withOpacity(0.3),
+                        colors.buttonBg.withValues(alpha: 0.7),
+                        colors.buttonBg.withValues(alpha: 0.3),
                       ],
                     ),
           color: isRetro
               ? (isActive
-                  ? colors.buttonBorder.withOpacity(0.4)
-                  : colors.buttonBg.withOpacity(0.8))
+                  ? colors.buttonBorder.withValues(alpha: 0.4)
+                  : colors.buttonBg.withValues(alpha: 0.8))
               : null,
           border: Border.all(
             color: isActive
-                ? colors.buttonBorder.withOpacity(0.9)
-                : colors.buttonBorder.withOpacity(isRetro ? 0.8 : 0.3),
+                ? colors.buttonBorder.withValues(alpha: 0.9)
+                : colors.buttonBorder.withValues(alpha: isRetro ? 0.8 : 0.3),
             width: isRetro ? 2 : 1.5,
           ),
           boxShadow: isActive
               ? [
                   BoxShadow(
-                    color: colors.buttonBorder.withOpacity(0.4),
+                    color: colors.buttonBorder.withValues(alpha: 0.4),
                     blurRadius: 16,
                     spreadRadius: 1,
                   ),
@@ -317,14 +317,14 @@ class _DpadButton extends StatelessWidget {
               : isRetro
                   ? [
                       BoxShadow(
-                        color: colors.buttonBorder.withOpacity(0.4),
+                        color: colors.buttonBorder.withValues(alpha: 0.4),
                         offset: const Offset(0, 4),
                         blurRadius: 0,
                       ),
                     ]
                   : [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.3),
+                        color: Colors.black.withValues(alpha: 0.3),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
                       ),
@@ -338,7 +338,7 @@ class _DpadButton extends StatelessWidget {
           icon,
           color: isActive
               ? colors.text
-              : colors.text.withOpacity(isRetro ? 0.9 : 0.7),
+              : colors.text.withValues(alpha: isRetro ? 0.9 : 0.7),
           size: 30,
         ),
       ),

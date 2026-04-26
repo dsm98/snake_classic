@@ -37,7 +37,7 @@ class QuestsScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: colors.background,
       appBar: AppBar(
-        backgroundColor: colors.hudBg.withOpacity(0.7),
+        backgroundColor: colors.hudBg.withValues(alpha: 0.7),
         elevation: 0,
         leading: IconButton(
           icon: Icon(Icons.arrow_back_ios_new_rounded,
@@ -68,7 +68,7 @@ class QuestsScreen extends StatelessWidget {
                   style: TextStyle(
                     fontFamily: 'Orbitron',
                     fontSize: 11,
-                    color: colors.text.withOpacity(0.45),
+                    color: colors.text.withValues(alpha: 0.45),
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -104,19 +104,19 @@ class _QuestCard extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: isDone
-            ? colors.buttonBorder.withOpacity(0.15)
-            : colors.hudBg.withOpacity(0.5),
+            ? colors.buttonBorder.withValues(alpha: 0.15)
+            : colors.hudBg.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: isDone
               ? colors.buttonBorder
-              : colors.buttonBorder.withOpacity(0.2),
+              : colors.buttonBorder.withValues(alpha: 0.2),
           width: isDone ? 2 : 1,
         ),
         boxShadow: isDone
             ? [
                 BoxShadow(
-                    color: colors.buttonBorder.withOpacity(0.2), blurRadius: 15)
+                    color: colors.buttonBorder.withValues(alpha: 0.2), blurRadius: 15)
               ]
             : [],
       ),
@@ -138,9 +138,9 @@ class _QuestCard extends StatelessWidget {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.amber.withOpacity(0.15),
+                  color: Colors.amber.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: Colors.amber.withOpacity(0.4)),
+                  border: Border.all(color: Colors.amber.withValues(alpha: 0.4)),
                 ),
                 child: Row(
                   children: [
@@ -165,7 +165,7 @@ class _QuestCard extends StatelessWidget {
             style: TextStyle(
                 fontFamily: 'Orbitron',
                 fontSize: 10,
-                color: colors.text.withOpacity(0.7)),
+                color: colors.text.withValues(alpha: 0.7)),
           ),
           const SizedBox(height: 16),
           // Progress bar
@@ -180,7 +180,7 @@ class _QuestCard extends StatelessWidget {
                     child: LinearProgressIndicator(
                       value: quest.progress,
                       minHeight: 8,
-                      backgroundColor: colors.background.withOpacity(0.5),
+                      backgroundColor: colors.background.withValues(alpha: 0.5),
                       color: isDone ? Colors.greenAccent : colors.buttonBorder,
                     ),
                   ),

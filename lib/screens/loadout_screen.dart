@@ -108,7 +108,7 @@ class _LoadoutScreenState extends State<LoadoutScreen> {
   @override
   Widget build(BuildContext context) {
     final userProvider = context.watch<UserProvider>();
-    final gems = userProvider.safariGems;
+    final gems = userProvider.snakeSouls;
 
     return Scaffold(
       backgroundColor: const Color(0xFF0D1B0D),
@@ -227,7 +227,7 @@ class _LoadoutScreenState extends State<LoadoutScreen> {
               def != null ? const Color(0xFF1A3A1A) : const Color(0xFF151F15),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: def != null ? Colors.green.withOpacity(0.6) : Colors.white24,
+            color: def != null ? Colors.green.withValues(alpha: 0.6) : Colors.white24,
             width: 1.5,
           ),
         ),

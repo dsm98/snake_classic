@@ -8,6 +8,8 @@ class ModeSelectorCard extends StatelessWidget {
   final AppThemeColors colors;
   final String fontFamily;
   final void Function(GameMode) onSelected;
+  final int gamesPlayed;
+  final int highestCampaignLevel;
 
   const ModeSelectorCard({
     super.key,
@@ -15,14 +17,28 @@ class ModeSelectorCard extends StatelessWidget {
     required this.colors,
     required this.fontFamily,
     required this.onSelected,
+    this.gamesPlayed = 99,
+    this.highestCampaignLevel = 99,
   });
+
+  bool _isLocked(GameMode mode) => switch (mode) {
+        GameMode.explore => highestCampaignLevel < 3,
+        GameMode.multiplayer => gamesPlayed < 5,
+        _ => false,
+      };
+
+  String _unlockHint(GameMode mode) => switch (mode) {
+        GameMode.explore => 'Reach campaign\nlevel 3',
+        GameMode.multiplayer => 'Play 5 games',
+        _ => '',
+      };
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: colors.buttonBg.withOpacity(0.7),
+        color: colors.buttonBg.withValues(alpha: 0.7),
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: colors.buttonBorder.withValues(alpha: 0.35)),
         boxShadow: [
@@ -42,16 +58,17 @@ class ModeSelectorCard extends StatelessWidget {
               'SELECT MODE',
               style: TextStyle(
                 fontFamily: fontFamily,
-                fontSize: 9,
-                color: colors.text.withOpacity(0.45),
+                fontSize: 10,
+                color: colors.text.withValues(alpha: 0.5),
                 letterSpacing: 2.5,
+                fontWeight: FontWeight.bold,
               ),
             ),
           ),
 
           // Mode cards
           SizedBox(
-            height: 88,
+            height: 96,
             child: ListView.separated(
               padding: const EdgeInsets.symmetric(horizontal: 2),
               scrollDirection: Axis.horizontal,
@@ -61,65 +78,97 @@ class ModeSelectorCard extends StatelessWidget {
               itemBuilder: (context, i) {
                 final mode = GameMode.values[i];
                 final isSelected = mode == selected;
+                final locked = _isLocked(mode);
                 return GestureDetector(
-                  onTap: () => onSelected(mode),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 250),
-                    curve: Curves.easeOutCubic,
-                    width: 100,
-                    decoration: BoxDecoration(
-                      gradient: isSelected
-                          ? LinearGradient(
-                              colors: [
-                                colors.buttonBorder.withValues(alpha: 0.3),
-                                colors.buttonBorder.withValues(alpha: 0.1),
-                              ],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            )
-                          : null,
-                      color: isSelected
-                          ? null
-                          : colors.buttonBg.withValues(alpha: 0.4),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: isSelected
-                            ? colors.buttonBorder
-                            : colors.buttonBorder.withOpacity(0.12),
-                        width: isSelected ? 2 : 1,
-                      ),
-                      boxShadow: isSelected
-                          ? [
-                              BoxShadow(
-                                color: colors.buttonBorder.withOpacity(0.25),
-                                blurRadius: 16,
-                                spreadRadius: 1,
+                  onTap: locked
+                      ? () => ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                '🔒 ${_unlockHint(mode)} to unlock ${mode.displayName}',
+                                style: TextStyle(
+                                    fontFamily: fontFamily, fontSize: 12),
                               ),
-                            ]
-                          : [],
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(mode.icon,
-                            style: TextStyle(fontSize: isSelected ? 28 : 24)),
-                        const SizedBox(height: 6),
-                        Text(
-                          mode.displayName,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontFamily: fontFamily,
-                            fontSize: 7,
+                              duration: const Duration(seconds: 2),
+                            ),
+                          )
+                      : () => onSelected(mode),
+                  child: Stack(
+                    children: [
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 250),
+                        curve: Curves.easeOutCubic,
+                        width: 105,
+                        decoration: BoxDecoration(
+                          gradient: isSelected
+                              ? LinearGradient(
+                                  colors: [
+                                    colors.buttonBorder.withValues(alpha: 0.35),
+                                    colors.buttonBorder.withValues(alpha: 0.15),
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                )
+                              : null,
+                          color: isSelected
+                              ? null
+                              : colors.buttonBg.withValues(alpha: 0.4),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
                             color: isSelected
-                                ? colors.text
-                                : colors.text.withOpacity(0.45),
-                            fontWeight: isSelected
-                                ? FontWeight.bold
-                                : FontWeight.normal,
+                                ? colors.buttonBorder
+                                : colors.buttonBorder.withValues(alpha: 0.15),
+                            width: isSelected ? 2 : 1,
+                          ),
+                          boxShadow: isSelected
+                              ? [
+                                  BoxShadow(
+                                    color: colors.buttonBorder
+                                        .withValues(alpha: 0.2),
+                                    blurRadius: 16,
+                                    spreadRadius: 1,
+                                  ),
+                                ]
+                              : [],
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(mode.icon,
+                                style:
+                                    TextStyle(fontSize: isSelected ? 28 : 24)),
+                            const SizedBox(height: 6),
+                            Text(
+                              mode.displayName.toUpperCase(),
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontFamily: fontFamily,
+                                fontSize: 8.5,
+                                color: isSelected
+                                    ? colors.text
+                                    : colors.text.withValues(alpha: 0.5),
+                                fontWeight: isSelected
+                                    ? FontWeight.w900
+                                    : FontWeight.normal,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      // Lock overlay
+                      if (locked)
+                        Positioned.fill(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.55),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: const Center(
+                              child: Text('🔒', style: TextStyle(fontSize: 22)),
+                            ),
                           ),
                         ),
-                      ],
-                    ),
+                    ],
                   ),
                 );
               },
@@ -138,7 +187,7 @@ class ModeSelectorCard extends StatelessWidget {
                 children: [
                   Container(
                     width: 3,
-                    height: 30,
+                    height: 34,
                     decoration: BoxDecoration(
                       color: colors.buttonBorder,
                       borderRadius: BorderRadius.circular(2),
@@ -150,9 +199,9 @@ class ModeSelectorCard extends StatelessWidget {
                       selected.description,
                       style: TextStyle(
                         fontFamily: AppTypography.modernFont,
-                        fontSize: 9.5,
-                        color: colors.text.withOpacity(0.55),
-                        height: 1.5,
+                        fontSize: 11,
+                        color: colors.text.withValues(alpha: 0.6),
+                        height: 1.4,
                       ),
                     ),
                   ),

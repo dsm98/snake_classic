@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../core/models/position.dart';
@@ -137,6 +138,68 @@ class GhostRacingService extends ChangeNotifier {
       final decoded = utf8.decode(base64Decode(code));
       final ghost =
           RivalGhost.fromJson(jsonDecode(decoded) as Map<String, dynamic>);
+      await setRivalGhost(ghost);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  // ── Firestore sync ────────────────────────────────────────────────
+  static const _collection = 'ghost_runs';
+
+  /// Upload the local best ghost run to Firestore under the given [uid].
+  Future<void> uploadMyRun(
+      {required String uid, required String displayName}) async {
+    final ghost = await loadMyRun();
+    if (ghost == null) return;
+    await FirebaseFirestore.instance.collection(_collection).doc(uid).set({
+      'uid': uid,
+      'rivalName': displayName,
+      'rivalScore': ghost.rivalScore,
+      'mapSeed': ghost.mapSeed,
+      'path': ghost.path.map((p) => p.toJson()).toList(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  /// Fetch the top [limit] ghost runs by score from Firestore.
+  Future<List<RivalGhost>> fetchTopGhosts({int limit = 10}) async {
+    final snap = await FirebaseFirestore.instance
+        .collection(_collection)
+        .orderBy('rivalScore', descending: true)
+        .limit(limit)
+        .get();
+    return snap.docs.map((doc) {
+      final d = doc.data();
+      return RivalGhost(
+        rivalName: d['rivalName'] as String? ?? 'Unknown',
+        rivalScore: d['rivalScore'] as int? ?? 0,
+        mapSeed: d['mapSeed'] as int? ?? 0,
+        path: (d['path'] as List<dynamic>? ?? [])
+            .map((e) => Position.fromJson(e as Map<String, dynamic>))
+            .toList(),
+      );
+    }).toList();
+  }
+
+  /// Download a specific ghost by [uid] and set it as the active rival.
+  Future<bool> downloadAndSetRival(String uid) async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection(_collection)
+          .doc(uid)
+          .get();
+      if (!doc.exists) return false;
+      final d = doc.data()!;
+      final ghost = RivalGhost(
+        rivalName: d['rivalName'] as String? ?? 'Unknown',
+        rivalScore: d['rivalScore'] as int? ?? 0,
+        mapSeed: d['mapSeed'] as int? ?? 0,
+        path: (d['path'] as List<dynamic>? ?? [])
+            .map((e) => Position.fromJson(e as Map<String, dynamic>))
+            .toList(),
+      );
       await setRivalGhost(ghost);
       return true;
     } catch (_) {

@@ -229,7 +229,7 @@ class _GrimoireScreenState extends State<GrimoireScreen>
           fontFamily: 'Orbitron',
           fontSize: 13,
           fontWeight: FontWeight.bold,
-          color: colors.text.withOpacity(0.9),
+          color: colors.text.withValues(alpha: 0.9),
           letterSpacing: 1.5,
         ),
       ),
@@ -251,18 +251,18 @@ class _GrimoireScreenState extends State<GrimoireScreen>
         return Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: Colors.black.withOpacity(0.4),
+            color: Colors.black.withValues(alpha: 0.4),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: done
-                  ? Colors.greenAccent.withOpacity(0.6)
-                  : info.color.withOpacity(0.3 + _pulse.value * 0.2),
+                  ? Colors.greenAccent.withValues(alpha: 0.6)
+                  : info.color.withValues(alpha: 0.3 + _pulse.value * 0.2),
               width: 1.5,
             ),
             boxShadow: [
               if (!done)
                 BoxShadow(
-                  color: info.color.withOpacity(0.1 * _pulse.value),
+                  color: info.color.withValues(alpha: 0.1 * _pulse.value),
                   blurRadius: 20,
                   spreadRadius: 2,
                 ),
@@ -285,7 +285,7 @@ class _GrimoireScreenState extends State<GrimoireScreen>
                       fontSize: 11,
                       color: done
                           ? Colors.greenAccent
-                          : colors.text.withOpacity(0.8),
+                          : colors.text.withValues(alpha: 0.8),
                       fontWeight: FontWeight.bold,
                       letterSpacing: 2,
                     ),
@@ -310,7 +310,7 @@ class _GrimoireScreenState extends State<GrimoireScreen>
                     child: LinearProgressIndicator(
                       value: (progress / target).clamp(0.0, 1.0),
                       minHeight: 10,
-                      backgroundColor: Colors.white.withOpacity(0.05),
+                      backgroundColor: Colors.white.withValues(alpha: 0.05),
                       valueColor: AlwaysStoppedAnimation<Color>(
                         done ? Colors.greenAccent : info.color,
                       ),
@@ -342,7 +342,7 @@ class _GrimoireScreenState extends State<GrimoireScreen>
                       fontSize: 9,
                       color: done
                           ? Colors.greenAccent
-                          : colors.text.withOpacity(0.5),
+                          : colors.text.withValues(alpha: 0.5),
                     ),
                   ),
                   if (done)
@@ -371,12 +371,12 @@ class _GrimoireScreenState extends State<GrimoireScreen>
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.3),
+        color: Colors.black.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: caught
-              ? info.color.withOpacity(0.3)
-              : colors.text.withOpacity(0.05),
+              ? info.color.withValues(alpha: 0.3)
+              : colors.text.withValues(alpha: 0.05),
         ),
       ),
       child: Column(
@@ -388,11 +388,11 @@ class _GrimoireScreenState extends State<GrimoireScreen>
                 width: 54,
                 height: 54,
                 decoration: BoxDecoration(
-                  color: caught ? info.color.withOpacity(0.1) : Colors.black26,
+                  color: caught ? info.color.withValues(alpha: 0.1) : Colors.black26,
                   shape: BoxShape.circle,
                   border: Border.all(
                     color:
-                        caught ? info.color.withOpacity(0.5) : Colors.white10,
+                        caught ? info.color.withValues(alpha: 0.5) : Colors.white10,
                   ),
                 ),
                 alignment: Alignment.center,
@@ -416,7 +416,7 @@ class _GrimoireScreenState extends State<GrimoireScreen>
                         fontSize: 13,
                         fontWeight: FontWeight.bold,
                         color:
-                            caught ? colors.text : colors.text.withOpacity(0.2),
+                            caught ? colors.text : colors.text.withValues(alpha: 0.2),
                         letterSpacing: 1,
                       ),
                     ),
@@ -427,8 +427,8 @@ class _GrimoireScreenState extends State<GrimoireScreen>
                         fontFamily: 'Orbitron',
                         fontSize: 9,
                         color: caught
-                            ? info.color.withOpacity(0.8)
-                            : colors.text.withOpacity(0.15),
+                            ? info.color.withValues(alpha: 0.8)
+                            : colors.text.withValues(alpha: 0.15),
                       ),
                     ),
                   ],
@@ -443,7 +443,7 @@ class _GrimoireScreenState extends State<GrimoireScreen>
                       fontFamily: 'Orbitron',
                       fontSize: 18,
                       fontWeight: FontWeight.w900,
-                      color: caught ? colors.text : colors.text.withOpacity(0.1),
+                      color: caught ? colors.text : colors.text.withValues(alpha: 0.1),
                     ),
                   ),
                   Text(
@@ -451,7 +451,7 @@ class _GrimoireScreenState extends State<GrimoireScreen>
                     style: TextStyle(
                       fontFamily: 'Orbitron',
                       fontSize: 7,
-                      color: colors.text.withOpacity(0.3),
+                      color: colors.text.withValues(alpha: 0.3),
                     ),
                   ),
                 ],
@@ -464,7 +464,7 @@ class _GrimoireScreenState extends State<GrimoireScreen>
               info.hint,
               style: TextStyle(
                 fontSize: 11,
-                color: colors.text.withOpacity(0.5),
+                color: colors.text.withValues(alpha: 0.5),
                 fontStyle: FontStyle.italic,
                 height: 1.4,
               ),
@@ -495,7 +495,7 @@ class _GrimoireScreenState extends State<GrimoireScreen>
               '• Capture 10 to reveal Fragment III',
               style: TextStyle(
                 fontSize: 9,
-                color: info.color.withOpacity(0.4),
+                color: info.color.withValues(alpha: 0.4),
                 fontStyle: FontStyle.italic,
                 fontFamily: 'Orbitron',
               ),
@@ -510,7 +510,7 @@ class _GrimoireScreenState extends State<GrimoireScreen>
       margin: const EdgeInsets.only(top: 8),
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.03),
+        color: Colors.white.withValues(alpha: 0.03),
         borderRadius: BorderRadius.circular(8),
         border: Border(left: BorderSide(color: accent, width: 2)),
       ),
@@ -518,7 +518,7 @@ class _GrimoireScreenState extends State<GrimoireScreen>
         text,
         style: TextStyle(
           fontSize: 10,
-          color: colors.text.withOpacity(0.85),
+          color: colors.text.withValues(alpha: 0.85),
           fontFamily: 'Orbitron',
           height: 1.5,
         ),
@@ -539,12 +539,12 @@ class _GrimoireScreenState extends State<GrimoireScreen>
         final seen = visited.contains(b.key);
         return Container(
           decoration: BoxDecoration(
-            color: seen ? b.color.withOpacity(0.08) : Colors.black12,
+            color: seen ? b.color.withValues(alpha: 0.08) : Colors.black12,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: seen
-                  ? b.color.withOpacity(0.4)
-                  : colors.text.withOpacity(0.05),
+                  ? b.color.withValues(alpha: 0.4)
+                  : colors.text.withValues(alpha: 0.05),
             ),
           ),
           child: Column(
@@ -563,7 +563,7 @@ class _GrimoireScreenState extends State<GrimoireScreen>
                 style: TextStyle(
                   fontFamily: 'Orbitron',
                   fontSize: 8,
-                  color: seen ? b.color : colors.text.withOpacity(0.15),
+                  color: seen ? b.color : colors.text.withValues(alpha: 0.15),
                   fontWeight: FontWeight.bold,
                   letterSpacing: 1,
                 ),
@@ -583,9 +583,9 @@ class _GrimoireScreenState extends State<GrimoireScreen>
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.4),
+        color: Colors.black.withValues(alpha: 0.4),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: colors.text.withOpacity(0.08)),
+        border: Border.all(color: colors.text.withValues(alpha: 0.08)),
       ),
       child: Column(
         children: [
@@ -608,7 +608,7 @@ class _GrimoireScreenState extends State<GrimoireScreen>
           style: TextStyle(
             fontFamily: 'Orbitron',
             fontSize: 9,
-            color: colors.text.withOpacity(0.5),
+            color: colors.text.withValues(alpha: 0.5),
             letterSpacing: 1.5,
           ),
         ),

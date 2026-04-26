@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../services/storage_service.dart';
-import '../providers/settings_provider.dart';
-import '../core/constants/app_colors.dart';
 import '../services/audio_service.dart';
 import '../services/vibration_service.dart';
 
@@ -13,11 +10,12 @@ class AltarScreen extends StatefulWidget {
   _AltarScreenState createState() => _AltarScreenState();
 }
 
-class _AltarScreenState extends State<AltarScreen> with SingleTickerProviderStateMixin {
+class _AltarScreenState extends State<AltarScreen>
+    with SingleTickerProviderStateMixin {
   final StorageService _storage = StorageService();
   late AnimationController _pulseController;
 
-  int get gems => _storage.safariGems;
+  int get gems => _storage.snakeSouls;
   int get thickScales => _storage.skillThickScales;
   int get greed => _storage.skillGreed;
   int get dashMastery => _storage.skillDashMastery;
@@ -43,28 +41,29 @@ class _AltarScreenState extends State<AltarScreen> with SingleTickerProviderStat
 
   int _costForLevel(int level) => (level + 1) * 150;
 
-  Future<void> _upgradeSkill(
-      String name, int currentLvl, int maxLvl, Future<void> Function(int) saveFunc) async {
+  Future<void> _upgradeSkill(String name, int currentLvl, int maxLvl,
+      Future<void> Function(int) saveFunc) async {
     if (currentLvl >= maxLvl) return;
     int cost = _costForLevel(currentLvl);
     if (gems >= cost) {
       AudioService().play(SoundEffect.powerUp);
       VibrationService().vibrate(duration: 200, amplitude: 200);
-      await _storage.deductSafariGems(cost);
+      await _storage.deductSnakeSouls(cost);
       await saveFunc(currentLvl + 1);
       setState(() {});
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Not enough Snake Souls!', style: TextStyle(fontFamily: 'Orbitron')),
+          content: Text('Not enough Snake Souls!',
+              style: TextStyle(fontFamily: 'Orbitron')),
           backgroundColor: Colors.red,
         ),
       );
     }
   }
 
-  Widget _buildSkillCard(String title, String desc, String icon, int currentLvl, int maxLvl,
-      Future<void> Function(int) saveFunc) {
+  Widget _buildSkillCard(String title, String desc, String icon, int currentLvl,
+      int maxLvl, Future<void> Function(int) saveFunc) {
     bool isMax = currentLvl >= maxLvl;
     int cost = _costForLevel(currentLvl);
     bool canAfford = !isMax && gems >= cost;
@@ -73,12 +72,13 @@ class _AltarScreenState extends State<AltarScreen> with SingleTickerProviderStat
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.6),
-        border: Border.all(color: Colors.redAccent.withOpacity(0.5), width: 1.5),
+        color: Colors.black.withValues(alpha: 0.6),
+        border: Border.all(
+            color: Colors.redAccent.withValues(alpha: 0.5), width: 1.5),
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.redAccent.withOpacity(0.1),
+            color: Colors.redAccent.withValues(alpha: 0.1),
             blurRadius: 8,
             spreadRadius: 2,
           )
@@ -102,7 +102,8 @@ class _AltarScreenState extends State<AltarScreen> with SingleTickerProviderStat
                 ),
                 Text(
                   'Lvl $currentLvl / $maxLvl',
-                  style: const TextStyle(color: Colors.redAccent, fontFamily: 'Orbitron'),
+                  style: const TextStyle(
+                      color: Colors.redAccent, fontFamily: 'Orbitron'),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -114,14 +115,23 @@ class _AltarScreenState extends State<AltarScreen> with SingleTickerProviderStat
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: isMax ? Colors.grey[800] : (canAfford ? Colors.red[900] : Colors.grey[900]),
+              backgroundColor: isMax
+                  ? Colors.grey[800]
+                  : (canAfford ? Colors.red[900] : Colors.grey[900]),
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
             ),
-            onPressed: isMax ? null : () => _upgradeSkill(title, currentLvl, maxLvl, saveFunc),
+            onPressed: isMax
+                ? null
+                : () => _upgradeSkill(title, currentLvl, maxLvl, saveFunc),
             child: isMax
-                ? const Text('MAX', style: TextStyle(fontFamily: 'Orbitron', fontWeight: FontWeight.bold))
-                : Text('💎 $cost', style: const TextStyle(fontFamily: 'Orbitron', fontWeight: FontWeight.bold)),
+                ? const Text('MAX',
+                    style: TextStyle(
+                        fontFamily: 'Orbitron', fontWeight: FontWeight.bold))
+                : Text('💎 $cost',
+                    style: const TextStyle(
+                        fontFamily: 'Orbitron', fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -135,7 +145,10 @@ class _AltarScreenState extends State<AltarScreen> with SingleTickerProviderStat
       appBar: AppBar(
         title: const Text(
           'ALTAR OF SERPENTS',
-          style: TextStyle(fontFamily: 'Orbitron', color: Colors.redAccent, fontWeight: FontWeight.bold),
+          style: TextStyle(
+              fontFamily: 'Orbitron',
+              color: Colors.redAccent,
+              fontWeight: FontWeight.bold),
         ),
         backgroundColor: Colors.black,
         elevation: 0,
@@ -157,7 +170,8 @@ class _AltarScreenState extends State<AltarScreen> with SingleTickerProviderStat
                     shape: BoxShape.circle,
                     gradient: RadialGradient(
                       colors: [
-                        Colors.red.withOpacity(0.15 + (_pulseController.value * 0.1)),
+                        Colors.red.withValues(
+                            alpha: 0.15 + (_pulseController.value * 0.1)),
                         Colors.transparent,
                       ],
                     ),
@@ -171,20 +185,25 @@ class _AltarScreenState extends State<AltarScreen> with SingleTickerProviderStat
               const SizedBox(height: 20),
               const Text(
                 'Offer Snake Souls to gain permanent power.',
-                style: TextStyle(color: Colors.white54, fontStyle: FontStyle.italic),
+                style: TextStyle(
+                    color: Colors.white54, fontStyle: FontStyle.italic),
               ),
               const SizedBox(height: 16),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                 decoration: BoxDecoration(
-                  color: Colors.red[900]!.withOpacity(0.3),
+                  color: Colors.red[900]!.withValues(alpha: 0.3),
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(color: Colors.redAccent),
                 ),
                 child: Text(
                   '💎 $gems Souls Available',
                   style: const TextStyle(
-                      fontFamily: 'Orbitron', fontSize: 20, color: Colors.white, fontWeight: FontWeight.bold),
+                      fontFamily: 'Orbitron',
+                      fontSize: 20,
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold),
                 ),
               ),
               const SizedBox(height: 32),

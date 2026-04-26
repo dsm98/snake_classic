@@ -131,7 +131,7 @@ class _BackgroundPainter extends CustomPainter {
 
     // subtle sub-pixel grid
     final gridPaint = Paint()
-      ..color = colors.snakeHead.withOpacity(0.04)
+      ..color = colors.snakeHead.withValues(alpha: 0.04)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 0.5;
 
@@ -144,7 +144,7 @@ class _BackgroundPainter extends CustomPainter {
 
     // Scanlines
     final scanPaint = Paint()
-      ..color = Colors.black.withOpacity(0.03)
+      ..color = Colors.black.withValues(alpha: 0.03)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.0;
 
@@ -158,8 +158,8 @@ class _BackgroundPainter extends CustomPainter {
       center: Alignment.center,
       radius: 1.2,
       colors: [
-        Colors.white.withOpacity(0.05),
-        colors.snakeHead.withOpacity(0.12),
+        Colors.white.withValues(alpha: 0.05),
+        colors.snakeHead.withValues(alpha: 0.12),
       ],
     );
     final vignettePaint = Paint()..shader = gradient.createShader(rect);
@@ -179,7 +179,7 @@ class _BackgroundPainter extends CustomPainter {
       center: Alignment(0, pulse * 0.2 - 0.4),
       radius: 1.2,
       colors: [
-        colors.grid.withOpacity(0.8),
+        colors.grid.withValues(alpha: 0.8),
         colors.background,
       ],
     );
@@ -187,7 +187,7 @@ class _BackgroundPainter extends CustomPainter {
 
     // Perspective lines
     final linePaint = Paint()
-      ..color = colors.gridLine.withOpacity(0.4)
+      ..color = colors.gridLine.withValues(alpha: 0.4)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.0;
 
@@ -265,21 +265,21 @@ class _BackgroundPainter extends CustomPainter {
           const Color(0xFF66FF99),
           seedHue / 0.45,
         )!
-            .withOpacity(0.55 + seedSpd * 0.3);
+            .withValues(alpha: 0.55 + seedSpd * 0.3);
       } else if (seedHue < 0.75) {
         leafColor = Color.lerp(
           const Color(0xFFDDA52A),
           const Color(0xFFFF9933),
           (seedHue - 0.45) / 0.30,
         )!
-            .withOpacity(0.5 + seedSpd * 0.25);
+            .withValues(alpha: 0.5 + seedSpd * 0.25);
       } else {
         leafColor = Color.lerp(
           const Color(0xFFFF9933),
           const Color(0xFFFF5C2E),
           (seedHue - 0.75) / 0.25,
         )!
-            .withOpacity(0.45 + seedSpd * 0.25);
+            .withValues(alpha: 0.45 + seedSpd * 0.25);
       }
       leafPaint.color = leafColor;
 
@@ -296,7 +296,7 @@ class _BackgroundPainter extends CustomPainter {
         Offset(-leafW * 0.38, 0),
         Offset(leafW * 0.38, 0),
         Paint()
-          ..color = Colors.white.withOpacity(0.18)
+          ..color = Colors.white.withValues(alpha: 0.18)
           ..strokeWidth = 0.8,
       );
       canvas.restore();
@@ -308,7 +308,7 @@ class _BackgroundPainter extends CustomPainter {
       final fx = sin(progress * pi * 1.4 + i * 2.3) * 0.45 + 0.5;
       final fy = cos(progress * pi * 0.9 + i * 1.7) * 0.45 + 0.5;
       final pulse = sin(progress * pi * 6 + i) * 0.5 + 0.5;
-      glow.color = const Color(0xFFB5FF7A).withOpacity(0.08 + pulse * 0.22);
+      glow.color = const Color(0xFFB5FF7A).withValues(alpha: 0.08 + pulse * 0.22);
       canvas.drawCircle(
         Offset(fx * size.width, fy * size.height),
         2.0 + pulse * 2.0,
@@ -321,9 +321,9 @@ class _BackgroundPainter extends CustomPainter {
       begin: Alignment.topCenter,
       end: Alignment.bottomCenter,
       colors: [
-        const Color(0xFF040C07).withOpacity(0.55),
+        const Color(0xFF040C07).withValues(alpha: 0.55),
         Colors.transparent,
-        const Color(0xFF040C07).withOpacity(0.45),
+        const Color(0xFF040C07).withValues(alpha: 0.45),
       ],
     );
     canvas.drawRect(rect, Paint()..shader = vignette.createShader(rect));
@@ -333,7 +333,7 @@ class _BackgroundPainter extends CustomPainter {
     // True black background is drawn behind this.
     // Let's add a slow-moving grid pattern or starfield.
     final paint = Paint()
-      ..color = colors.gridLine.withOpacity(0.5)
+      ..color = colors.gridLine.withValues(alpha: 0.5)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.0;
 
@@ -362,21 +362,21 @@ class _BackgroundPainter extends CustomPainter {
       end: Alignment.bottomCenter,
       colors: [
         colors.background,
-        colors.grid.withOpacity(0.9),
+        colors.grid.withValues(alpha: 0.9),
         colors.background,
       ],
     );
     canvas.drawRect(rect, Paint()..shader = bg.createShader(rect));
 
     final scan = Paint()
-      ..color = colors.snakeHead.withOpacity(0.05)
+      ..color = colors.snakeHead.withValues(alpha: 0.05)
       ..strokeWidth = 1;
     for (double y = 0; y < size.height; y += 3.5) {
       canvas.drawLine(Offset(0, y), Offset(size.width, y), scan);
     }
 
     final rain = Paint()
-      ..color = colors.accent.withOpacity(0.26)
+      ..color = colors.accent.withValues(alpha: 0.26)
       ..strokeWidth = 2
       ..strokeCap = StrokeCap.round;
 
@@ -398,7 +398,7 @@ class _BackgroundPainter extends CustomPainter {
       center: const Alignment(0, -0.3),
       radius: 1.1,
       colors: [
-        colors.buttonBorder.withOpacity(0.16 + sin(progress * pi * 2) * 0.05),
+        colors.buttonBorder.withValues(alpha: 0.16 + sin(progress * pi * 2) * 0.05),
         Colors.transparent,
       ],
     );
@@ -431,11 +431,11 @@ class _BackgroundPainter extends CustomPainter {
       path.lineTo(size.width, size.height);
       path.close();
       lava.color = Color.lerp(
-            colors.accent.withOpacity(0.4),
-            Colors.orange.withOpacity(0.2),
+            colors.accent.withValues(alpha: 0.4),
+            Colors.orange.withValues(alpha: 0.2),
             i / waves,
           ) ??
-          colors.accent.withOpacity(0.3);
+          colors.accent.withValues(alpha: 0.3);
       canvas.drawPath(path, lava);
     }
 
@@ -449,14 +449,14 @@ class _BackgroundPainter extends CustomPainter {
           (((progress * size.height * speed) + (seed * 3.7)) %
               (size.height + 40));
       final r = 1.2 + (seed % 3);
-      ember.color = Colors.orangeAccent.withOpacity(0.2 + ((seed % 5) * 0.09));
+      ember.color = Colors.orangeAccent.withValues(alpha: 0.2 + ((seed % 5) * 0.09));
       canvas.drawCircle(Offset(x, y), r.toDouble(), ember);
     }
 
     final vignette = RadialGradient(
       center: const Alignment(0, 0.7),
       radius: 1.2,
-      colors: [Colors.transparent, Colors.black.withOpacity(0.35)],
+      colors: [Colors.transparent, Colors.black.withValues(alpha: 0.35)],
     );
     canvas.drawRect(rect, Paint()..shader = vignette.createShader(rect));
   }
@@ -506,7 +506,7 @@ class _BackgroundPainter extends CustomPainter {
 
       // Large flakes get a cross/star shape; small ones are circles.
       if (radius > 3.0) {
-        snowPaint.color = Colors.white.withOpacity(opacity * 0.85);
+        snowPaint.color = Colors.white.withValues(alpha: opacity * 0.85);
         // Draw 3 crossing lines (hexagonal snowflake approximation)
         final arm = radius * 1.6;
         final angles = [0.0, pi / 3, pi * 2 / 3];
@@ -515,17 +515,17 @@ class _BackgroundPainter extends CustomPainter {
             Offset(cx + cos(a) * arm, cy + sin(a) * arm),
             Offset(cx - cos(a) * arm, cy - sin(a) * arm),
             Paint()
-              ..color = Colors.white.withOpacity(opacity * 0.9)
+              ..color = Colors.white.withValues(alpha: opacity * 0.9)
               ..strokeWidth = 0.9
               ..strokeCap = StrokeCap.round,
           );
         }
         // Center dot
-        snowPaint.color = Colors.white.withOpacity(opacity);
+        snowPaint.color = Colors.white.withValues(alpha: opacity);
         canvas.drawCircle(Offset(cx, cy), radius * 0.3, snowPaint);
       } else {
         // Small flake – simple circle
-        snowPaint.color = Colors.white.withOpacity(opacity * 0.75);
+        snowPaint.color = Colors.white.withValues(alpha: opacity * 0.75);
         canvas.drawCircle(Offset(cx, cy), radius, snowPaint);
       }
     }
@@ -536,8 +536,8 @@ class _BackgroundPainter extends CustomPainter {
       begin: Alignment.topCenter,
       end: Alignment.bottomCenter,
       colors: [
-        const Color(0xFF7FEFFF).withOpacity(0.0 + auroraPulse * 0.07),
-        const Color(0xFF00CFAA).withOpacity(0.04 + auroraPulse * 0.05),
+        const Color(0xFF7FEFFF).withValues(alpha: 0.0 + auroraPulse * 0.07),
+        const Color(0xFF00CFAA).withValues(alpha: 0.04 + auroraPulse * 0.05),
         Colors.transparent,
       ],
     );
@@ -553,7 +553,7 @@ class _BackgroundPainter extends CustomPainter {
       begin: Alignment.bottomCenter,
       end: Alignment.topCenter,
       colors: [
-        const Color(0xFFB3F3FF).withOpacity(0.18),
+        const Color(0xFFB3F3FF).withValues(alpha: 0.18),
         Colors.transparent,
       ],
     );
@@ -568,7 +568,7 @@ class _BackgroundPainter extends CustomPainter {
     final vignette = RadialGradient(
       center: Alignment.center,
       radius: 1.1,
-      colors: [Colors.transparent, Colors.black.withOpacity(0.4)],
+      colors: [Colors.transparent, Colors.black.withValues(alpha: 0.4)],
     );
     canvas.drawRect(rect, Paint()..shader = vignette.createShader(rect));
   }

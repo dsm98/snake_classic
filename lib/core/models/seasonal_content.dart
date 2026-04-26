@@ -28,7 +28,7 @@ class SeasonalContent {
         icon: '🎃',
         scoreMultiplier: 1.2,
         coinMultiplier: 1.1,
-        suggestedMode: GameMode.maze,
+        suggestedMode: GameMode.classic,
       );
     }
 
@@ -52,7 +52,7 @@ class SeasonalContent {
         icon: '🌞',
         scoreMultiplier: 1.15,
         coinMultiplier: 1.1,
-        suggestedMode: GameMode.blitz,
+        suggestedMode: GameMode.timeAttack,
       );
     }
 

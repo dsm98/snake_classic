@@ -3,10 +3,7 @@ import 'package:flutter/material.dart';
 import '../core/models/position.dart';
 import '../core/models/food_model.dart';
 import '../core/enums/biome_type.dart';
-import '../core/constants/app_constants.dart';
-import '../core/models/campaign_level.dart';
 import '../core/enums/snake_skin.dart';
-import '../core/enums/direction.dart';
 import '../core/enums/game_mode.dart';
 import '../core/models/shadow_snake.dart';
 
@@ -17,14 +14,28 @@ class EntityManager {
     switch (biome) {
       case BiomeType.forest:
         return [FoodType.mouse, FoodType.rabbit];
+      case BiomeType.jungle:
+        return [FoodType.rabbit, FoodType.lizard, FoodType.butterfly];
       case BiomeType.desert:
         return [FoodType.lizard, FoodType.mouse];
+      case BiomeType.savanna:
+        return [FoodType.rabbit, FoodType.lizard];
       case BiomeType.swamp:
         return [FoodType.croc, FoodType.lizard];
+      case BiomeType.coral:
+        return [FoodType.butterfly, FoodType.lizard];
       case BiomeType.cave:
         return [FoodType.butterfly, FoodType.lizard];
+      case BiomeType.crystalCave:
+        return [FoodType.butterfly, FoodType.mouse];
       case BiomeType.ruins:
         return [FoodType.mouse, FoodType.butterfly, FoodType.lizard];
+      case BiomeType.tundra:
+        return [FoodType.rabbit, FoodType.mouse];
+      case BiomeType.lavaField:
+        return [FoodType.lizard, FoodType.croc];
+      case BiomeType.mushroom:
+        return [FoodType.butterfly, FoodType.mouse, FoodType.rabbit];
     }
   }
 
@@ -62,7 +73,8 @@ class EntityManager {
       }
     }
     if (best != null) {
-      onUpdate(FoodModel(position: best, type: FoodType.boss, expiresAtMs: food.expiresAtMs));
+      onUpdate(FoodModel(
+          position: best, type: FoodType.boss, expiresAtMs: food.expiresAtMs));
     }
   }
 
@@ -82,28 +94,36 @@ class EntityManager {
     final head = snake.first;
     for (int i = 0; i < preyList.length; i++) {
       final prey = preyList[i];
-      if (prey.expiresAtMs != null && prey.expiresAtMs! > 0 && gameTimeMs > prey.expiresAtMs!) continue;
+      if (prey.expiresAtMs != null &&
+          prey.expiresAtMs! > 0 &&
+          gameTimeMs > prey.expiresAtMs!) continue;
 
       if (gameTimeMs < preyMagnetEndMs) {
-        _magnetPrey(i, preyList, head, snakeSet, obstacleSet, gridCols, gridRows);
+        _magnetPrey(
+            i, preyList, head, snakeSet, obstacleSet, gridCols, gridRows);
         continue;
       }
 
       switch (prey.type) {
         case FoodType.mouse:
-          _moveMouse(i, preyList, head, snakeSet, obstacleSet, gridCols, gridRows);
+          _moveMouse(
+              i, preyList, head, snakeSet, obstacleSet, gridCols, gridRows);
           break;
         case FoodType.rabbit:
-          _moveRabbit(i, preyList, head, snakeSet, obstacleSet, gridCols, gridRows);
+          _moveRabbit(
+              i, preyList, head, snakeSet, obstacleSet, gridCols, gridRows);
           break;
         case FoodType.lizard:
-          _moveLizard(i, preyList, head, snakeSet, obstacleSet, gridCols, gridRows);
+          _moveLizard(
+              i, preyList, head, snakeSet, obstacleSet, gridCols, gridRows);
           break;
         case FoodType.croc:
-          _moveCroc(i, preyList, head, snakeSet, obstacleSet, gridCols, gridRows);
+          _moveCroc(
+              i, preyList, head, snakeSet, obstacleSet, gridCols, gridRows);
           break;
         case FoodType.butterfly:
-          _moveButterfly(i, preyList, head, snakeSet, obstacleSet, gridCols, gridRows);
+          _moveButterfly(
+              i, preyList, head, snakeSet, obstacleSet, gridCols, gridRows);
           break;
         default:
           break;
@@ -111,48 +131,103 @@ class EntityManager {
     }
   }
 
-  void _moveMouse(int idx, List<FoodModel> preyList, Position head, Set<Position> snakeSet, Set<Position> obstacleSet, int gridCols, int gridRows) {
+  void _moveMouse(
+      int idx,
+      List<FoodModel> preyList,
+      Position head,
+      Set<Position> snakeSet,
+      Set<Position> obstacleSet,
+      int gridCols,
+      int gridRows) {
     final prey = preyList[idx];
-    final dist = (prey.position.x - head.x).abs() + (prey.position.y - head.y).abs();
+    final dist =
+        (prey.position.x - head.x).abs() + (prey.position.y - head.y).abs();
     if (dist > 5) return;
-    _preySingleStep(idx, preyList, head, snakeSet, obstacleSet, gridCols, gridRows);
+    _preySingleStep(
+        idx, preyList, head, snakeSet, obstacleSet, gridCols, gridRows);
   }
 
-  void _moveRabbit(int idx, List<FoodModel> preyList, Position head, Set<Position> snakeSet, Set<Position> obstacleSet, int gridCols, int gridRows) {
+  void _moveRabbit(
+      int idx,
+      List<FoodModel> preyList,
+      Position head,
+      Set<Position> snakeSet,
+      Set<Position> obstacleSet,
+      int gridCols,
+      int gridRows) {
     final prey = preyList[idx];
-    final dist = (prey.position.x - head.x).abs() + (prey.position.y - head.y).abs();
+    final dist =
+        (prey.position.x - head.x).abs() + (prey.position.y - head.y).abs();
     if (dist > 6) return;
     if (prey.dashChargesLeft > 0) {
-      _rabbitDash(idx, preyList, head, snakeSet, obstacleSet, gridCols, gridRows);
+      _rabbitDash(
+          idx, preyList, head, snakeSet, obstacleSet, gridCols, gridRows);
     } else {
-      _preySingleStep(idx, preyList, head, snakeSet, obstacleSet, gridCols, gridRows);
+      _preySingleStep(
+          idx, preyList, head, snakeSet, obstacleSet, gridCols, gridRows);
     }
   }
 
-  void _moveLizard(int idx, List<FoodModel> preyList, Position head, Set<Position> snakeSet, Set<Position> obstacleSet, int gridCols, int gridRows) {
+  void _moveLizard(
+      int idx,
+      List<FoodModel> preyList,
+      Position head,
+      Set<Position> snakeSet,
+      Set<Position> obstacleSet,
+      int gridCols,
+      int gridRows) {
     if (_rng.nextDouble() < 0.7) return;
-    _preySingleStep(idx, preyList, head, snakeSet, obstacleSet, gridCols, gridRows);
+    _preySingleStep(
+        idx, preyList, head, snakeSet, obstacleSet, gridCols, gridRows);
   }
 
-  void _moveCroc(int idx, List<FoodModel> preyList, Position head, Set<Position> snakeSet, Set<Position> obstacleSet, int gridCols, int gridRows) {
+  void _moveCroc(
+      int idx,
+      List<FoodModel> preyList,
+      Position head,
+      Set<Position> snakeSet,
+      Set<Position> obstacleSet,
+      int gridCols,
+      int gridRows) {
     final prey = preyList[idx];
-    final dist = (prey.position.x - head.x).abs() + (prey.position.y - head.y).abs();
+    final dist =
+        (prey.position.x - head.x).abs() + (prey.position.y - head.y).abs();
     if (dist > 4) return;
-    _preySingleStep(idx, preyList, head, snakeSet, obstacleSet, gridCols, gridRows);
+    _preySingleStep(
+        idx, preyList, head, snakeSet, obstacleSet, gridCols, gridRows);
   }
 
-  void _moveButterfly(int idx, List<FoodModel> preyList, Position head, Set<Position> snakeSet, Set<Position> obstacleSet, int gridCols, int gridRows) {
+  void _moveButterfly(
+      int idx,
+      List<FoodModel> preyList,
+      Position head,
+      Set<Position> snakeSet,
+      Set<Position> obstacleSet,
+      int gridCols,
+      int gridRows) {
     if (_rng.nextDouble() < 0.4) {
       final pos = preyList[idx].position;
-      final next = Position(pos.x + _rng.nextInt(3) - 1, pos.y + _rng.nextInt(3) - 1);
-      if (next.x >= 0 && next.x < gridCols && next.y >= 0 && next.y < gridRows && 
-          !snakeSet.contains(next) && !obstacleSet.contains(next)) {
+      final next =
+          Position(pos.x + _rng.nextInt(3) - 1, pos.y + _rng.nextInt(3) - 1);
+      if (next.x >= 0 &&
+          next.x < gridCols &&
+          next.y >= 0 &&
+          next.y < gridRows &&
+          !snakeSet.contains(next) &&
+          !obstacleSet.contains(next)) {
         preyList[idx] = preyList[idx].copyWith(position: next);
       }
     }
   }
 
-  void _magnetPrey(int idx, List<FoodModel> preyList, Position head, Set<Position> snakeSet, Set<Position> obstacleSet, int gridCols, int gridRows) {
+  void _magnetPrey(
+      int idx,
+      List<FoodModel> preyList,
+      Position head,
+      Set<Position> snakeSet,
+      Set<Position> obstacleSet,
+      int gridCols,
+      int gridRows) {
     final prey = preyList[idx];
     final pos = prey.position;
     final dx = head.x - pos.x;
@@ -181,7 +256,7 @@ class EntityManager {
     if (activeShadow == null) return;
     final head = activeShadow.segments.first;
     final target = snake.first;
-    
+
     // Shadow AI: Hunt snake or food
     Position goal = target;
     if (food != null && _rng.nextDouble() < 0.3) {
@@ -201,7 +276,7 @@ class EntityManager {
     // Move body
     final newSegments = [next, ...activeShadow.segments];
     if (newSegments.length > 5) newSegments.removeLast();
-    
+
     activeShadow.segments.clear();
     activeShadow.segments.addAll(newSegments);
     activeShadow.moveTicks++;
@@ -215,7 +290,14 @@ class EntityManager {
     }
   }
 
-  void _preySingleStep(int preyIdx, List<FoodModel> preyList, Position head, Set<Position> snakeSet, Set<Position> obstacleSet, int gridCols, int gridRows) {
+  void _preySingleStep(
+      int preyIdx,
+      List<FoodModel> preyList,
+      Position head,
+      Set<Position> snakeSet,
+      Set<Position> obstacleSet,
+      int gridCols,
+      int gridRows) {
     final prey = preyList[preyIdx];
     final pos = prey.position;
     final candidates = [
@@ -242,25 +324,44 @@ class EntityManager {
     }
   }
 
-  void _rabbitDash(int preyIdx, List<FoodModel> preyList, Position head, Set<Position> snakeSet, Set<Position> obstacleSet, int gridCols, int gridRows) {
+  void _rabbitDash(
+      int preyIdx,
+      List<FoodModel> preyList,
+      Position head,
+      Set<Position> snakeSet,
+      Set<Position> obstacleSet,
+      int gridCols,
+      int gridRows) {
     final prey = preyList[preyIdx];
     final pos = prey.position;
     final dx = pos.x - head.x;
     final dy = pos.y - head.y;
     Position? dashPos;
     if (dx.abs() >= dy.abs()) {
-      dashPos = _findDashLanding(pos, dx >= 0 ? 1 : -1, 0, 3, obstacleSet, snakeSet, gridCols, gridRows);
+      dashPos = _findDashLanding(pos, dx >= 0 ? 1 : -1, 0, 3, obstacleSet,
+          snakeSet, gridCols, gridRows);
     } else {
-      dashPos = _findDashLanding(pos, 0, dy >= 0 ? 1 : -1, 3, obstacleSet, snakeSet, gridCols, gridRows);
+      dashPos = _findDashLanding(pos, 0, dy >= 0 ? 1 : -1, 3, obstacleSet,
+          snakeSet, gridCols, gridRows);
     }
     if (dashPos != null) {
-      preyList[preyIdx] = prey.copyWith(position: dashPos, dashChargesLeft: prey.dashChargesLeft - 1);
+      preyList[preyIdx] = prey.copyWith(
+          position: dashPos, dashChargesLeft: prey.dashChargesLeft - 1);
     } else {
-      _preySingleStep(preyIdx, preyList, head, snakeSet, obstacleSet, gridCols, gridRows);
+      _preySingleStep(
+          preyIdx, preyList, head, snakeSet, obstacleSet, gridCols, gridRows);
     }
   }
 
-  Position? _findDashLanding(Position start, int xDir, int yDir, int steps, Set<Position> obstacleSet, Set<Position> snakeSet, int gridCols, int gridRows) {
+  Position? _findDashLanding(
+      Position start,
+      int xDir,
+      int yDir,
+      int steps,
+      Set<Position> obstacleSet,
+      Set<Position> snakeSet,
+      int gridCols,
+      int gridRows) {
     Position pos = start;
     for (int i = 0; i < steps; i++) {
       final next = Position(pos.x + xDir, pos.y + yDir);

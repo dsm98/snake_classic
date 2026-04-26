@@ -9,6 +9,31 @@ import '../core/models/campaign_level.dart';
 class MapGenerator {
   final Random _rng = Random();
 
+  static const Map<BiomeType, int> _biomeSeedWeights = {
+    BiomeType.forest: 20,
+    BiomeType.jungle: 11,
+    BiomeType.desert: 12,
+    BiomeType.savanna: 11,
+    BiomeType.swamp: 9,
+    BiomeType.coral: 7,
+    BiomeType.cave: 9,
+    BiomeType.ruins: 8,
+    BiomeType.tundra: 6,
+    BiomeType.mushroom: 5,
+    BiomeType.crystalCave: 2,
+    BiomeType.lavaField: 1,
+  };
+
+  BiomeType _pickWeightedBiome() {
+    final totalWeight = _biomeSeedWeights.values.fold<int>(0, (a, b) => a + b);
+    int roll = _rng.nextInt(totalWeight);
+    for (final entry in _biomeSeedWeights.entries) {
+      roll -= entry.value;
+      if (roll < 0) return entry.key;
+    }
+    return BiomeType.forest;
+  }
+
   void generatePerimeterWalls(HashSet<Position> obstacleSet) {
     for (int x = 0; x < AppConstants.gridColumns; x++) {
       obstacleSet.add(Position(x, 0)); // Top wall
@@ -88,30 +113,207 @@ class MapGenerator {
       }
     }
 
-    final biomeValues = BiomeType.values;
+    // — Voronoi-style biome zone assignment —
+    // Plant random seeds across the room grid; each room gets the nearest seed's biome.
+    final numSeeds = 8 + _rng.nextInt(4); // 8-11 seeds for 8×11 room grid
+    final List<(int, int, BiomeType)> seeds = [];
+    for (int i = 0; i < numSeeds; i++) {
+      seeds.add((
+        _rng.nextInt(roomCols),
+        _rng.nextInt(roomRows),
+        _pickWeightedBiome(),
+      ));
+    }
     for (int rx = 0; rx < roomCols; rx++) {
       for (int ry = 0; ry < roomRows; ry++) {
-        roomBiomes[rx * roomRows + ry] =
-            biomeValues[_rng.nextInt(biomeValues.length)];
+        int bestDist = 999999;
+        BiomeType bestBiome = BiomeType.forest;
+        for (final seed in seeds) {
+          final d = (rx - seed.$1).abs() + (ry - seed.$2).abs();
+          if (d < bestDist) {
+            bestDist = d;
+            bestBiome = seed.$3;
+          }
+        }
+        roomBiomes[rx * roomRows + ry] = bestBiome;
       }
     }
 
+    // — Biome-specific interior decorations —
+    // Safe corners: dx/dy ∈ {2,3} or {6,7} avoid the corridor path at 4-6.
+    final int spawnRoomKey = spawnRx * roomRows + spawnRy;
     for (int rx = 0; rx < roomCols; rx++) {
       for (int ry = 0; ry < roomRows; ry++) {
-        if (_rng.nextDouble() < 0.20) {
+        final key = rx * roomRows + ry;
+        if (key == spawnRoomKey) continue; // keep spawn room clear
+        final biome = roomBiomes[key]!;
+        _addBiomeDecoration(obstacleSet, spikeTraps, rx, ry, biome, snakeSet);
+      }
+    }
+
+    // — Spike traps (lava & swamp rooms already add extras above) —
+    for (int rx = 0; rx < roomCols; rx++) {
+      for (int ry = 0; ry < roomRows; ry++) {
+        final key = rx * roomRows + ry;
+        final biome = roomBiomes[key]!;
+        final chance = biome == BiomeType.lavaField ? 0.35 : 0.15;
+        if (_rng.nextDouble() < chance) {
           final int sx = rx * bs + 3 + _rng.nextInt(3);
           final int sy = ry * bs + 3 + _rng.nextInt(3);
           final pos = Position(sx, sy);
-          if (!snakeSet.contains(pos)) {
+          if (!snakeSet.contains(pos) && !obstacleSet.contains(pos)) {
             spikeTraps.add(pos);
-            obstacleSet.remove(pos);
           }
         }
       }
     }
   }
 
-  void _carveCorridorBetween(HashSet<Position> obstacleSet, int rx1, int ry1, int rx2, int ry2, int bs) {
+  /// Adds biome-themed obstacle decorations inside a room's safe corner zones.
+  /// Corner zones (dx∈{2,3}∪{6,7}, dy∈{2,3}∪{6,7}) never overlap corridor paths.
+  void _addBiomeDecoration(
+    HashSet<Position> obstacleSet,
+    Set<Position> spikeTraps,
+    int rx,
+    int ry,
+    BiomeType biome,
+    Set<Position> snakeSet,
+  ) {
+    const int bs = 10;
+    final int bx = rx * bs;
+    final int by = ry * bs;
+
+    int sdx() =>
+        _rng.nextBool() ? (2 + _rng.nextInt(2)) : (6 + _rng.nextInt(2));
+    int sdy() =>
+        _rng.nextBool() ? (2 + _rng.nextInt(2)) : (6 + _rng.nextInt(2));
+
+    void add(int x, int y) {
+      final p = Position(x, y);
+      if (!snakeSet.contains(p)) obstacleSet.add(p);
+    }
+
+    switch (biome) {
+      case BiomeType.forest:
+        // 1-2 tree clusters (2×2)
+        for (int t = 0; t < 1 + _rng.nextInt(2); t++) {
+          final dx = sdx();
+          final dy = sdy();
+          add(bx + dx, by + dy);
+          if (dx + 1 <= 7) add(bx + dx + 1, by + dy);
+          add(bx + dx, by + dy);
+          if (dy + 1 <= 7) add(bx + dx, by + dy + 1);
+        }
+        break;
+      case BiomeType.jungle:
+        // 3-4 scattered dense blocks
+        for (int t = 0; t < 3 + _rng.nextInt(2); t++) {
+          add(bx + sdx(), by + sdy());
+        }
+        break;
+      case BiomeType.desert:
+        // 1-2 sand ridges (horizontal 2-3 cells)
+        for (int t = 0; t < 1 + _rng.nextInt(2); t++) {
+          final dx = sdx();
+          final dy = sdy();
+          for (int d = 0; d < 2 + _rng.nextInt(2); d++) {
+            if (dx + d <= 7) add(bx + dx + d, by + dy);
+          }
+        }
+        break;
+      case BiomeType.savanna:
+        // 1-2 thin acacia trees (1×2 vertical)
+        for (int t = 0; t < 1 + _rng.nextInt(2); t++) {
+          final dx = sdx();
+          final dy = sdy();
+          add(bx + dx, by + dy);
+          if (dy + 1 <= 7) add(bx + dx, by + dy + 1);
+        }
+        break;
+      case BiomeType.swamp:
+        // L-shaped mud bank in one corner
+        final dx = _rng.nextBool() ? 2 : 6;
+        final dy = _rng.nextBool() ? 2 : 6;
+        add(bx + dx, by + dy);
+        if (dx + 1 <= 7) add(bx + dx + 1, by + dy);
+        if (dy + 1 <= 7) add(bx + dx, by + dy + 1);
+        break;
+      case BiomeType.cave:
+        // 2-3 scattered rock boulders
+        for (int t = 0; t < 2 + _rng.nextInt(2); t++) {
+          final dx = sdx();
+          final dy = sdy();
+          add(bx + dx, by + dy);
+          if (_rng.nextBool() && dx + 1 <= 7) add(bx + dx + 1, by + dy);
+        }
+        break;
+      case BiomeType.crystalCave:
+        // 1-2 crystal clusters (diagonal pair)
+        for (int t = 0; t < 1 + _rng.nextInt(2); t++) {
+          final dx = sdx();
+          final dy = sdy();
+          add(bx + dx, by + dy);
+          if (dx + 1 <= 7 && dy + 1 <= 7) add(bx + dx + 1, by + dy + 1);
+        }
+        break;
+      case BiomeType.ruins:
+        // 1-2 crumbled wall segments (2-3 cells horizontal or vertical)
+        for (int t = 0; t < 1 + _rng.nextInt(2); t++) {
+          final dx = sdx();
+          final dy = sdy();
+          if (_rng.nextBool()) {
+            for (int d = 0; d < 2 + _rng.nextInt(2); d++) {
+              if (dx + d <= 7) add(bx + dx + d, by + dy);
+            }
+          } else {
+            for (int d = 0; d < 2 + _rng.nextInt(2); d++) {
+              if (dy + d <= 7) add(bx + dx, by + dy + d);
+            }
+          }
+        }
+        break;
+      case BiomeType.tundra:
+        // 1-2 ice block pairs (1×2 horizontal)
+        for (int t = 0; t < 1 + _rng.nextInt(2); t++) {
+          final dx = sdx();
+          final dy = sdy();
+          add(bx + dx, by + dy);
+          if (dx + 1 <= 7) add(bx + dx + 1, by + dy);
+        }
+        break;
+      case BiomeType.lavaField:
+        // 1-2 obsidian spires (1×2 vertical)
+        for (int t = 0; t < 1 + _rng.nextInt(2); t++) {
+          final dx = sdx();
+          final dy = sdy();
+          add(bx + dx, by + dy);
+          if (dy + 1 <= 7) add(bx + dx, by + dy + 1);
+        }
+        break;
+      case BiomeType.coral:
+        // Plus/cross shape at inner corner
+        final dx = _rng.nextBool() ? 3 : 6;
+        final dy = _rng.nextBool() ? 3 : 6;
+        add(bx + dx, by + dy);
+        if (dx - 1 >= 2) add(bx + dx - 1, by + dy);
+        if (dx + 1 <= 7) add(bx + dx + 1, by + dy);
+        if (dy - 1 >= 2) add(bx + dx, by + dy - 1);
+        if (dy + 1 <= 7) add(bx + dx, by + dy + 1);
+        break;
+      case BiomeType.mushroom:
+        // T-shaped mushroom cap
+        final dx = _rng.nextBool() ? 3 : 6;
+        final dy = _rng.nextBool() ? 2 : 6;
+        if (dy + 1 <= 7) add(bx + dx, by + dy + 1); // stem
+        if (dx - 1 >= 2) add(bx + dx - 1, by + dy); // cap left
+        add(bx + dx, by + dy); // cap centre
+        if (dx + 1 <= 7) add(bx + dx + 1, by + dy); // cap right
+        break;
+    }
+  }
+
+  void _carveCorridorBetween(HashSet<Position> obstacleSet, int rx1, int ry1,
+      int rx2, int ry2, int bs) {
     if (rx1 > rx2 || (rx1 == rx2 && ry1 > ry2)) {
       _carveCorridorBetween(obstacleSet, rx2, ry2, rx1, ry1, bs);
       return;
@@ -138,7 +340,8 @@ class MapGenerator {
     }
   }
 
-  void generateMazeObstacles(HashSet<Position> obstacleSet, Difficulty difficulty, int startX, int startY) {
+  void generateMazeObstacles(HashSet<Position> obstacleSet,
+      Difficulty difficulty, int startX, int startY) {
     int count = 0;
     switch (difficulty) {
       case Difficulty.easy:
@@ -154,21 +357,26 @@ class MapGenerator {
         count = AppConstants.mazeObstaclesInsane;
         break;
     }
-    _spawnRandomObstacles(obstacleSet, count, startX, startY, AppConstants.gridColumns, AppConstants.gridRows);
+    _spawnRandomObstacles(obstacleSet, count, startX, startY,
+        AppConstants.gridColumns, AppConstants.gridRows);
   }
 
-  void generateCampaignObstacles(HashSet<Position> obstacleSet, CampaignLevel level, int startX, int startY) {
+  void generateCampaignObstacles(HashSet<Position> obstacleSet,
+      CampaignLevel level, int startX, int startY) {
     if (level.obstacleDensity <= 0) return;
     int count = level.obstacleDensity * 2;
-    _spawnRandomObstacles(obstacleSet, count, startX, startY, AppConstants.gridColumns, AppConstants.gridRows);
+    _spawnRandomObstacles(obstacleSet, count, startX, startY,
+        AppConstants.gridColumns, AppConstants.gridRows);
   }
 
-  void _spawnRandomObstacles(HashSet<Position> obstacleSet, int count, int startX, int startY, int cols, int rows) {
+  void _spawnRandomObstacles(HashSet<Position> obstacleSet, int count,
+      int startX, int startY, int cols, int rows) {
     const clearZone = 4;
     int added = 0;
     while (added < count) {
       final pos = Position(_rng.nextInt(cols), _rng.nextInt(rows));
-      if ((pos.x - startX).abs() > clearZone || (pos.y - startY).abs() > clearZone) {
+      if ((pos.x - startX).abs() > clearZone ||
+          (pos.y - startY).abs() > clearZone) {
         if (!obstacleSet.contains(pos)) {
           obstacleSet.add(pos);
           added++;

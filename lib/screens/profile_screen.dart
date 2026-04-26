@@ -75,7 +75,7 @@ class ProfileScreen extends StatelessWidget {
             SliverAppBar(
               expandedHeight: 260,
               pinned: true,
-              backgroundColor: colors.hudBg.withOpacity(0.86),
+              backgroundColor: colors.hudBg.withValues(alpha: 0.86),
               leading: IconButton(
                 icon: Icon(Icons.arrow_back_ios_new_rounded,
                     color: colors.text, size: 20),
@@ -101,8 +101,8 @@ class ProfileScreen extends StatelessWidget {
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                           colors: [
-                            colors.buttonBorder.withOpacity(0.3),
-                            colors.hudBg.withOpacity(0.9),
+                            colors.buttonBorder.withValues(alpha: 0.3),
+                            colors.hudBg.withValues(alpha: 0.9),
                             colors.background,
                           ],
                         ),
@@ -118,12 +118,12 @@ class ProfileScreen extends StatelessWidget {
                             height: 104,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: colors.accent.withOpacity(0.1),
+                              color: colors.accent.withValues(alpha: 0.1),
                               border:
                                   Border.all(color: colors.accent, width: 2),
                               boxShadow: [
                                 BoxShadow(
-                                    color: colors.accent.withOpacity(0.26),
+                                    color: colors.accent.withValues(alpha: 0.26),
                                     blurRadius: 24)
                               ],
                             ),
@@ -189,10 +189,10 @@ class ProfileScreen extends StatelessWidget {
                         onPressed: () => Navigator.pop(context),
                         style: ElevatedButton.styleFrom(
                           backgroundColor:
-                              colors.buttonBorder.withOpacity(0.12),
+                              colors.buttonBorder.withValues(alpha: 0.12),
                           foregroundColor: colors.text,
                           side: BorderSide(
-                              color: colors.buttonBorder.withOpacity(0.55)),
+                              color: colors.buttonBorder.withValues(alpha: 0.55)),
                           padding: const EdgeInsets.symmetric(
                               horizontal: 40, vertical: 15),
                           shape: RoundedRectangleBorder(
@@ -229,7 +229,7 @@ class _SectionTitle extends StatelessWidget {
             style: TextStyle(
                 fontFamily: 'Orbitron',
                 fontSize: 12,
-                color: colors.text.withOpacity(0.5),
+                color: colors.text.withValues(alpha: 0.5),
                 letterSpacing: 2,
                 fontWeight: FontWeight.bold)),
         const SizedBox(height: 4),
@@ -282,9 +282,9 @@ class _StatTile extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: colors.hudBg.withOpacity(0.5),
+        color: colors.hudBg.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: colors.buttonBorder.withOpacity(0.2)),
+        border: Border.all(color: colors.buttonBorder.withValues(alpha: 0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -293,7 +293,7 @@ class _StatTile extends StatelessWidget {
           Text(label,
               style: TextStyle(
                   fontSize: 8,
-                  color: colors.text.withOpacity(0.6),
+                  color: colors.text.withValues(alpha: 0.6),
                   fontWeight: FontWeight.bold,
                   fontFamily: 'Orbitron')),
           const SizedBox(height: 4),
@@ -348,12 +348,12 @@ class _SafariStatsCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-          color: Colors.green.withOpacity(0.07),
+          color: Colors.green.withValues(alpha: 0.07),
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: Colors.green.withOpacity(0.25)),
+          border: Border.all(color: Colors.green.withValues(alpha: 0.25)),
           boxShadow: [
             BoxShadow(
-              color: Colors.green.withOpacity(0.05),
+              color: Colors.green.withValues(alpha: 0.05),
               blurRadius: 10,
               spreadRadius: 2,
             ),
@@ -371,7 +371,7 @@ class _SafariStatsCard extends StatelessWidget {
                     fontFamily: 'Orbitron',
                     fontSize: 10,
                     fontWeight: FontWeight.bold,
-                    color: Colors.greenAccent.withOpacity(0.8),
+                    color: Colors.greenAccent.withValues(alpha: 0.8),
                     letterSpacing: 1.2,
                   ),
                 ),
@@ -430,7 +430,7 @@ class _SafariStatsCard extends StatelessWidget {
       children: [
         Text(label,
             style:
-                TextStyle(color: colors.text.withOpacity(0.55), fontSize: 11)),
+                TextStyle(color: colors.text.withValues(alpha: 0.55), fontSize: 11)),
         const SizedBox(height: 2),
         Text(value,
             style: TextStyle(
@@ -467,13 +467,13 @@ class _SkinsCarousel extends StatelessWidget {
             width: 80,
             margin: const EdgeInsets.only(right: 12),
             decoration: BoxDecoration(
-              color: isEquipped ? colors.accent.withOpacity(0.2) : colors.hudBg,
+              color: isEquipped ? colors.accent.withValues(alpha: 0.2) : colors.hudBg,
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
                   color: isEquipped
                       ? colors.accent
                       : (isUnlocked
-                          ? colors.buttonBorder.withOpacity(0.3)
+                          ? colors.buttonBorder.withValues(alpha: 0.3)
                           : Colors.transparent)),
             ),
             child: Stack(
@@ -483,7 +483,7 @@ class _SkinsCarousel extends StatelessWidget {
                         style: TextStyle(
                             fontSize: 30,
                             color: Colors.white
-                                .withOpacity(isUnlocked ? 1.0 : 0.2)))),
+                                .withValues(alpha: isUnlocked ? 1.0 : 0.2)))),
                 if (!isUnlocked)
                   const Center(
                       child: Icon(Icons.lock, size: 20, color: Colors.white24)),

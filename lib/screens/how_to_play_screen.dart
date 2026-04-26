@@ -96,10 +96,10 @@ class _HowToPlayScreenState extends State<HowToPlayScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
               decoration: BoxDecoration(
-                color: colors.hudBg.withOpacity(0.7),
+                color: colors.hudBg.withValues(alpha: 0.7),
                 border: Border(
                   bottom:
-                      BorderSide(color: colors.buttonBorder.withOpacity(0.1)),
+                      BorderSide(color: colors.buttonBorder.withValues(alpha: 0.1)),
                 ),
               ),
               child: Row(
@@ -233,9 +233,9 @@ class _TipCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: colors.hudBg.withOpacity(0.45),
+        color: colors.hudBg.withValues(alpha: 0.45),
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: colors.buttonBorder.withOpacity(0.12)),
+        border: Border.all(color: colors.buttonBorder.withValues(alpha: 0.12)),
       ),
       child: IntrinsicHeight(
         child: Row(
@@ -244,7 +244,7 @@ class _TipCard extends StatelessWidget {
             Container(
               width: 4,
               decoration: BoxDecoration(
-                color: tip.accentColor.withOpacity(0.7),
+                color: tip.accentColor.withValues(alpha: 0.7),
                 borderRadius: const BorderRadius.only(
                   topLeft: Radius.circular(22),
                   bottomLeft: Radius.circular(22),
@@ -265,10 +265,10 @@ class _TipCard extends StatelessWidget {
                           width: 44,
                           height: 44,
                           decoration: BoxDecoration(
-                            color: tip.accentColor.withOpacity(0.1),
+                            color: tip.accentColor.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(14),
                             border: Border.all(
-                                color: tip.accentColor.withOpacity(0.25)),
+                                color: tip.accentColor.withValues(alpha: 0.25)),
                           ),
                           child: Center(
                             child: Text(tip.icon,
@@ -295,7 +295,7 @@ class _TipCard extends StatelessWidget {
                       style: TextStyle(
                         fontFamily: 'Orbitron',
                         fontSize: 10,
-                        color: colors.text.withOpacity(0.6),
+                        color: colors.text.withValues(alpha: 0.6),
                         height: 1.7,
                       ),
                     ),

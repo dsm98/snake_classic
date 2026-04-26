@@ -1,6 +1,6 @@
-import 'dart:async';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/scheduler.dart';
 import '../core/constants/app_constants.dart';
 import '../core/enums/direction.dart';
 import '../core/models/position.dart';
@@ -10,25 +10,26 @@ class MultiplayerEngine extends ChangeNotifier {
   List<Position> snake1 = [];
   List<Position> snake2 = [];
   Position? collisionPoint;
-  
+
   Direction currentDirection1 = Direction.up;
   Direction currentDirection2 = Direction.down;
-  
+
   final List<Direction> _dirQueue1 = [];
   final List<Direction> _dirQueue2 = [];
-  
+
   FoodModel? food;
-  
+
   int score1 = 0;
   int score2 = 0;
-  
+
   bool isPlaying = false;
   bool isPaused = false;
   bool isGameOver = false;
   int winner = 0; // 0: none, 1: p1, 2: p2, 3: draw
-  
+
   int currentTickMs = AppConstants.speedNormal;
-  Timer? _gameTimer;
+  Ticker? _ticker;
+  Duration _lastTickTime = Duration.zero;
   final Random _rng = Random();
 
   VoidCallback? onFoodEaten;
@@ -71,22 +72,22 @@ class MultiplayerEngine extends ChangeNotifier {
   void start() {
     isPlaying = true;
     isPaused = false;
-    _startTimer();
+    _startTicker();
   }
 
   void pause() {
     isPaused = true;
-    _gameTimer?.cancel();
+    _ticker?.stop();
     notifyListeners();
   }
 
   void resume() {
     isPaused = false;
-    _startTimer();
+    _startTicker();
   }
 
   void restart() {
-    _gameTimer?.cancel();
+    _ticker?.stop();
     _reset();
     start();
   }
@@ -96,7 +97,8 @@ class MultiplayerEngine extends ChangeNotifier {
       final last = _dirQueue1.last;
       if (last.isOpposite(newDir) || last == newDir) return;
     } else {
-      if (currentDirection1.isOpposite(newDir) || currentDirection1 == newDir) return;
+      if (currentDirection1.isOpposite(newDir) || currentDirection1 == newDir)
+        return;
     }
     if (_dirQueue1.length < 3) _dirQueue1.add(newDir);
   }
@@ -106,16 +108,28 @@ class MultiplayerEngine extends ChangeNotifier {
       final last = _dirQueue2.last;
       if (last.isOpposite(newDir) || last == newDir) return;
     } else {
-      if (currentDirection2.isOpposite(newDir) || currentDirection2 == newDir) return;
+      if (currentDirection2.isOpposite(newDir) || currentDirection2 == newDir)
+        return;
     }
     if (_dirQueue2.length < 3) _dirQueue2.add(newDir);
   }
 
-  void _startTimer() {
-    _gameTimer?.cancel();
-    _gameTimer = Timer.periodic(Duration(milliseconds: currentTickMs), (_) {
-      if (!isPaused && !isGameOver) _tick();
-    });
+  void _startTicker() {
+    _ticker?.stop();
+    _lastTickTime = Duration.zero;
+    _ticker ??= Ticker(_onTick);
+    if (!_ticker!.isActive) {
+      _ticker!.start();
+    }
+  }
+
+  void _onTick(Duration elapsed) {
+    if (isPaused || isGameOver) return;
+    if (elapsed.inMilliseconds - _lastTickTime.inMilliseconds >=
+        currentTickMs) {
+      _lastTickTime = elapsed;
+      _tick();
+    }
   }
 
   void _tick() {
@@ -196,42 +210,55 @@ class MultiplayerEngine extends ChangeNotifier {
     int nx = head.x;
     int ny = head.y;
     switch (dir) {
-      case Direction.up: ny -= 1; break;
-      case Direction.down: ny += 1; break;
-      case Direction.left: nx -= 1; break;
-      case Direction.right: nx += 1; break;
+      case Direction.up:
+        ny -= 1;
+        break;
+      case Direction.down:
+        ny += 1;
+        break;
+      case Direction.left:
+        nx -= 1;
+        break;
+      case Direction.right:
+        nx += 1;
+        break;
     }
+    // Wrap around (endless — no walls)
+    nx = nx % AppConstants.gridColumns;
+    if (nx < 0) nx += AppConstants.gridColumns;
+    ny = ny % AppConstants.gridRows;
+    if (ny < 0) ny += AppConstants.gridRows;
     return Position(nx, ny);
   }
 
   bool _isValid(Position pos) {
-    if (pos.x < 0 || pos.x >= AppConstants.gridColumns ||
-        pos.y < 0 || pos.y >= AppConstants.gridRows) {
-      return false;
-    }
+    // With wrap-around, out-of-bounds is impossible — always valid
     return true;
   }
 
   void _triggerGameOver() {
     isGameOver = true;
     isPlaying = false;
-    _gameTimer?.cancel();
+    _ticker?.stop();
     onGameOver?.call();
     notifyListeners();
   }
 
   void _spawnFood() {
     int attempts = 0;
-    Position pos = Position(_rng.nextInt(AppConstants.gridColumns), _rng.nextInt(AppConstants.gridRows));
+    Position pos = Position(_rng.nextInt(AppConstants.gridColumns),
+        _rng.nextInt(AppConstants.gridRows));
     while (attempts < 200 && (snake1.contains(pos) || snake2.contains(pos))) {
-      pos = Position(_rng.nextInt(AppConstants.gridColumns), _rng.nextInt(AppConstants.gridRows));
+      pos = Position(_rng.nextInt(AppConstants.gridColumns),
+          _rng.nextInt(AppConstants.gridRows));
       attempts++;
     }
     food = FoodModel(position: pos);
   }
 
   void _scaleSpeed() {
-    final maxLen = max(snake1.length, snake2.length) - AppConstants.initialSnakeLength;
+    final maxLen =
+        max(snake1.length, snake2.length) - AppConstants.initialSnakeLength;
     final thresholds = maxLen ~/ AppConstants.speedScaleEvery;
     final newSpeed = max(
       AppConstants.speedMin,
@@ -239,13 +266,14 @@ class MultiplayerEngine extends ChangeNotifier {
     );
     if (newSpeed < currentTickMs) {
       currentTickMs = newSpeed;
-      _startTimer();
+      // No restart needed — _onTick reads currentTickMs dynamically
     }
   }
 
   @override
   void dispose() {
-    _gameTimer?.cancel();
+    _ticker?.stop();
+    _ticker?.dispose();
     super.dispose();
   }
 }

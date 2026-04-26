@@ -119,7 +119,7 @@ class SettingsScreen extends StatelessWidget {
                       style: TextStyle(
                         fontFamily: 'Orbitron',
                         fontSize: 9,
-                        color: colors.text.withOpacity(0.2),
+                        color: colors.text.withValues(alpha: 0.2),
                         letterSpacing: 1,
                       ),
                     ),
@@ -148,9 +148,9 @@ class _PremiumAppBar extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       decoration: BoxDecoration(
-        color: colors.hudBg.withOpacity(0.7),
+        color: colors.hudBg.withValues(alpha: 0.7),
         border: Border(
-          bottom: BorderSide(color: colors.buttonBorder.withOpacity(0.15)),
+          bottom: BorderSide(color: colors.buttonBorder.withValues(alpha: 0.15)),
         ),
       ),
       child: Row(
@@ -195,10 +195,10 @@ class _SectionLabel extends StatelessWidget {
           height: 8,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: colors.buttonBorder.withOpacity(0.9),
+            color: colors.buttonBorder.withValues(alpha: 0.9),
             boxShadow: [
               BoxShadow(
-                color: colors.buttonBorder.withOpacity(0.35),
+                color: colors.buttonBorder.withValues(alpha: 0.35),
                 blurRadius: 8,
               ),
             ],
@@ -210,7 +210,7 @@ class _SectionLabel extends StatelessWidget {
           style: TextStyle(
             fontFamily: font,
             fontSize: 9,
-            color: colors.text.withOpacity(0.4),
+            color: colors.text.withValues(alpha: 0.4),
             letterSpacing: 2.5,
           ),
         ),
@@ -221,8 +221,8 @@ class _SectionLabel extends StatelessWidget {
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  colors.buttonBorder.withOpacity(0.3),
-                  colors.buttonBorder.withOpacity(0),
+                  colors.buttonBorder.withValues(alpha: 0.3),
+                  colors.buttonBorder.withValues(alpha: 0),
                 ],
               ),
             ),
@@ -246,18 +246,18 @@ class _SettingsHero extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            colors.buttonBorder.withOpacity(0.28),
-            colors.accent.withOpacity(0.14),
-            colors.hudBg.withOpacity(0.65),
+            colors.buttonBorder.withValues(alpha: 0.28),
+            colors.accent.withValues(alpha: 0.14),
+            colors.hudBg.withValues(alpha: 0.65),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: colors.buttonBorder.withOpacity(0.35)),
+        border: Border.all(color: colors.buttonBorder.withValues(alpha: 0.35)),
         boxShadow: [
           BoxShadow(
-            color: colors.buttonBorder.withOpacity(0.12),
+            color: colors.buttonBorder.withValues(alpha: 0.12),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
@@ -270,8 +270,8 @@ class _SettingsHero extends StatelessWidget {
             height: 42,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: colors.hudBg.withOpacity(0.8),
-              border: Border.all(color: colors.buttonBorder.withOpacity(0.45)),
+              color: colors.hudBg.withValues(alpha: 0.8),
+              border: Border.all(color: colors.buttonBorder.withValues(alpha: 0.45)),
             ),
             child: const Center(
               child: Text('🎮', style: TextStyle(fontSize: 20)),
@@ -298,7 +298,7 @@ class _SettingsHero extends StatelessWidget {
                   style: TextStyle(
                     fontFamily: 'Orbitron',
                     fontSize: 10,
-                    color: colors.text.withOpacity(0.75),
+                    color: colors.text.withValues(alpha: 0.75),
                     height: 1.35,
                   ),
                 ),
@@ -324,12 +324,12 @@ class _AccountCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: colors.hudBg.withOpacity(0.5),
+        color: colors.hudBg.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: colors.buttonBorder.withOpacity(0.2)),
+        border: Border.all(color: colors.buttonBorder.withValues(alpha: 0.2)),
         boxShadow: [
           BoxShadow(
-            color: colors.buttonBorder.withOpacity(0.06),
+            color: colors.buttonBorder.withValues(alpha: 0.06),
             blurRadius: 20,
           ),
         ],
@@ -344,13 +344,13 @@ class _AccountCard extends StatelessWidget {
               shape: BoxShape.circle,
               gradient: LinearGradient(
                 colors: [
-                  colors.buttonBorder.withOpacity(0.5),
-                  colors.buttonBorder.withOpacity(0.15),
+                  colors.buttonBorder.withValues(alpha: 0.5),
+                  colors.buttonBorder.withValues(alpha: 0.15),
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
-              border: Border.all(color: colors.buttonBorder.withOpacity(0.4)),
+              border: Border.all(color: colors.buttonBorder.withValues(alpha: 0.4)),
             ),
             clipBehavior: Clip.antiAlias,
             child: auth.currentUser?.photoURL != null
@@ -370,7 +370,7 @@ class _AccountCard extends StatelessWidget {
                   style: TextStyle(
                     fontFamily: 'Orbitron',
                     fontSize: 8,
-                    color: colors.text.withOpacity(0.45),
+                    color: colors.text.withValues(alpha: 0.45),
                     letterSpacing: 1,
                   ),
                 ),
@@ -395,7 +395,7 @@ class _AccountCard extends StatelessWidget {
           if (isSignedIn)
             _IconBtn(
               icon: Icons.logout_rounded,
-              color: Colors.red.withOpacity(0.7),
+              color: Colors.red.withValues(alpha: 0.7),
               onTap: () => auth.signOut(),
             )
           else
@@ -425,8 +425,8 @@ class _IconBtn extends StatelessWidget {
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: color.withOpacity(0.1),
-          border: Border.all(color: color.withOpacity(0.3)),
+          color: color.withValues(alpha: 0.1),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
         ),
         child: Icon(icon, color: color, size: 20),
       ),
@@ -457,7 +457,7 @@ class _TextBtn extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: colors.buttonBorder.withOpacity(0.3),
+              color: colors.buttonBorder.withValues(alpha: 0.3),
               blurRadius: 12,
             ),
           ],
@@ -506,25 +506,25 @@ class _ThemeSelector extends StatelessWidget {
                     gradient: sel
                         ? LinearGradient(
                             colors: [
-                              themeColors.withOpacity(0.3),
-                              themeColors.withOpacity(0.1),
+                              themeColors.withValues(alpha: 0.3),
+                              themeColors.withValues(alpha: 0.1),
                             ],
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
                           )
                         : null,
-                    color: sel ? null : colors.hudBg.withOpacity(0.42),
+                    color: sel ? null : colors.hudBg.withValues(alpha: 0.42),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
                       color: sel
-                          ? themeColors.withOpacity(0.9)
-                          : colors.buttonBorder.withOpacity(0.15),
+                          ? themeColors.withValues(alpha: 0.9)
+                          : colors.buttonBorder.withValues(alpha: 0.15),
                       width: sel ? 2 : 1,
                     ),
                     boxShadow: sel
                         ? [
                             BoxShadow(
-                              color: themeColors.withOpacity(0.25),
+                              color: themeColors.withValues(alpha: 0.25),
                               blurRadius: 14,
                             )
                           ]
@@ -540,7 +540,7 @@ class _ThemeSelector extends StatelessWidget {
                           fontFamily: 'Orbitron',
                           fontSize: 8,
                           color:
-                              sel ? colors.text : colors.text.withOpacity(0.42),
+                              sel ? colors.text : colors.text.withValues(alpha: 0.42),
                           fontWeight: sel ? FontWeight.bold : FontWeight.normal,
                         ),
                       ),
@@ -627,23 +627,23 @@ class _DifficultyTile extends StatelessWidget {
           gradient: sel
               ? LinearGradient(
                   colors: [
-                    _diffColor.withOpacity(0.2),
-                    _diffColor.withOpacity(0.05),
+                    _diffColor.withValues(alpha: 0.2),
+                    _diffColor.withValues(alpha: 0.05),
                   ],
                 )
               : null,
-          color: sel ? null : colors.hudBg.withOpacity(0.4),
+          color: sel ? null : colors.hudBg.withValues(alpha: 0.4),
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
             color: sel
-                ? _diffColor.withOpacity(0.6)
-                : colors.buttonBorder.withOpacity(0.15),
+                ? _diffColor.withValues(alpha: 0.6)
+                : colors.buttonBorder.withValues(alpha: 0.15),
             width: sel ? 2 : 1,
           ),
           boxShadow: sel
               ? [
                   BoxShadow(
-                    color: _diffColor.withOpacity(0.2),
+                    color: _diffColor.withValues(alpha: 0.2),
                     blurRadius: 16,
                   )
                 ]
@@ -662,7 +662,7 @@ class _DifficultyTile extends StatelessWidget {
                     style: TextStyle(
                       fontFamily: 'Orbitron',
                       fontSize: 12,
-                      color: sel ? colors.text : colors.text.withOpacity(0.4),
+                      color: sel ? colors.text : colors.text.withValues(alpha: 0.4),
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -673,13 +673,13 @@ class _DifficultyTile extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
                 color: sel
-                    ? _diffColor.withOpacity(0.2)
-                    : colors.background.withOpacity(0.3),
+                    ? _diffColor.withValues(alpha: 0.2)
+                    : colors.background.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(
                   color: sel
-                      ? _diffColor.withOpacity(0.5)
-                      : colors.buttonBorder.withOpacity(0.15),
+                      ? _diffColor.withValues(alpha: 0.5)
+                      : colors.buttonBorder.withValues(alpha: 0.15),
                 ),
               ),
               child: Text(
@@ -687,7 +687,7 @@ class _DifficultyTile extends StatelessWidget {
                 style: TextStyle(
                   fontFamily: 'Orbitron',
                   fontSize: 12,
-                  color: sel ? _diffColor : colors.text.withOpacity(0.3),
+                  color: sel ? _diffColor : colors.text.withValues(alpha: 0.3),
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -725,17 +725,17 @@ class _OptionsCard extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            colors.hudBg.withOpacity(0.55),
-            colors.hudBg.withOpacity(0.38),
+            colors.hudBg.withValues(alpha: 0.55),
+            colors.hudBg.withValues(alpha: 0.38),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: colors.buttonBorder.withOpacity(0.15)),
+        border: Border.all(color: colors.buttonBorder.withValues(alpha: 0.15)),
         boxShadow: [
           BoxShadow(
-            color: colors.buttonBorder.withOpacity(0.08),
+            color: colors.buttonBorder.withValues(alpha: 0.08),
             blurRadius: 18,
           ),
         ],
@@ -811,7 +811,7 @@ class _OptionsCard extends StatelessWidget {
                   style: TextStyle(
                     fontFamily: 'Orbitron',
                     fontSize: 12,
-                    color: colors.text.withOpacity(0.9),
+                    color: colors.text.withValues(alpha: 0.9),
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -822,7 +822,7 @@ class _OptionsCard extends StatelessWidget {
                   max: 1.35,
                   divisions: 9,
                   activeColor: colors.buttonBorder,
-                  inactiveColor: colors.background.withOpacity(0.5),
+                  inactiveColor: colors.background.withValues(alpha: 0.5),
                   label: '${(settings.fontScale * 100).round()}%',
                   onChanged: settings.setFontScale,
                 ),
@@ -839,7 +839,7 @@ class _OptionsCard extends StatelessWidget {
                   style: TextStyle(
                     fontFamily: 'Orbitron',
                     fontSize: 12,
-                    color: colors.text.withOpacity(0.9),
+                    color: colors.text.withValues(alpha: 0.9),
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -852,14 +852,14 @@ class _OptionsCard extends StatelessWidget {
                       label: Text(_hapticLabel(intensity)),
                       selected: selected,
                       onSelected: (_) => settings.setHapticIntensity(intensity),
-                      selectedColor: colors.buttonBorder.withOpacity(0.25),
-                      backgroundColor: colors.background.withOpacity(0.4),
+                      selectedColor: colors.buttonBorder.withValues(alpha: 0.25),
+                      backgroundColor: colors.background.withValues(alpha: 0.4),
                       labelStyle: TextStyle(
                         fontFamily: 'Orbitron',
                         fontSize: 10,
                         color: selected
                             ? colors.text
-                            : colors.text.withOpacity(0.5),
+                            : colors.text.withValues(alpha: 0.5),
                         fontWeight:
                             selected ? FontWeight.bold : FontWeight.normal,
                       ),
@@ -883,7 +883,7 @@ class _Divider extends StatelessWidget {
     return Container(
       height: 1,
       margin: const EdgeInsets.only(left: 56),
-      color: colors.buttonBorder.withOpacity(0.1),
+      color: colors.buttonBorder.withValues(alpha: 0.1),
     );
   }
 }
@@ -921,14 +921,14 @@ class _ToggleTile extends StatelessWidget {
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  colors.buttonBorder.withOpacity(0.16),
-                  colors.buttonBorder.withOpacity(0.08),
+                  colors.buttonBorder.withValues(alpha: 0.16),
+                  colors.buttonBorder.withValues(alpha: 0.08),
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: colors.buttonBorder.withOpacity(0.2)),
+              border: Border.all(color: colors.buttonBorder.withValues(alpha: 0.2)),
             ),
             child:
                 Center(child: Text(icon, style: const TextStyle(fontSize: 20))),
@@ -943,7 +943,7 @@ class _ToggleTile extends StatelessWidget {
                   style: TextStyle(
                     fontFamily: 'Orbitron',
                     fontSize: 12,
-                    color: colors.text.withOpacity(0.9),
+                    color: colors.text.withValues(alpha: 0.9),
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -952,7 +952,7 @@ class _ToggleTile extends StatelessWidget {
                   style: TextStyle(
                     fontFamily: 'Orbitron',
                     fontSize: 9,
-                    color: colors.text.withOpacity(0.35),
+                    color: colors.text.withValues(alpha: 0.35),
                   ),
                 ),
               ],
@@ -964,9 +964,9 @@ class _ToggleTile extends StatelessWidget {
             activeThumbColor: colors.buttonBorder,
             trackColor: WidgetStateProperty.resolveWith((states) {
               if (states.contains(WidgetState.selected)) {
-                return colors.buttonBorder.withOpacity(0.3);
+                return colors.buttonBorder.withValues(alpha: 0.3);
               }
-              return colors.background.withOpacity(0.5);
+              return colors.background.withValues(alpha: 0.5);
             }),
           ),
         ],

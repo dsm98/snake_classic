@@ -106,14 +106,14 @@ class GameHud extends StatelessWidget {
                   vertical: LayoutUtil.spacing(context, 10),
                 ),
                 decoration: BoxDecoration(
-                  color: colors.hudBg.withOpacity(0.75),
+                  color: colors.hudBg.withValues(alpha: 0.75),
                   border: Border(
                     bottom: BorderSide(
-                        color: colors.buttonBorder.withOpacity(0.15), width: 1),
+                        color: colors.buttonBorder.withValues(alpha: 0.15), width: 1),
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
+                      color: Colors.black.withValues(alpha: 0.2),
                       blurRadius: 8,
                       offset: const Offset(0, 2),
                     ),
@@ -138,7 +138,7 @@ class GameHud extends StatelessWidget {
                 style: TextStyle(
                   fontFamily: _fontFamily,
                   fontSize: LayoutUtil.fontSize(context, 7),
-                  color: colors.text.withOpacity(0.4),
+                  color: colors.text.withValues(alpha: 0.4),
                   letterSpacing: 1.5,
                 ),
               ),
@@ -154,7 +154,7 @@ class GameHud extends StatelessWidget {
                       ? []
                       : [
                           Shadow(
-                            color: colors.buttonBorder.withOpacity(0.4),
+                            color: colors.buttonBorder.withValues(alpha: 0.4),
                             blurRadius: 12,
                           ),
                         ],
@@ -188,10 +188,10 @@ class GameHud extends StatelessWidget {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: colors.buttonBorder.withOpacity(0.12),
+                  color: colors.buttonBorder.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(20),
                   border:
-                      Border.all(color: colors.buttonBorder.withOpacity(0.25)),
+                      Border.all(color: colors.buttonBorder.withValues(alpha: 0.25)),
                 ),
                 child: Text(
                   '🐍 ${engine.snake.length}',
@@ -212,16 +212,16 @@ class GameHud extends StatelessWidget {
                   width: 38 * scale,
                   height: 38 * scale,
                   decoration: BoxDecoration(
-                    color: colors.buttonBg.withOpacity(isRetro ? 1.0 : 0.7),
+                    color: colors.buttonBg.withValues(alpha: isRetro ? 1.0 : 0.7),
                     border: Border.all(
-                        color: colors.buttonBorder.withOpacity(0.5),
+                        color: colors.buttonBorder.withValues(alpha: 0.5),
                         width: scale),
                     borderRadius: BorderRadius.circular(12 * scale),
                     boxShadow: isRetro
                         ? []
                         : [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.2),
+                              color: Colors.black.withValues(alpha: 0.2),
                               blurRadius: 8,
                             ),
                           ],
@@ -247,13 +247,13 @@ class GameHud extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       decoration: BoxDecoration(
         color: isUrgent
-            ? Colors.red.withOpacity(0.15)
-            : colors.buttonBorder.withOpacity(0.08),
+            ? Colors.red.withValues(alpha: 0.15)
+            : colors.buttonBorder.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: isUrgent
-              ? Colors.red.withOpacity(0.5)
-              : colors.buttonBorder.withOpacity(0.2),
+              ? Colors.red.withValues(alpha: 0.5)
+              : colors.buttonBorder.withValues(alpha: 0.2),
         ),
       ),
       child: Column(
@@ -265,8 +265,8 @@ class GameHud extends StatelessWidget {
               fontFamily: _fontFamily,
               fontSize: LayoutUtil.fontSize(context, 7),
               color: isUrgent
-                  ? Colors.red.withOpacity(0.8)
-                  : colors.text.withOpacity(0.5),
+                  ? Colors.red.withValues(alpha: 0.8)
+                  : colors.text.withValues(alpha: 0.5),
               letterSpacing: 1,
             ),
           ),
@@ -296,7 +296,7 @@ class GameHud extends StatelessWidget {
         ),
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
-          BoxShadow(color: Colors.orange.withOpacity(0.4), blurRadius: 10)
+          BoxShadow(color: Colors.orange.withValues(alpha: 0.4), blurRadius: 10)
         ],
       ),
       child: Text(
@@ -320,11 +320,11 @@ class GameHud extends StatelessWidget {
       ),
       decoration: BoxDecoration(
         color: isIce
-            ? Colors.cyan.withOpacity(0.2)
-            : Colors.black.withOpacity(0.6),
+            ? Colors.cyan.withValues(alpha: 0.2)
+            : Colors.black.withValues(alpha: 0.6),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-            color: isIce ? Colors.cyan.withOpacity(0.5) : Colors.white24),
+            color: isIce ? Colors.cyan.withValues(alpha: 0.5) : Colors.white24),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -370,15 +370,15 @@ class GameHud extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            urgencyColor.withOpacity(0.2),
-            urgencyColor.withOpacity(0.08),
+            urgencyColor.withValues(alpha: 0.2),
+            urgencyColor.withValues(alpha: 0.08),
           ],
         ),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: urgencyColor.withOpacity(0.45)),
+        border: Border.all(color: urgencyColor.withValues(alpha: 0.45)),
         boxShadow: [
           BoxShadow(
-            color: urgencyColor.withOpacity(remainingRatio < 0.25 ? 0.35 : 0.2),
+            color: urgencyColor.withValues(alpha: remainingRatio < 0.25 ? 0.35 : 0.2),
             blurRadius: remainingRatio < 0.25 ? 16 : 12,
           ),
         ],
@@ -403,8 +403,8 @@ class GameHud extends StatelessWidget {
               borderRadius: BorderRadius.circular(2),
               child: LinearProgressIndicator(
                 value: remainingRatio,
-                backgroundColor: colors.background.withOpacity(0.4),
-                color: urgencyColor.withOpacity(0.9),
+                backgroundColor: colors.background.withValues(alpha: 0.4),
+                color: urgencyColor.withValues(alpha: 0.9),
               ),
             ),
           ),
@@ -442,10 +442,10 @@ class GameHud extends StatelessWidget {
                     width: 26,
                     height: 26,
                     decoration: BoxDecoration(
-                      color: colors.powerUp.withOpacity(0.15),
+                      color: colors.powerUp.withValues(alpha: 0.15),
                       shape: BoxShape.circle,
                       border:
-                          Border.all(color: colors.powerUp.withOpacity(0.4)),
+                          Border.all(color: colors.powerUp.withValues(alpha: 0.4)),
                     ),
                     child: Center(
                       child: Text(
@@ -468,7 +468,7 @@ class GameHud extends StatelessWidget {
                             borderRadius: BorderRadius.circular(3),
                             child: LinearProgressIndicator(
                               value: progress,
-                              backgroundColor: colors.hudBg.withOpacity(0.5),
+                              backgroundColor: colors.hudBg.withValues(alpha: 0.5),
                               valueColor:
                                   AlwaysStoppedAnimation<Color>(colors.powerUp),
                             ),
@@ -480,7 +480,7 @@ class GameHud extends StatelessWidget {
                           style: TextStyle(
                             fontFamily: 'Orbitron',
                             fontSize: LayoutUtil.fontSize(context, 7),
-                            color: colors.text.withOpacity(0.65),
+                            color: colors.text.withValues(alpha: 0.65),
                           ),
                         ),
                       ],
@@ -519,8 +519,8 @@ class GameHud extends StatelessWidget {
               child: LinearProgressIndicator(
                 value: storage.rankProgress,
                 minHeight: barHeight,
-                backgroundColor: colors.background.withOpacity(0.4),
-                color: colors.buttonBorder.withOpacity(0.6),
+                backgroundColor: colors.background.withValues(alpha: 0.4),
+                color: colors.buttonBorder.withValues(alpha: 0.6),
               ),
             ),
           ),
@@ -532,7 +532,7 @@ class GameHud extends StatelessWidget {
               fontSize: LayoutUtil.fontSize(context, slim ? 7 : 8),
               color: currentRunXpEstimate > 0
                   ? Colors.greenAccent
-                  : colors.text.withOpacity(0.3),
+                  : colors.text.withValues(alpha: 0.3),
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -561,7 +561,7 @@ class GameHud extends StatelessWidget {
                   fontWeight: FontWeight.bold,
                   color: engine.isFeverMode
                       ? Colors.orange
-                      : colors.text.withOpacity(0.5),
+                      : colors.text.withValues(alpha: 0.5),
                 ),
               ),
               if (!engine.isFeverMode)
@@ -570,7 +570,7 @@ class GameHud extends StatelessWidget {
                   style: TextStyle(
                     fontFamily: 'Orbitron',
                     fontSize: 8,
-                    color: colors.text.withOpacity(0.5),
+                    color: colors.text.withValues(alpha: 0.5),
                   ),
                 ),
             ],
@@ -582,7 +582,7 @@ class GameHud extends StatelessWidget {
               borderRadius: BorderRadius.circular(3),
               child: LinearProgressIndicator(
                 value: engine.isFeverMode ? 1.0 : engine.feverMeter / 100,
-                backgroundColor: colors.background.withOpacity(0.3),
+                backgroundColor: colors.background.withValues(alpha: 0.3),
                 valueColor: AlwaysStoppedAnimation<Color>(
                   engine.isFeverMode ? Colors.orange : Colors.deepOrangeAccent,
                 ),
@@ -622,10 +622,10 @@ class GameHud extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.15),
+        color: color.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: color.withOpacity(0.5)),
-        boxShadow: [BoxShadow(color: color.withOpacity(0.25), blurRadius: 12)],
+        border: Border.all(color: color.withValues(alpha: 0.5)),
+        boxShadow: [BoxShadow(color: color.withValues(alpha: 0.25), blurRadius: 12)],
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -643,7 +643,7 @@ class GameHud extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.25),
+              color: color.withValues(alpha: 0.25),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
@@ -684,9 +684,9 @@ class GameHud extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: colors.buttonBorder.withOpacity(0.08),
+        color: colors.buttonBorder.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: colors.buttonBorder.withOpacity(0.2)),
+        border: Border.all(color: colors.buttonBorder.withValues(alpha: 0.2)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -705,7 +705,7 @@ class GameHud extends StatelessWidget {
             style: TextStyle(
               fontFamily: _fontFamily,
               fontSize: LayoutUtil.fontSize(context, 9),
-              color: colors.text.withOpacity(0.8),
+              color: colors.text.withValues(alpha: 0.8),
             ),
           ),
         ],

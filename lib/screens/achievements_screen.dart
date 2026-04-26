@@ -165,7 +165,7 @@ class AchievementsScreen extends StatelessWidget {
                               style: TextStyle(
                                 fontFamily: AppTypography.modernFont,
                                 fontSize: 10,
-                                color: colors.text.withOpacity(0.45),
+                                color: colors.text.withValues(alpha: 0.45),
                               ),
                             ),
                           ],
@@ -227,9 +227,9 @@ class AchievementsScreen extends StatelessWidget {
                                   decoration: BoxDecoration(
                                     gradient: LinearGradient(
                                       colors: [
-                                        Colors.white.withOpacity(0),
+                                        Colors.white.withValues(alpha: 0),
                                         Colors.white.withValues(alpha: 0.15),
-                                        Colors.white.withOpacity(0),
+                                        Colors.white.withValues(alpha: 0),
                                       ],
                                     ),
                                   ),
@@ -296,8 +296,8 @@ class _AchievementTile extends StatelessWidget {
             ? null
             : LinearGradient(
                 colors: [
-                  colors.buttonBorder.withOpacity(0.12),
-                  colors.buttonBorder.withOpacity(0.03),
+                  colors.buttonBorder.withValues(alpha: 0.12),
+                  colors.buttonBorder.withValues(alpha: 0.03),
                 ],
               ),
         color: locked ? colors.hudBg.withValues(alpha: 0.3) : null,
@@ -312,7 +312,7 @@ class _AchievementTile extends StatelessWidget {
             ? []
             : [
                 BoxShadow(
-                  color: colors.buttonBorder.withOpacity(0.12),
+                  color: colors.buttonBorder.withValues(alpha: 0.12),
                   blurRadius: 16,
                 )
               ],
@@ -329,14 +329,14 @@ class _AchievementTile extends StatelessWidget {
                   ? null
                   : RadialGradient(
                       colors: [
-                        colors.buttonBorder.withOpacity(0.25),
+                        colors.buttonBorder.withValues(alpha: 0.25),
                         colors.buttonBorder.withValues(alpha: 0.05),
                       ],
                     ),
               color: locked ? colors.background.withValues(alpha: 0.4) : null,
               border: Border.all(
                 color: locked
-                    ? colors.buttonBorder.withOpacity(0.12)
+                    ? colors.buttonBorder.withValues(alpha: 0.12)
                     : colors.buttonBorder.withValues(alpha: 0.5),
                 width: locked ? 1 : 2,
               ),
@@ -360,7 +360,7 @@ class _AchievementTile extends StatelessWidget {
                   style: TextStyle(
                     fontFamily: AppTypography.modernFont,
                     fontSize: 12,
-                    color: locked ? colors.text.withOpacity(0.35) : colors.text,
+                    color: locked ? colors.text.withValues(alpha: 0.35) : colors.text,
                     fontWeight: locked ? FontWeight.normal : FontWeight.bold,
                   ),
                 ),
@@ -370,7 +370,7 @@ class _AchievementTile extends StatelessWidget {
                   style: TextStyle(
                     fontFamily: AppTypography.modernFont,
                     fontSize: 9,
-                    color: colors.text.withOpacity(locked ? 0.3 : 0.5),
+                    color: colors.text.withValues(alpha: locked ? 0.3 : 0.5),
                     height: 1.4,
                   ),
                 ),
@@ -398,7 +398,7 @@ class _AchievementTile extends StatelessWidget {
                         style: TextStyle(
                           fontFamily: AppTypography.modernFont,
                           fontSize: 8,
-                          color: colors.text.withOpacity(0.35),
+                          color: colors.text.withValues(alpha: 0.35),
                         ),
                       ),
                     ],
@@ -416,11 +416,11 @@ class _AchievementTile extends StatelessWidget {
             decoration: BoxDecoration(
               color: locked
                   ? Colors.transparent
-                  : Colors.greenAccent.withOpacity(0.12),
+                  : Colors.greenAccent.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: locked
-                    ? colors.buttonBorder.withOpacity(0.12)
+                    ? colors.buttonBorder.withValues(alpha: 0.12)
                     : Colors.greenAccent.withValues(alpha: 0.5),
               ),
             ),

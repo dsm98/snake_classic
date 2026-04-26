@@ -186,7 +186,7 @@ class _ColdOpenScreenState extends State<ColdOpenScreen>
                       radius: 1.0,
                       colors: [
                         Colors.transparent,
-                        Colors.black.withOpacity(0.55),
+                        Colors.black.withValues(alpha: 0.55),
                       ],
                       stops: const [0.5, 1.0],
                     ),
@@ -284,7 +284,7 @@ class _ColdOpenScreenState extends State<ColdOpenScreen>
 
   Widget _buildDeathOverlay() {
     return Container(
-      color: Colors.red.withOpacity(0.15),
+      color: Colors.red.withValues(alpha: 0.15),
       child: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -374,7 +374,7 @@ class _ColdOpenPainter extends CustomPainter {
       foodCenter,
       cellSize * 0.5 * (1.1 + pulse * 0.15),
       Paint()
-        ..color = const Color(0xFF00FF44).withOpacity(0.15 + pulse * 0.1)
+        ..color = const Color(0xFF00FF44).withValues(alpha: 0.15 + pulse * 0.1)
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12),
     );
     canvas.drawCircle(
@@ -385,7 +385,7 @@ class _ColdOpenPainter extends CustomPainter {
     canvas.drawCircle(
       foodCenter,
       cellSize * 0.18,
-      Paint()..color = Colors.white.withOpacity(0.7),
+      Paint()..color = Colors.white.withValues(alpha: 0.7),
     );
 
     // Draw snake
@@ -396,7 +396,7 @@ class _ColdOpenPainter extends CustomPainter {
       final isHead = i == 0;
       final progress = 1.0 - (i / snake.length) * 0.5;
       final bodyColor = isDead
-          ? deadColor.withOpacity(progress)
+          ? deadColor.withValues(alpha: progress)
           : Color.lerp(
                 const Color(0xFF002200),
                 const Color(0xFF00BB44),
@@ -409,7 +409,7 @@ class _ColdOpenPainter extends CustomPainter {
           center,
           cellSize * 0.52,
           Paint()
-            ..color = const Color(0xFF00FF66).withOpacity(0.4 + pulse * 0.15)
+            ..color = const Color(0xFF00FF66).withValues(alpha: 0.4 + pulse * 0.15)
             ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
         );
         canvas.drawCircle(

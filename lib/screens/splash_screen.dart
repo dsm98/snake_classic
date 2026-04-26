@@ -147,7 +147,7 @@ class _SplashScreenState extends State<SplashScreen>
                               letterSpacing: 8,
                               shadows: [
                                 Shadow(
-                                  color: const Color(0xFF00FF88).withOpacity(
+                                  color: const Color(0xFF00FF88).withValues(alpha: 
                                       0.4 + _glowController.value * 0.4),
                                   blurRadius: 30,
                                 ),
@@ -162,7 +162,7 @@ class _SplashScreenState extends State<SplashScreen>
                         style: TextStyle(
                           fontFamily: 'Orbitron',
                           fontSize: 13,
-                          color: const Color(0xFF00FF88).withOpacity(0.7),
+                          color: const Color(0xFF00FF88).withValues(alpha: 0.7),
                           letterSpacing: 6,
                           fontWeight: FontWeight.w600,
                         ),
@@ -193,12 +193,12 @@ class _SplashScreenState extends State<SplashScreen>
                               height: size,
                               decoration: BoxDecoration(
                                 color: const Color(0xFF00FF88)
-                                    .withOpacity(opacity),
+                                    .withValues(alpha: opacity),
                                 shape: BoxShape.circle,
                                 boxShadow: [
                                   BoxShadow(
                                     color: const Color(0xFF00FF88)
-                                        .withOpacity(opacity * 0.5),
+                                        .withValues(alpha: opacity * 0.5),
                                     blurRadius: 8,
                                   ),
                                 ],
@@ -226,7 +226,7 @@ class _SplashBgPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = const Color(0xFF00FF88).withOpacity(0.04)
+      ..color = const Color(0xFF00FF88).withValues(alpha: 0.04)
       ..strokeWidth = 1;
 
     const spacing = 40.0;
@@ -242,7 +242,7 @@ class _SplashBgPainter extends CustomPainter {
       center: Alignment.bottomCenter,
       radius: 1.0,
       colors: [
-        const Color(0xFF00FF88).withOpacity(0.08 + progress * 0.04),
+        const Color(0xFF00FF88).withValues(alpha: 0.08 + progress * 0.04),
         Colors.transparent,
       ],
     );
@@ -290,7 +290,7 @@ class _SnakeLogoPainter extends CustomPainter {
         )!;
 
         final glowPaint = Paint()
-          ..color = bodyColor.withOpacity(0.3)
+          ..color = bodyColor.withValues(alpha: 0.3)
           ..strokeWidth = 12 + glow * 4
           ..strokeCap = StrokeCap.round
           ..style = PaintingStyle.stroke
@@ -299,7 +299,7 @@ class _SnakeLogoPainter extends CustomPainter {
         canvas.drawLine(points[i - 1], points[i], glowPaint);
 
         final solidPaint = Paint()
-          ..color = bodyColor.withOpacity(0.9)
+          ..color = bodyColor.withValues(alpha: 0.9)
           ..strokeWidth = 8
           ..strokeCap = StrokeCap.round
           ..style = PaintingStyle.stroke;
@@ -314,7 +314,7 @@ class _SnakeLogoPainter extends CustomPainter {
           headPos,
           10,
           Paint()
-            ..color = const Color(0xFF00FF88).withOpacity(0.4)
+            ..color = const Color(0xFF00FF88).withValues(alpha: 0.4)
             ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8),
         );
         canvas.drawCircle(

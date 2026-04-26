@@ -96,7 +96,7 @@ class TailTrailService {
             const Color(0xFFFFDD00), // bright yellow core
             const Color(0xFFFF3300), // deep red as it cools
             t,
-          )!.withOpacity(fade * 0.85),
+          )!.withValues(alpha: fade * 0.85),
           radius: (cellSize * 0.25) * heat,
           shape: TrailShape.ember,
           blurSigma: 3.0 * heat,
@@ -105,7 +105,7 @@ class TailTrailService {
       // ── TRON LIGHT RIBBON (Robot / Cyber) ───────────────────────
       case SnakeSkin.robot:
         return TrailVisuals(
-          color: const Color(0xFF00FFFF).withOpacity(fade * 0.7),
+          color: const Color(0xFF00FFFF).withValues(alpha: fade * 0.7),
           radius: (cellSize * 0.4) * (1.0 - t * 0.5),
           shape: TrailShape.ribbon,
           blurSigma: 1.5,
@@ -114,7 +114,7 @@ class TailTrailService {
       // ── SPARKLES (Golden) ────────────────────────────────────────
       case SnakeSkin.golden:
         return TrailVisuals(
-          color: const Color(0xFFFFD700).withOpacity(fade * 0.9),
+          color: const Color(0xFFFFD700).withValues(alpha: fade * 0.9),
           radius: (cellSize * 0.2) * (1.0 - t),
           shape: TrailShape.star,
           blurSigma: 2.0,
@@ -133,7 +133,7 @@ class TailTrailService {
       // ── BLOOD DROPLETS (Vampire) ─────────────────────────────────
       case SnakeSkin.vampire:
         return TrailVisuals(
-          color: const Color(0xFFCC0000).withOpacity(fade * 0.7),
+          color: const Color(0xFFCC0000).withValues(alpha: fade * 0.7),
           radius: (cellSize * 0.2) * (1.0 - t * 0.4),
           shape: TrailShape.blob,
           blurSigma: 1.0,
@@ -142,7 +142,7 @@ class TailTrailService {
       // ── ECTOPLASM (Ghost) ─────────────────────────────────────────
       case SnakeSkin.ghost:
         return TrailVisuals(
-          color: Colors.white.withOpacity(fade * 0.3),
+          color: Colors.white.withValues(alpha: fade * 0.3),
           radius: (cellSize * 0.4) * (1.0 - t * 0.5),
           shape: TrailShape.blob,
           blurSigma: 4.0,
@@ -151,7 +151,7 @@ class TailTrailService {
       // ── SLASH MARK (Ninja) ────────────────────────────────────────
       case SnakeSkin.ninja:
         return TrailVisuals(
-          color: const Color(0xFF888888).withOpacity(fade * 0.4),
+          color: const Color(0xFF888888).withValues(alpha: fade * 0.4),
           radius: (cellSize * 0.3) * (1.0 - t),
           shape: TrailShape.slash,
           blurSigma: 0.5,
@@ -159,7 +159,7 @@ class TailTrailService {
 
       default:
         return TrailVisuals(
-          color: Colors.white.withOpacity(fade * 0.15),
+          color: Colors.white.withValues(alpha: fade * 0.15),
           radius: (cellSize * 0.3) * (1.0 - t),
           shape: TrailShape.blob,
           blurSigma: 1.0,

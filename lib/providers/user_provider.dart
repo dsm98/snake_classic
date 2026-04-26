@@ -28,7 +28,7 @@ class UserProvider extends ChangeNotifier {
   String _rankEmoji = '';
   int _dailyStreak = 0;
   int _coins = 0;
-  int _safariGems = 0;
+  int _snakeSouls = 0;
   List<String> _equippedGear = [];
   SnakeSkin _equippedSkin = SnakeSkin.classic;
   List<SnakeSkin> _unlockedSkins = [SnakeSkin.classic];
@@ -59,7 +59,7 @@ class UserProvider extends ChangeNotifier {
   String get rankEmoji => _rankEmoji;
   int get dailyStreak => _dailyStreak;
   int get coins => _coins;
-  int get safariGems => _safariGems;
+  int get snakeSouls => _snakeSouls;
   List<String> get equippedGear => _equippedGear;
   SnakeSkin get equippedSkin => _equippedSkin;
   List<SnakeSkin> get unlockedSkins => _unlockedSkins;
@@ -116,7 +116,7 @@ class UserProvider extends ChangeNotifier {
     _rankEmoji = _storage.rankEmoji;
     _dailyStreak = _storage.dailyStreak;
     _coins = _storage.coins;
-    _safariGems = _storage.safariGems;
+    _snakeSouls = _storage.snakeSouls;
     _equippedGear = _storage.equippedGear;
     _equippedSkin = _storage.equippedSkin;
     _unlockedSkins = _storage.unlockedSkins;
@@ -387,6 +387,11 @@ class UserProvider extends ChangeNotifier {
     };
   }
 
+  Future<void> doubleCoinsReward(int amount) async {
+    await _storage.addCoins(amount);
+    _loadFromStorage();
+  }
+
   /// Manually add XP (e.g. from special events)
   Future<void> addXp(int amount) async {
     await _storage.addXp(amount);
@@ -436,8 +441,8 @@ class UserProvider extends ChangeNotifier {
   int gearCount(String typeName) => _storage.gearCount(typeName);
 
   Future<bool> buyGear(String typeName, int gemCost) async {
-    if (_safariGems < gemCost) return false;
-    await _storage.deductSafariGems(gemCost);
+    if (_snakeSouls < gemCost) return false;
+    await _storage.deductSnakeSouls(gemCost);
     await _storage.addGear(typeName, 1);
     _loadFromStorage();
     return true;
@@ -469,7 +474,7 @@ class UserProvider extends ChangeNotifier {
     gemsEarned += crocsCaught * 3;
     gemsEarned += biomesDiscovered * 2;
     if (bestStreak >= 7) gemsEarned += 1;
-    if (gemsEarned > 0) await _storage.addSafariGems(gemsEarned);
+    if (gemsEarned > 0) await _storage.addSnakeSouls(gemsEarned);
 
     // Check safari skin milestones
     final counts = _storage.safariCounts;

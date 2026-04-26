@@ -1,7 +1,16 @@
 import 'package:flutter/foundation.dart';
 import 'package:audioplayers/audioplayers.dart';
 
-enum SoundEffect { eat, powerUp, gameOver, highScore, click, countdown, shadowDefeat, shadowSteal }
+enum SoundEffect {
+  eat,
+  powerUp,
+  gameOver,
+  highScore,
+  click,
+  countdown,
+  shadowDefeat,
+  shadowSteal
+}
 
 class AudioService {
   static final AudioService _instance = AudioService._();
@@ -36,7 +45,7 @@ class AudioService {
     }
   }
 
-  Future<void> play(SoundEffect sound) async {
+  Future<void> play(SoundEffect sound, {double volume = 1.0}) async {
     if (!_enabled) return;
     final player = _players[sound];
     if (player == null) return;
@@ -44,6 +53,7 @@ class AudioService {
       if (player.state == PlayerState.playing) {
         await player.stop();
       }
+      await player.setVolume(volume.clamp(0.0, 1.0));
       await player.play(AssetSource(_soundPath(sound)));
     } catch (e) {
       // Sound files may not exist in development — silently fail
@@ -53,14 +63,22 @@ class AudioService {
 
   String _soundPath(SoundEffect sound) {
     switch (sound) {
-      case SoundEffect.eat: return 'sounds/eat.mp3';
-      case SoundEffect.powerUp: return 'sounds/power_up.mp3';
-      case SoundEffect.gameOver: return 'sounds/game_over.mp3';
-      case SoundEffect.highScore: return 'sounds/high_score.mp3';
-      case SoundEffect.click: return 'sounds/click.mp3';
-      case SoundEffect.countdown: return 'sounds/countdown.mp3';
-      case SoundEffect.shadowDefeat: return 'sounds/shadow_defeat.mp3';
-      case SoundEffect.shadowSteal: return 'sounds/shadow_steal.mp3';
+      case SoundEffect.eat:
+        return 'sounds/eat.mp3';
+      case SoundEffect.powerUp:
+        return 'sounds/power_up.mp3';
+      case SoundEffect.gameOver:
+        return 'sounds/game_over.mp3';
+      case SoundEffect.highScore:
+        return 'sounds/high_score.mp3';
+      case SoundEffect.click:
+        return 'sounds/click.mp3';
+      case SoundEffect.countdown:
+        return 'sounds/countdown.mp3';
+      case SoundEffect.shadowDefeat:
+        return 'sounds/shadow_defeat.mp3';
+      case SoundEffect.shadowSteal:
+        return 'sounds/shadow_steal.mp3';
     }
   }
 

@@ -16,6 +16,7 @@ import 'firebase_options.dart';
 import 'services/analytics_service.dart';
 import 'services/notification_service.dart';
 import 'services/adaptive_music_service.dart';
+import 'services/ghost_racing_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -32,6 +33,7 @@ void main() async {
   // Initialize services
   final storage = StorageService();
   await storage.init();
+  await GhostRacingService().loadSavedRival();
 
   await AudioService().init();
   await AdaptiveMusicService().init();
@@ -50,6 +52,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => ScoreProvider()),
         ChangeNotifierProvider(create: (_) => AuthService()),
         ChangeNotifierProvider(create: (_) => UserProvider()),
+        ChangeNotifierProvider(create: (_) => GhostRacingService()),
       ],
       child: const SnakeApp(),
     ),

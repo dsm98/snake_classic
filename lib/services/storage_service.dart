@@ -152,6 +152,21 @@ class StorageService {
   Future<void> incrementGamesPlayed() =>
       _prefs.setInt(_keyGamesPlayed, gamesPlayed + 1);
 
+  // ── Progressive unlock gates ───────────────────────────────────
+  /// Returns true when [feature] has been unlocked.
+  /// Feature keys: 'altar', 'quests', 'explore', 'multiplayer'
+  bool isUnlocked(String feature) {
+    final games = gamesPlayed;
+    final campaign = highestCampaignLevel;
+    return switch (feature) {
+      'altar' => games >= 1,
+      'quests' => games >= 2,
+      'explore' => campaign >= 3,
+      'multiplayer' => games >= 5,
+      _ => true,
+    };
+  }
+
   // ── A/B Experiments ───────────────────────────────────────────
   /// Returns the variant index for an experiment, assigning it on first call.
   int _getOrAssignVariant(String key, int numVariants) {
@@ -657,24 +672,26 @@ class StorageService {
     );
   }
 
-  // ── Safari Gems ─────────────────────────────────────────────────────────────
-  int get safariGems => _prefs.getInt(_keySafariGems) ?? 0;
-  Future<void> addSafariGems(int amount) =>
-      _prefs.setInt(_keySafariGems, safariGems + amount);
-  Future<void> deductSafariGems(int amount) {
-    final newVal = safariGems - amount;
+  // ── Snake Souls (formerly Safari Gems) ─────────────────────────────────────
+  int get snakeSouls => _prefs.getInt(_keySafariGems) ?? 0;
+  Future<void> addSnakeSouls(int amount) =>
+      _prefs.setInt(_keySafariGems, snakeSouls + amount);
+  Future<void> deductSnakeSouls(int amount) {
+    final newVal = snakeSouls - amount;
     return _prefs.setInt(_keySafariGems, newVal < 0 ? 0 : newVal);
   }
 
   // ── Altar Skills ────────────────────────────────────────────────────────────
   int get skillThickScales => _prefs.getInt(_keySkillThickScales) ?? 0;
-  Future<void> setSkillThickScales(int level) => _prefs.setInt(_keySkillThickScales, level);
+  Future<void> setSkillThickScales(int level) =>
+      _prefs.setInt(_keySkillThickScales, level);
 
   int get skillGreed => _prefs.getInt(_keySkillGreed) ?? 0;
   Future<void> setSkillGreed(int level) => _prefs.setInt(_keySkillGreed, level);
 
   int get skillDashMastery => _prefs.getInt(_keySkillDashMastery) ?? 0;
-  Future<void> setSkillDashMastery(int level) => _prefs.setInt(_keySkillDashMastery, level);
+  Future<void> setSkillDashMastery(int level) =>
+      _prefs.setInt(_keySkillDashMastery, level);
 
   // ── Expedition Gear ──────────────────────────────────────────────────────────
   Map<String, int> get gearCounts {

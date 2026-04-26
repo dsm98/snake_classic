@@ -1,9 +1,6 @@
 enum GameMode {
   classic,
-  portal,
-  maze,
   timeAttack,
-  blitz,
   endless,
   campaign,
   multiplayer,
@@ -15,14 +12,8 @@ extension GameModeExtension on GameMode {
     switch (this) {
       case GameMode.classic:
         return 'Classic';
-      case GameMode.portal:
-        return 'Portal';
-      case GameMode.maze:
-        return 'Maze';
       case GameMode.timeAttack:
         return 'Time Attack';
-      case GameMode.blitz:
-        return 'Blitz';
       case GameMode.endless:
         return 'Endless';
       case GameMode.campaign:
@@ -38,14 +29,8 @@ extension GameModeExtension on GameMode {
     switch (this) {
       case GameMode.classic:
         return 'The original Nokia experience.\nWalls kill. Survive as long as you can!';
-      case GameMode.portal:
-        return 'Wrap around screen edges.\nCross one side, appear on the other!';
-      case GameMode.maze:
-        return 'Navigate deadly obstacle walls.\nOnly the sharpest survive.';
       case GameMode.timeAttack:
         return 'Score as much as possible in 60 seconds!\nSpeed bonus applies.';
-      case GameMode.blitz:
-        return '90-second pressure run.\nEvery apple adds bonus time.';
       case GameMode.endless:
         return 'No walls. No limits.\nSpeed grows forever.';
       case GameMode.campaign:
@@ -61,14 +46,8 @@ extension GameModeExtension on GameMode {
     switch (this) {
       case GameMode.classic:
         return '🐍';
-      case GameMode.portal:
-        return '🌀';
-      case GameMode.maze:
-        return '🏰';
       case GameMode.timeAttack:
         return '⏱';
-      case GameMode.blitz:
-        return '⚡';
       case GameMode.endless:
         return '♾️';
       case GameMode.campaign:

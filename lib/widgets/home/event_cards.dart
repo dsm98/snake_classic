@@ -70,7 +70,7 @@ class _DailyEventCardState extends State<DailyEventCard> {
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [
-              widget.colors.accent.withOpacity(0.25),
+              widget.colors.accent.withValues(alpha: 0.25),
               widget.colors.buttonBorder.withValues(alpha: 0.1),
             ],
           ),

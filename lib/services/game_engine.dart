@@ -28,7 +28,14 @@ import 'tail_trail_service.dart';
 import 'adaptive_music_service.dart';
 import 'ghost_racing_service.dart';
 
-enum BoardEvent { none, lightsOut, iceBoard }
+enum BoardEvent {
+  none,
+  lightsOut,
+  iceBoard,
+  goldenRush,
+  invertControls,
+  scoreBoost
+}
 
 class GameEngine extends ChangeNotifier {
   // ── State ──────────────────────────────────────────────────────
@@ -51,15 +58,15 @@ class GameEngine extends ChangeNotifier {
 
   Direction currentDirection = Direction.right;
   final List<Direction> _directionQueue = [];
-  
+
   // Game Feel / Juice
   bool isNearMissSlowMo = false;
   int nearMissSlowMoEndMs = 0;
   List<int> foodBulges = [];
 
   // Graze / Near-Miss combos
-  int grazeMissCount = 0;           // consecutive near misses this run
-  int grazeMultiplierEndMs = 0;     // window before multiplier resets
+  int grazeMissCount = 0; // consecutive near misses this run
+  int grazeMultiplierEndMs = 0; // window before multiplier resets
   int get grazeMultiplier => (1 + (grazeMissCount ~/ 3)).clamp(1, 5);
 
   final MapGenerator _mapGenerator = MapGenerator();
@@ -72,7 +79,7 @@ class GameEngine extends ChangeNotifier {
   bool hasSpeedTonic = false;
   bool hasSnakeOil = false;
   bool hasCrocBane = false;
-  
+
   // Cursed Relics & Events
   bool hasWraithsEye = false;
   bool hasShrineSpawnedThisFloor = false;
@@ -133,7 +140,7 @@ class GameEngine extends ChangeNotifier {
   int preyMagnetEndMs = 0; // preyMagnet: prey drift toward head
   bool biomeMapActive = false; // biomeMap: reveal all rooms
   int dashCharges = 0; // dashScroll: instant-move charges
-  
+
   // Altar Skills
   int greedLevel = 0;
 
@@ -155,11 +162,12 @@ class GameEngine extends ChangeNotifier {
 
   final Set<Position> spikeTraps = {};
   bool spikesActive = false;
+  bool spikesWarning = false; // true for 3 ticks before spikes activate
   int _spikeTickCounter = 0;
   int _weatherTickCounter = 0;
-  
+
   VoidCallback? onBulgeConsumed;
-  
+
   BoardEvent activeEvent = BoardEvent.none;
   int eventEndMs = 0;
 
@@ -193,7 +201,7 @@ class GameEngine extends ChangeNotifier {
   VoidCallback? onComboDropped;
   VoidCallback? onHighScoreReached;
   VoidCallback? onGameOver;
-  
+
   String killerType = 'Unknown';
 
   // ── Private ────────────────────────────────────────────────────
@@ -218,6 +226,7 @@ class GameEngine extends ChangeNotifier {
   Random _rng = Random();
   int _foodEatenSinceLastPowerUp = 0;
   int _preyTickCounter = 0;
+  int _ambientAudioTickCounter = 0;
   // New-player grace: gentler speed scaling for first 5 games
   bool _newPlayerGrace = false;
 
@@ -257,10 +266,6 @@ class GameEngine extends ChangeNotifier {
     if (gameMode == GameMode.campaign && campaignLevel != null) {
       currentTickMs =
           (AppConstants.speedNormal / campaignLevel.speedMultiplier).round();
-    }
-
-    if (gameMode == GameMode.blitz) {
-      currentTickMs = (currentTickMs * 0.85).round();
     }
 
     // Explore mode: start slower so the large map is enjoyable to navigate
@@ -395,6 +400,7 @@ class GameEngine extends ChangeNotifier {
     _visitedRoomKeys.clear();
     spikeTraps.clear();
     spikesActive = false;
+    spikesWarning = false;
     _spikeTickCounter = 0;
     _weatherTickCounter = 0;
     huntStreak = 0;
@@ -413,9 +419,7 @@ class GameEngine extends ChangeNotifier {
     preyMagnetEndMs = 0;
     biomeMapActive = false;
     dashCharges = 0;
-    timeRemainingSeconds = gameMode == GameMode.blitz
-        ? AppConstants.blitzSeconds
-        : AppConstants.timeAttackSeconds;
+    timeRemainingSeconds = AppConstants.timeAttackSeconds;
     if (gameMode == GameMode.campaign &&
         activeCampaignLevel?.timeLimitSeconds != null &&
         activeCampaignLevel!.timeLimitSeconds > 0) {
@@ -447,14 +451,6 @@ class GameEngine extends ChangeNotifier {
       _generateExploreMap();
     }
 
-    if (gameMode == GameMode.maze || gameMode == GameMode.portal) {
-      _generateMazeObstacles();
-    }
-
-    if (gameMode == GameMode.portal) {
-      _generateTruePortals();
-    }
-
     if (gameMode == GameMode.explore) {
       _spawnInitialPrey();
     } else {
@@ -477,13 +473,12 @@ class GameEngine extends ChangeNotifier {
       spikeTraps: spikeTraps,
       snakeSet: snakeSet,
     );
-  }  void _generateMazeObstacles() {
-    _mapGenerator.generateMazeObstacles(obstacleSet, difficulty, AppConstants.gridColumns ~/ 2, AppConstants.gridRows ~/ 2);
   }
 
   void _generateCampaignObstacles() {
     if (activeCampaignLevel == null) return;
-    _mapGenerator.generateCampaignObstacles(obstacleSet, activeCampaignLevel!, AppConstants.gridColumns ~/ 2, AppConstants.gridRows ~/ 2);
+    _mapGenerator.generateCampaignObstacles(obstacleSet, activeCampaignLevel!,
+        AppConstants.gridColumns ~/ 2, AppConstants.gridRows ~/ 2);
   }
 
   void start() {
@@ -491,7 +486,6 @@ class GameEngine extends ChangeNotifier {
     isPaused = false;
     _startTimer();
     if (gameMode == GameMode.timeAttack ||
-        gameMode == GameMode.blitz ||
         (gameMode == GameMode.campaign &&
             activeCampaignLevel!.timeLimitSeconds > 0)) {
       _startTimeAttackTimer();
@@ -509,7 +503,6 @@ class GameEngine extends ChangeNotifier {
     isPaused = false;
     _startTimer();
     if (gameMode == GameMode.timeAttack ||
-        gameMode == GameMode.blitz ||
         (gameMode == GameMode.campaign &&
             activeCampaignLevel!.timeLimitSeconds > 0)) {
       _startTimeAttackTimer();
@@ -547,7 +540,7 @@ class GameEngine extends ChangeNotifier {
     prevCameraY = cameraY;
     currentDirection = Direction.right;
     _directionQueue.clear();
-    
+
     activeEvent = BoardEvent.none;
     eventEndMs = 0;
     boardPowerUps.clear();
@@ -564,15 +557,14 @@ class GameEngine extends ChangeNotifier {
 
     // Make the game slightly faster
     currentTickMs = max((currentTickMs * 0.95).round(), AppConstants.speedMin);
-    
+
     notifyListeners();
     start();
   }
 
   void changeDirection(Direction newDir) {
     // Croc stun blocks turning
-    if (isCrocStunned && gameTimeMs < crocStunEndMs)
-      return;
+    if (isCrocStunned && gameTimeMs < crocStunEndMs) return;
     if (gameTimeMs < invertControlsUntilMs) {
       newDir = newDir.opposite();
     }
@@ -688,35 +680,47 @@ class GameEngine extends ChangeNotifier {
 
       // Update spike traps state every 12 ticks (~2.5 seconds)
       _spikeTickCounter++;
+      // Warn player 3 ticks before spikes activate
+      if (!spikesActive && _spikeTickCounter >= 9 && _spikeTickCounter < 12) {
+        spikesWarning = true;
+      }
       if (_spikeTickCounter >= 12) {
         _spikeTickCounter = 0;
         spikesActive = !spikesActive;
+        spikesWarning = false;
         if (spikesActive) {
           VibrationService().vibrate(duration: 50, amplitude: 100);
         }
       }
     }
 
-    // Weather Effects (Desert Sandstorm)
-    if (gameMode == GameMode.explore && currentBiome == BiomeType.desert) {
+    // Weather effects in specific explore biomes
+    if (gameMode == GameMode.explore &&
+        (currentBiome == BiomeType.desert ||
+            currentBiome == BiomeType.tundra ||
+            currentBiome == BiomeType.lavaField)) {
       _weatherTickCounter++;
       if (_weatherTickCounter >= 10) {
         _weatherTickCounter = 0;
         final head = snake.first;
-        // Wind push: try to move North (y-1)
-        final windPushPos = Position(head.x, head.y - 1);
-        if (_isValidPosition(windPushPos)) {
-          // Subtle nudge: we don't change head, but we might insert a fake move or just notify
-          // For simplicity, let's just show a visual effect and maybe a slight delay
-          effects.add(GameEffect(
-            position: head,
-            type: EffectType.comboBurst,
-            value: '💨 WIND!',
-            startTimeMs: gameTimeMs,
-          ));
+        final String weatherText;
+        if (currentBiome == BiomeType.tundra) {
+          weatherText = '❄ BLIZZARD!';
+        } else if (currentBiome == BiomeType.lavaField) {
+          weatherText = '🔥 HEAT WAVE!';
+        } else {
+          weatherText = '💨 WIND!';
         }
+        effects.add(GameEffect(
+          position: head,
+          type: EffectType.comboBurst,
+          value: weatherText,
+          startTimeMs: gameTimeMs,
+        ));
       }
     }
+
+    _updateBiomeAmbientAudio();
 
     if (isFeverMode) {
       _attractFood();
@@ -728,7 +732,10 @@ class GameEngine extends ChangeNotifier {
     final Position newHead = _nextHead(head);
 
     // Spike Trap collision logic
-    if (gameMode == GameMode.explore && spikesActive && spikeTraps.contains(newHead) && !_hasPowerUp(PowerUpType.ghostMode)) {
+    if (gameMode == GameMode.explore &&
+        spikesActive &&
+        spikeTraps.contains(newHead) &&
+        !_hasPowerUp(PowerUpType.ghostMode)) {
       if (wallHitsLeft > 0) {
         wallHitsLeft--;
         VibrationService().impact();
@@ -778,10 +785,10 @@ class GameEngine extends ChangeNotifier {
         Position(newHead.x, newHead.y - 1),
       ];
       for (var n in neighbors) {
-        if (n == head) continue; 
+        if (n == head) continue;
         if (!_isValidPosition(n)) dangerCount++;
       }
-      
+
       if (dangerCount >= 2) {
         isNearMissSlowMo = true;
         final nowMs = gameTimeMs;
@@ -816,11 +823,10 @@ class GameEngine extends ChangeNotifier {
     }
 
     // Move food bulges down the snake
-    final initialBulgeCount = foodBulges.length;
     for (int i = 0; i < foodBulges.length; i++) {
       foodBulges[i]++;
     }
-    
+
     // Check if any bulge reached the end
     bool bulgeReachedEnd = false;
     foodBulges.removeWhere((b) {
@@ -930,6 +936,9 @@ class GameEngine extends ChangeNotifier {
     }
 
     if (activeEvent != BoardEvent.none && now > eventEndMs) {
+      if (activeEvent == BoardEvent.invertControls) {
+        invertControlsUntilMs = 0;
+      }
       activeEvent = BoardEvent.none;
     }
 
@@ -947,12 +956,21 @@ class GameEngine extends ChangeNotifier {
     if (activeEvent == BoardEvent.none &&
         (gameMode == GameMode.classic ||
             gameMode == GameMode.endless ||
-            gameMode == GameMode.timeAttack ||
-            gameMode == GameMode.blitz)) {
+            gameMode == GameMode.timeAttack)) {
       if (snake.length > 5 && _rng.nextInt(1000) < 15) {
-        activeEvent =
-            _rng.nextBool() ? BoardEvent.lightsOut : BoardEvent.iceBoard;
+        const events = [
+          BoardEvent.lightsOut,
+          BoardEvent.iceBoard,
+          BoardEvent.goldenRush,
+          BoardEvent.invertControls,
+          BoardEvent.scoreBoost,
+        ];
+        activeEvent = events[_rng.nextInt(events.length)];
         eventEndMs = now + 5000 + _rng.nextInt(2000);
+        // invertControls reuses existing invertControlsUntilMs mechanism
+        if (activeEvent == BoardEvent.invertControls) {
+          invertControlsUntilMs = eventEndMs;
+        }
         AudioService().play(SoundEffect.powerUp);
       }
     }
@@ -1007,12 +1025,6 @@ class GameEngine extends ChangeNotifier {
       case Direction.right:
         nx += 1;
         break;
-    }
-
-    Position proposed = Position(nx, ny);
-    if (gameMode == GameMode.portal && boardPortals.containsKey(proposed)) {
-      AudioService().play(SoundEffect.eat); // Play sound on teleport
-      return boardPortals[proposed]!;
     }
 
     if (gameMode == GameMode.endless) {
@@ -1179,6 +1191,11 @@ class GameEngine extends ChangeNotifier {
       points = (points * activeDailyEvent!.scoreMultiplier).round();
     }
 
+    // Board event score boost
+    if (activeEvent == BoardEvent.scoreBoost) {
+      points *= 2;
+    }
+
     // Apply modifier score bonus
     if (activeModifier != null) {
       switch (activeModifier!.type) {
@@ -1226,15 +1243,12 @@ class GameEngine extends ChangeNotifier {
 
     if (gameMode == GameMode.timeAttack) {
       timeRemainingSeconds += 2;
-    } else if (gameMode == GameMode.blitz) {
-      timeRemainingSeconds += AppConstants.blitzBonusSecondsPerFood;
     }
 
     onFoodEaten?.call();
   }
 
   void _scaleSpeed() {
-    if (gameMode == GameMode.portal) return; // Portal speed is fixed
     if (gameMode == GameMode.explore) return; // Explore stays at constant pace
 
     final segments = max(0, snake.length - AppConstants.initialSnakeLength);
@@ -1245,9 +1259,7 @@ class GameEngine extends ChangeNotifier {
     // New-player grace: reduce scale amount by 40% for first 5 games
     final int baseScaleAmount = gameMode == GameMode.endless
         ? difficulty.speedScaleAmount * 2
-        : gameMode == GameMode.blitz
-            ? (difficulty.speedScaleAmount * 1.4).round()
-            : difficulty.speedScaleAmount;
+        : difficulty.speedScaleAmount;
     final int scaleAmount =
         _newPlayerGrace ? (baseScaleAmount * 0.6).round() : baseScaleAmount;
 
@@ -1276,25 +1288,31 @@ class GameEngine extends ChangeNotifier {
     int? expires;
     final r = _rng.nextInt(100);
 
-    bool allowGold = true;
-    bool allowPoison = true;
-    bool allowBoss = snake.length > 6 &&
-        gameMode != GameMode.campaign; // boss food after some growth
-    if (gameMode == GameMode.campaign && activeCampaignLevel != null) {
-      allowGold = activeCampaignLevel!.hasGoldenApples;
-      allowPoison = activeCampaignLevel!.hasPoisonApples;
-    }
-
-    if (r < 4 && allowBoss) {
-      t = FoodType.boss;
-      expires = gameTimeMs + 15000; // 15s window
-      _bossMoveTick = 0;
-    } else if (r >= 4 && r < 9 && allowGold) {
+    // Golden Rush event: force golden food type
+    if (activeEvent == BoardEvent.goldenRush) {
       t = FoodType.golden;
       expires = gameTimeMs + 8000;
-    } else if (r >= 9 && r < 19 && allowPoison) {
-      t = FoodType.poison;
-      expires = gameTimeMs + 8000;
+    } else {
+      bool allowGold = true;
+      bool allowPoison = true;
+      bool allowBoss = snake.length > 6 &&
+          gameMode != GameMode.campaign; // boss food after some growth
+      if (gameMode == GameMode.campaign && activeCampaignLevel != null) {
+        allowGold = activeCampaignLevel!.hasGoldenApples;
+        allowPoison = activeCampaignLevel!.hasPoisonApples;
+      }
+
+      if (r < 4 && allowBoss) {
+        t = FoodType.boss;
+        expires = gameTimeMs + 15000; // 15s window
+        _bossMoveTick = 0;
+      } else if (r >= 4 && r < 9 && allowGold) {
+        t = FoodType.golden;
+        expires = gameTimeMs + 8000;
+      } else if (r >= 9 && r < 19 && allowPoison) {
+        t = FoodType.poison;
+        expires = gameTimeMs + 8000;
+      }
     }
 
     Position pos = Position(
@@ -1335,9 +1353,7 @@ class GameEngine extends ChangeNotifier {
   }
 
   bool _pathExists(Position start, Position end) {
-    if (gameMode == GameMode.endless ||
-        gameMode == GameMode.portal ||
-        gameMode == GameMode.explore)
+    if (gameMode == GameMode.endless || gameMode == GameMode.explore)
       return true; // Large / wraparound maps — assume reachable
 
     HashSet<Position> visited = HashSet<Position>()..add(start);
@@ -1421,26 +1437,6 @@ class GameEngine extends ChangeNotifier {
       type: type,
       expiresAtMs: now + 8000,
     ));
-  }
-
-
-
-  void _spawnRandomObstacles(int count) {
-    const clearZone = 4;
-    int added = 0;
-    while (added < count) {
-      final pos = Position(
-        _rng.nextInt(gridCols),
-        _rng.nextInt(gridRows),
-      );
-      if ((pos.x - startX).abs() > clearZone ||
-          (pos.y - startY).abs() > clearZone) {
-        if (!obstacleSet.contains(pos)) {
-          obstacleSet.add(pos);
-          added++;
-        }
-      }
-    }
   }
 
   void _attractFood() {
@@ -1624,14 +1620,28 @@ class GameEngine extends ChangeNotifier {
     switch (biome) {
       case BiomeType.forest:
         return [FoodType.mouse, FoodType.rabbit];
+      case BiomeType.jungle:
+        return [FoodType.rabbit, FoodType.lizard, FoodType.butterfly];
       case BiomeType.desert:
         return [FoodType.lizard, FoodType.mouse];
+      case BiomeType.savanna:
+        return [FoodType.rabbit, FoodType.lizard];
       case BiomeType.swamp:
         return [FoodType.croc, FoodType.lizard];
+      case BiomeType.coral:
+        return [FoodType.butterfly, FoodType.lizard];
       case BiomeType.cave:
         return [FoodType.butterfly, FoodType.lizard];
+      case BiomeType.crystalCave:
+        return [FoodType.butterfly, FoodType.mouse];
       case BiomeType.ruins:
         return [FoodType.mouse, FoodType.butterfly, FoodType.lizard];
+      case BiomeType.tundra:
+        return [FoodType.rabbit, FoodType.mouse];
+      case BiomeType.lavaField:
+        return [FoodType.lizard, FoodType.croc];
+      case BiomeType.mushroom:
+        return [FoodType.butterfly, FoodType.mouse, FoodType.rabbit];
     }
   }
 
@@ -1656,7 +1666,9 @@ class GameEngine extends ChangeNotifier {
       }
     }
 
-    if (!hasShrineSpawnedThisFloor && preyCaughtThisFloor >= 2 && _rng.nextInt(100) < 30) {
+    if (!hasShrineSpawnedThisFloor &&
+        preyCaughtThisFloor >= 2 &&
+        _rng.nextInt(100) < 30) {
       hasShrineSpawnedThisFloor = true;
       preyList.add(FoodModel(position: pos, type: FoodType.shrine));
       return;
@@ -1745,8 +1757,6 @@ class GameEngine extends ChangeNotifier {
     );
   }
 
-
-
   void _onPreyEaten(FoodModel prey) {
     if (prey.type == FoodType.portal) {
       isCampfirePhase = true;
@@ -1820,7 +1830,7 @@ class GameEngine extends ChangeNotifier {
       points = (points * 1.5).round();
     }
     score += points;
-    
+
     // Greed Skill: Flat coin bonus per prey
     if (greedLevel > 0) {
       coinsEarnedSession += greedLevel;
@@ -1842,7 +1852,7 @@ class GameEngine extends ChangeNotifier {
 
     preyCaughtThisFloor++;
     foodBulges.add(0);
-    
+
     // In Explore mode, 5% chance to spawn a shadow hunter when catching prey (15% if cursed!)
     if (activeShadow == null) {
       int spawnChance = hasWraithsEye ? 15 : 5;
@@ -1878,14 +1888,13 @@ class GameEngine extends ChangeNotifier {
         _rng.nextInt(gridCols),
         _rng.nextInt(gridRows),
       );
-      if (!snakeSet.contains(pos) &&
-          !obstacleSet.contains(pos)) {
+      if (!snakeSet.contains(pos) && !obstacleSet.contains(pos)) {
         break;
       }
       attempts++;
     }
     preyList.add(FoodModel(position: pos, type: FoodType.portal));
-    
+
     final now = gameTimeMs;
     effects.add(GameEffect(
       position: pos,
@@ -1899,16 +1908,16 @@ class GameEngine extends ChangeNotifier {
   void _activateShrine(FoodModel prey) {
     AudioService().play(SoundEffect.powerUp);
     VibrationService().vibrate(duration: 500, amplitude: 255);
-    
+
     // Sacrifice 5 segments (if possible) for massive points and coins
     int sacrifice = min(5, max(0, snake.length - 3));
     for (int i = 0; i < sacrifice; i++) {
       if (snake.length > 3) snake.removeLast();
     }
-    
+
     score += 500 * currentFloor;
     coinsEarnedSession += (50 * (1 + (greedLevel * 0.2))).round();
-    
+
     // Grant invincibility (Ghost Mode)
     final now = gameTimeMs;
     activePowerUps.removeWhere((ap) => ap.type == PowerUpType.ghostMode);
@@ -1916,7 +1925,7 @@ class GameEngine extends ChangeNotifier {
       type: PowerUpType.ghostMode,
       endsAtMs: now + 15000, // 15 seconds
     ));
-    
+
     effects.add(GameEffect(
       position: snake.first,
       type: EffectType.comboBurst,
@@ -1935,6 +1944,68 @@ class GameEngine extends ChangeNotifier {
     final rx = pos.x ~/ 10;
     final ry = pos.y ~/ 10;
     return roomBiomes[rx * 11 + ry];
+  }
+
+  void _updateBiomeAmbientAudio() {
+    if (gameMode != GameMode.explore) return;
+    final biome = currentBiome;
+    if (biome == null) return;
+
+    _ambientAudioTickCounter++;
+    // Around every 6-8 seconds depending on speed; keep ambience subtle.
+    if (_ambientAudioTickCounter < 30) return;
+    _ambientAudioTickCounter = 0;
+
+    switch (biome) {
+      case BiomeType.desert:
+      case BiomeType.savanna:
+        if (_rng.nextDouble() < 0.20) {
+          AudioService().play(SoundEffect.click, volume: 0.08);
+        }
+        break;
+      case BiomeType.tundra:
+        if (_rng.nextDouble() < 0.18) {
+          AudioService().play(SoundEffect.countdown, volume: 0.06);
+        }
+        break;
+      case BiomeType.lavaField:
+        if (_rng.nextDouble() < 0.15) {
+          AudioService().play(SoundEffect.gameOver, volume: 0.04);
+        }
+        break;
+      case BiomeType.mushroom:
+        if (_rng.nextDouble() < 0.20) {
+          AudioService().play(SoundEffect.powerUp, volume: 0.05);
+        }
+        break;
+      case BiomeType.swamp:
+        if (_rng.nextDouble() < 0.20) {
+          AudioService().play(SoundEffect.click, volume: 0.05);
+        }
+        break;
+      case BiomeType.coral:
+        if (_rng.nextDouble() < 0.18) {
+          AudioService().play(SoundEffect.eat, volume: 0.05);
+        }
+        break;
+      case BiomeType.cave:
+      case BiomeType.crystalCave:
+        if (_rng.nextDouble() < 0.18) {
+          AudioService().play(SoundEffect.countdown, volume: 0.05);
+        }
+        break;
+      case BiomeType.forest:
+      case BiomeType.jungle:
+        if (_rng.nextDouble() < 0.16) {
+          AudioService().play(SoundEffect.eat, volume: 0.04);
+        }
+        break;
+      case BiomeType.ruins:
+        if (_rng.nextDouble() < 0.18) {
+          AudioService().play(SoundEffect.click, volume: 0.05);
+        }
+        break;
+    }
   }
 
   int _preyBasePoints(FoodType type) {
@@ -1992,7 +2063,6 @@ class GameEngine extends ChangeNotifier {
     );
   }
 }
-
 
 enum EffectType { comboBurst, shadowPoof }
 
