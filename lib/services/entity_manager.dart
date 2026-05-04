@@ -289,6 +289,9 @@ class EntityManager {
     required VoidCallback onFoodStolen,
   }) {
     if (activeShadow == null) return;
+    activeShadow.moveTicks++;
+    if (activeShadow.moveTicks % 3 == 0) return; // 33% slower
+
     final head = activeShadow.segments.first;
     final target = snake.first;
 
@@ -314,7 +317,6 @@ class EntityManager {
 
     activeShadow.segments.clear();
     activeShadow.segments.addAll(newSegments);
-    activeShadow.moveTicks++;
 
     // Collision checks
     if (!isGhostMode && snakeSet.contains(next)) {

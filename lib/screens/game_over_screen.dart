@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:screenshot/screenshot.dart';
@@ -381,7 +382,7 @@ class _GameOverScreenState extends State<GameOverScreen>
                                 Expanded(
                                   child: _RewardPill(
                                     icon: '💰',
-                                    label: '+${widget.coinsEarned}',
+                                    label: '+${widget.coinsEarned * (_coinsDoubled ? 2 : 1)}',
                                     sublabel: widget.streakMultiplier > 1.0
                                         ? '×${widget.streakMultiplier.toStringAsFixed(1)} streak'
                                         : 'coins',
@@ -733,13 +734,13 @@ class _ShareCard extends StatelessWidget {
                         Text('👑', style: TextStyle(fontSize: 12)),
                         SizedBox(width: 6),
                         Text(
-                          'NEW HIGH SCORE!',
+                          'NEW BEST!',
                           style: TextStyle(
                             fontFamily: AppTypography.modernFont,
-                            fontSize: 9,
+                            fontSize: 10,
                             color: Color(0xFFFFD700),
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 2,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 3,
                           ),
                         ),
                       ],
@@ -1346,18 +1347,41 @@ class _CelebrationPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    for (int i = 0; i < 25; i++) {
-      final seed = i * 37;
-      final x = ((seed * 0.137 + progress * 0.3) % 1.0) * size.width;
-      final y = (1.0 - ((progress + i * 0.04) % 1.0)) * size.height;
-      final r = 4.0 + (seed % 5);
-      final opacity = (0.3 + (i % 3) * 0.15) *
-          ((1.0 - ((progress + i * 0.04) % 1.0)).clamp(0.0, 1.0));
-
-      final hue = (i * 47.0) % 360;
+    final rng = Random(42);
+    for (int i = 0; i < 50; i++) {
+      final double p = (progress + i * 0.02) % 1.0;
+      // Confetti starting from top and falling down
+      final double x = (rng.nextDouble() * size.width + sin(p * pi * 2 + i) * 20) % size.width;
+      final double y = (p * size.height * 1.2) - 20; 
+      
+      final double rotation = p * pi * 8 + i;
+      final double confSize = 6.0 + rng.nextDouble() * 6.0;
+      
+      final hue = (i * 60.0) % 360;
       final paint = Paint()
-        ..color = HSVColor.fromAHSV(opacity, hue, 0.9, 1.0).toColor();
-      canvas.drawCircle(Offset(x, y), r, paint);
+        ..color = HSVColor.fromAHSV((1.0 - p).clamp(0, 1), hue, 0.7, 1.0).toColor()
+        ..style = PaintingStyle.fill;
+        
+      canvas.save();
+      canvas.translate(x, y);
+      canvas.rotate(rotation);
+      
+      if (i % 3 == 0) {
+        canvas.drawRect(Rect.fromCenter(center: Offset.zero, width: confSize, height: confSize * 0.5), paint);
+      } else if (i % 3 == 1) {
+        canvas.drawCircle(Offset.zero, confSize * 0.4, paint);
+      } else {
+        // Diamond shape
+        final path = Path()
+          ..moveTo(0, -confSize * 0.6)
+          ..lineTo(confSize * 0.4, 0)
+          ..lineTo(0, confSize * 0.6)
+          ..lineTo(-confSize * 0.4, 0)
+          ..close();
+        canvas.drawPath(path, paint);
+      }
+      
+      canvas.restore();
     }
   }
 
@@ -1619,8 +1643,6 @@ class _RewardedDoubleButton extends StatefulWidget {
 }
 
 class _RewardedDoubleButtonState extends State<_RewardedDoubleButton> {
-  bool _loading = false;
-
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -1678,7 +1700,7 @@ class _RewardedDoubleButtonState extends State<_RewardedDoubleButton> {
             width: double.infinity,
             height: 44,
             child: ElevatedButton(
-              onPressed: _loading ? null : _showAd,
+              onPressed: _showAd,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.amber,
                 foregroundColor: Colors.black,
@@ -1687,30 +1709,21 @@ class _RewardedDoubleButtonState extends State<_RewardedDoubleButton> {
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              child: _loading
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation(Colors.black),
-                      ),
-                    )
-                  : Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.play_circle_fill_rounded, size: 18),
-                        const SizedBox(width: 8),
-                        Text(
-                          'CLAIM +${widget.coins} COINS',
-                          style: TextStyle(
-                            fontFamily: widget.font,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                      ],
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.play_circle_fill_rounded, size: 18),
+                  const SizedBox(width: 8),
+                  Text(
+                    'CLAIM +${widget.coins} COINS',
+                    style: TextStyle(
+                      fontFamily: widget.font,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
                     ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],
@@ -1719,7 +1732,6 @@ class _RewardedDoubleButtonState extends State<_RewardedDoubleButton> {
   }
 
   Future<void> _showAd() async {
-    setState(() => _loading = true);
     final success = await AdService().showRewarded(onRewarded: () {
       widget.onRewarded();
     });
@@ -1730,6 +1742,5 @@ class _RewardedDoubleButtonState extends State<_RewardedDoubleButton> {
             content: Text('Ad not ready yet. Try again in a moment!')),
       );
     }
-    if (mounted) setState(() => _loading = false);
   }
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 import '../core/enums/snake_skin.dart';
 import '../core/enums/theme_type.dart';
@@ -1092,8 +1093,47 @@ class _SkinCard extends StatelessWidget {
                       border: Border.all(
                           color: colors.buttonBorder.withValues(alpha: 0.3))),
                   child: Center(
-                      child: Text(skin.emoji,
-                          style: const TextStyle(fontSize: 30)))),
+                    child: Stack(
+                      alignment: Alignment.center,
+                      clipBehavior: Clip.none,
+                      children: [
+                        // Animated Body segments for "Live" feel
+                        if (isUnlocked)
+                          ...List.generate(3, (index) {
+                            return Positioned(
+                              right: 14.0 + (index * 10),
+                              child: Container(
+                                width: 14 - (index * 2),
+                                height: 14 - (index * 2),
+                                decoration: BoxDecoration(
+                                  color: colors.accent.withValues(
+                                      alpha: 0.6 - (index * 0.15)),
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: colors.accent.withValues(alpha: 0.3),
+                                      blurRadius: 4,
+                                    )
+                                  ],
+                                ),
+                              )
+                                  .animate(onPlay: (c) => c.repeat(reverse: true))
+                                  .moveY(
+                                      begin: -4,
+                                      end: 4,
+                                      duration: (600 + index * 150).ms,
+                                      curve: Curves.easeInOutSine)
+                                  .scale(
+                                      begin: const Offset(0.8, 0.8),
+                                      end: const Offset(1.1, 1.1),
+                                      delay: (index * 120).ms),
+                            );
+                          }),
+                        Text(skin.emoji, style: const TextStyle(fontSize: 30)),
+                      ],
+                    ),
+                  ),
+                ),
               Text(skin.displayName,
                   style: TextStyle(
                       fontFamily: AppTypography.modernFont,

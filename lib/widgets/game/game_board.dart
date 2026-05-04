@@ -138,11 +138,14 @@ class _SnakePainter extends CustomPainter {
     if (cellSize == 0) return;
 
     // Explore mode: translate canvas so the viewport follows the snake head.
-    // Use movementProgress to smoothly interpolate camera between ticks.
+    // Use movementProgress to smoothly interpolate camera between ticks with easing.
     if (engine.gameMode == GameMode.explore) {
       canvas.save();
       canvas.clipRect(Rect.fromLTWH(0, 0, size.width, size.height));
+      
+      // Use linear interpolation for camera to make movement perfectly smooth
       final double progress = engine.movementProgress;
+      
       final double smoothCamX = ui.lerpDouble(
           engine.prevCameraX.toDouble(), engine.cameraX.toDouble(), progress)!;
       final double smoothCamY = ui.lerpDouble(
@@ -166,7 +169,7 @@ class _SnakePainter extends CustomPainter {
     _drawSnake(canvas);
     _drawFood(canvas);
     _drawPrey(canvas);
-    _drawEffects(canvas);
+    _drawEffects(canvas, size);
     _drawShadow(canvas);
     if (themeType == ThemeType.retro) _drawRetroGhosting(canvas);
     _drawSpikeTraps(canvas);
@@ -174,10 +177,48 @@ class _SnakePainter extends CustomPainter {
     if (engine.gameMode == GameMode.explore) {
       // Restore before drawing viewport-relative overlays
       canvas.restore();
+      
+      // Speed streaks when boosting (Juice)
+      if (engine.isBoosting && !engine.isPaused) {
+        _drawSpeedStreaks(canvas, size);
+      }
+      
       _drawEvents(canvas, size);
       _drawFogOfWar(canvas, size);
     } else {
+      if (engine.isBoosting && !engine.isPaused) {
+        _drawSpeedStreaks(canvas, size);
+      }
       _drawEvents(canvas, size);
+    }
+  }
+
+  void _drawSpeedStreaks(Canvas canvas, Size size) {
+    final random = Random(engine.gameTimeMs ~/ 50);
+    final streakPaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.15)
+      ..strokeWidth = 1.2
+      ..strokeCap = StrokeCap.round;
+
+    for (int i = 0; i < 15; i++) {
+      final x = random.nextDouble() * size.width;
+      final y = random.nextDouble() * size.height;
+      final len = 20.0 + random.nextDouble() * 40.0;
+      
+      // Streaks move opposite to snake direction
+      Offset direction;
+      switch (engine.currentDirection) {
+        case Direction.up: direction = const Offset(0, 1); break;
+        case Direction.down: direction = const Offset(0, -1); break;
+        case Direction.left: direction = const Offset(1, 0); break;
+        case Direction.right: direction = const Offset(-1, 0); break;
+      }
+      
+      canvas.drawLine(
+        Offset(x, y),
+        Offset(x + direction.dx * len, y + direction.dy * len),
+        streakPaint,
+      );
     }
   }
 
@@ -257,19 +298,29 @@ class _SnakePainter extends CustomPainter {
       );
       const int bs = 10;
       const int roomRowCount = 11;
-      for (final entry in engine.roomBiomes.entries) {
-        final rx = entry.key ~/ roomRowCount;
-        final ry = entry.key % roomRowCount;
-        final rect = Rect.fromLTWH(
-          rx * bs * cellSize,
-          ry * bs * cellSize,
-          bs * cellSize,
-          bs * cellSize,
-        );
-        canvas.drawRect(rect, Paint()..color = _biomeBgColor(entry.value));
+
+      final minRx = max(0, engine.cameraX ~/ bs - 1);
+      final maxRx = min(roomRowCount - 1, (engine.cameraX + AppConstants.exploreViewportCols) ~/ bs + 1);
+      final minRy = max(0, engine.cameraY ~/ bs - 1);
+      final maxRy = min(roomRowCount - 1, (engine.cameraY + AppConstants.exploreViewportRows) ~/ bs + 1);
+
+      for (int rx = minRx; rx <= maxRx; rx++) {
+        for (int ry = minRy; ry <= maxRy; ry++) {
+          final roomKey = rx * roomRowCount + ry;
+          final biome = engine.roomBiomes[roomKey];
+          if (biome != null) {
+            final rect = Rect.fromLTWH(
+              rx * bs * cellSize,
+              ry * bs * cellSize,
+              bs * cellSize,
+              bs * cellSize,
+            );
+            canvas.drawRect(rect, Paint()..color = _biomeBgColor(biome));
+          }
+        }
       }
       // Draw transition blends on top of solid floor tiles
-      _drawBiomeTransitions(canvas);
+      _drawBiomeTransitions(canvas, minRx, maxRx, minRy, maxRy);
       return;
     }
 
@@ -309,8 +360,16 @@ class _SnakePainter extends CustomPainter {
   }
 
   void _drawObstacles(Canvas canvas) {
+    final isExplore = engine.gameMode == GameMode.explore;
+    final minX = isExplore ? max(0, engine.cameraX - 2) : 0;
+    final maxX = isExplore ? min(engine.gridCols, engine.cameraX + AppConstants.exploreViewportCols + 2) : engine.gridCols;
+    final minY = isExplore ? max(0, engine.cameraY - 2) : 0;
+    final maxY = isExplore ? min(engine.gridRows, engine.cameraY + AppConstants.exploreViewportRows + 2) : engine.gridRows;
+
     for (final obs in engine.obstacleSet) {
-      if (engine.gameMode == GameMode.explore) {
+      if (obs.x < minX || obs.x > maxX || obs.y < minY || obs.y > maxY) continue;
+
+      if (isExplore) {
         _drawExploreObstacle(canvas, obs);
         continue;
       }
@@ -540,50 +599,52 @@ class _SnakePainter extends CustomPainter {
   // ---------------------------------------------------------------------------
   // Biome transition gradient edges between adjacent rooms.
   // ---------------------------------------------------------------------------
-  void _drawBiomeTransitions(Canvas canvas) {
+  void _drawBiomeTransitions(Canvas canvas, int minRx, int maxRx, int minRy, int maxRy) {
     if (engine.roomBiomes.isEmpty) return;
     const int bs = 10;
     const int roomRowCount = 11;
     const double blendCells = 2.5;
     final double blendW = blendCells * cellSize;
 
-    for (final entry in engine.roomBiomes.entries) {
-      final rx = entry.key ~/ roomRowCount;
-      final ry = entry.key % roomRowCount;
-      final biomeA = entry.value;
+    for (int rx = minRx; rx <= maxRx; rx++) {
+      for (int ry = minRy; ry <= maxRy; ry++) {
+        final roomKey = rx * roomRowCount + ry;
+        final biomeA = engine.roomBiomes[roomKey];
+        if (biomeA == null) continue;
 
-      // Right neighbour
-      final rightKey = (rx + 1) * roomRowCount + ry;
-      final biomeB = engine.roomBiomes[rightKey];
-      if (biomeB != null && biomeA != biomeB) {
-        final x = (rx + 1) * bs * cellSize;
-        final y = ry * bs * cellSize;
-        canvas.drawRect(
-          Rect.fromLTWH(x - blendW / 2, y, blendW, bs * cellSize),
-          Paint()
-            ..shader = ui.Gradient.linear(
-              Offset(x - blendW / 2, 0),
-              Offset(x + blendW / 2, 0),
-              [_biomeBgColor(biomeA), _biomeBgColor(biomeB)],
-            ),
-        );
-      }
+        // Right neighbour
+        final rightKey = (rx + 1) * roomRowCount + ry;
+        final biomeB = engine.roomBiomes[rightKey];
+        if (biomeB != null && biomeA != biomeB) {
+          final x = (rx + 1) * bs * cellSize;
+          final y = ry * bs * cellSize;
+          canvas.drawRect(
+            Rect.fromLTWH(x - blendW / 2, y, blendW, bs * cellSize),
+            Paint()
+              ..shader = ui.Gradient.linear(
+                Offset(x - blendW / 2, 0),
+                Offset(x + blendW / 2, 0),
+                [_biomeBgColor(biomeA), _biomeBgColor(biomeB)],
+              ),
+          );
+        }
 
-      // Bottom neighbour
-      final bottomKey = rx * roomRowCount + ry + 1;
-      final biomeC = engine.roomBiomes[bottomKey];
-      if (biomeC != null && biomeA != biomeC) {
-        final x = rx * bs * cellSize;
-        final y = (ry + 1) * bs * cellSize;
-        canvas.drawRect(
-          Rect.fromLTWH(x, y - blendW / 2, bs * cellSize, blendW),
-          Paint()
-            ..shader = ui.Gradient.linear(
-              Offset(0, y - blendW / 2),
-              Offset(0, y + blendW / 2),
-              [_biomeBgColor(biomeA), _biomeBgColor(biomeC)],
-            ),
-        );
+        // Bottom neighbour
+        final bottomKey = rx * roomRowCount + ry + 1;
+        final biomeC = engine.roomBiomes[bottomKey];
+        if (biomeC != null && biomeA != biomeC) {
+          final x = rx * bs * cellSize;
+          final y = (ry + 1) * bs * cellSize;
+          canvas.drawRect(
+            Rect.fromLTWH(x, y - blendW / 2, bs * cellSize, blendW),
+            Paint()
+              ..shader = ui.Gradient.linear(
+                Offset(0, y - blendW / 2),
+                Offset(0, y + blendW / 2),
+                [_biomeBgColor(biomeA), _biomeBgColor(biomeC)],
+              ),
+          );
+        }
       }
     }
   }
@@ -596,21 +657,28 @@ class _SnakePainter extends CustomPainter {
       return;
     const int bs = 10;
     const int roomRowCount = 11;
+    final minRx = max(0, engine.cameraX ~/ bs - 1);
+    final maxRx = min(roomRowCount - 1, (engine.cameraX + AppConstants.exploreViewportCols) ~/ bs + 1);
+    final minRy = max(0, engine.cameraY ~/ bs - 1);
+    final maxRy = min(roomRowCount - 1, (engine.cameraY + AppConstants.exploreViewportRows) ~/ bs + 1);
 
-    for (final entry in engine.roomBiomes.entries) {
-      final rx = entry.key ~/ roomRowCount;
-      final ry = entry.key % roomRowCount;
-      final biome = entry.value;
-      final rng = Random(entry.key * 2654435761 + biome.index);
-      final decalCount = 5 + rng.nextInt(5);
+    for (int rx = minRx; rx <= maxRx; rx++) {
+      for (int ry = minRy; ry <= maxRy; ry++) {
+        final roomKey = rx * roomRowCount + ry;
+        final biome = engine.roomBiomes[roomKey];
+        if (biome == null) continue;
 
-      for (int d = 0; d < decalCount; d++) {
-        // Scatter within walkable interior (cells 2–7 of each 10-cell room)
-        final localX = 2.0 + rng.nextDouble() * 5.5;
-        final localY = 2.0 + rng.nextDouble() * 5.5;
-        final cx = (rx * bs + localX) * cellSize;
-        final cy = (ry * bs + localY) * cellSize;
-        _drawDecalAt(canvas, biome, cx, cy, rng);
+        final rng = Random(roomKey * 2654435761 + biome.index);
+        final decalCount = 5 + rng.nextInt(5);
+
+        for (int d = 0; d < decalCount; d++) {
+          // Scatter within walkable interior (cells 2–7 of each 10-cell room)
+          final localX = 2.0 + rng.nextDouble() * 5.5;
+          final localY = 2.0 + rng.nextDouble() * 5.5;
+          final cx = (rx * bs + localX) * cellSize;
+          final cy = (ry * bs + localY) * cellSize;
+          _drawDecalAt(canvas, biome, cx, cy, rng);
+        }
       }
     }
   }
@@ -716,17 +784,24 @@ class _SnakePainter extends CustomPainter {
       return;
     const int bs = 10;
     const int roomRowCount = 11;
+    final minRx = max(0, engine.cameraX ~/ bs - 1);
+    final maxRx = min(roomRowCount - 1, (engine.cameraX + AppConstants.exploreViewportCols) ~/ bs + 1);
+    final minRy = max(0, engine.cameraY ~/ bs - 1);
+    final maxRy = min(roomRowCount - 1, (engine.cameraY + AppConstants.exploreViewportRows) ~/ bs + 1);
 
-    for (final entry in engine.roomBiomes.entries) {
-      final rx = entry.key ~/ roomRowCount;
-      final ry = entry.key % roomRowCount;
-      final biome = entry.value;
-      final rng = Random(entry.key * 6364136223 + biome.index * 31337);
-      if (rng.nextDouble() > 0.25) continue;
+    for (int rx = minRx; rx <= maxRx; rx++) {
+      for (int ry = minRy; ry <= maxRy; ry++) {
+        final roomKey = rx * roomRowCount + ry;
+        final biome = engine.roomBiomes[roomKey];
+        if (biome == null) continue;
 
-      final lx = (rx * bs + 4.5 + (rng.nextDouble() - 0.5) * 2.0) * cellSize;
-      final ly = (ry * bs + 4.5 + (rng.nextDouble() - 0.5) * 2.0) * cellSize;
-      _drawLandmarkAt(canvas, biome, lx, ly);
+        final rng = Random(roomKey * 6364136223 + biome.index * 31337);
+        if (rng.nextDouble() > 0.25) continue;
+
+        final lx = (rx * bs + 4.5 + (rng.nextDouble() - 0.5) * 2.0) * cellSize;
+        final ly = (ry * bs + 4.5 + (rng.nextDouble() - 0.5) * 2.0) * cellSize;
+        _drawLandmarkAt(canvas, biome, lx, ly);
+      }
     }
   }
 
@@ -1101,7 +1176,9 @@ class _SnakePainter extends CustomPainter {
     final pos = food.position;
     final rect = _cellRect(pos);
     final center = rect.center;
-    final radius = (cellSize / 2) * (0.7 + pulse * 0.15);
+    final spawnAge = engine.gameTimeMs - food.spawnTimeMs;
+    final spawnScale = (spawnAge / 400.0).clamp(0.0, 1.0);
+    final radius = (cellSize / 2) * (0.7 + pulse * 0.15) * Curves.easeOutBack.transform(spawnScale);
 
     final isGolden = food.type == FoodType.golden;
     final isPoison = food.type == FoodType.poison;
@@ -1566,7 +1643,17 @@ class _SnakePainter extends CustomPainter {
   void _drawPrey(Canvas canvas) {
     if (engine.preyList.isEmpty) return;
     for (final prey in engine.preyList) {
+      final spawnAge = engine.gameTimeMs - prey.spawnTimeMs;
+      final spawnScale = (spawnAge / 500.0).clamp(0.0, 1.0);
+      if (spawnScale <= 0) continue;
+
+      canvas.save();
+      final center = _cellRect(prey.position).center;
+      canvas.translate(center.dx, center.dy);
+      canvas.scale(Curves.easeOutBack.transform(spawnScale));
+      canvas.translate(-center.dx, -center.dy);
       _drawSinglePrey(canvas, prey);
+      canvas.restore();
     }
   }
 
@@ -1923,108 +2010,274 @@ class _SnakePainter extends CustomPainter {
 
     final isGhost = engine.getActivePowerUp(PowerUpType.ghostMode) != null;
     final opacity = isGhost ? 0.55 : 1.0;
-
     final progress = engine.movementProgress;
 
-    // Draw body (tail to neck)
+    // ── Movement Particles (Juice) ───────────────────────────────
+    if (!engine.isPaused && !engine.isGameOver) {
+      _drawMovementParticles(canvas, snake, progress, opacity);
+    }
+
+    // ── Draw body path (for fluid themes) ────────────────────────
+    final bool usePath = skin == SnakeSkin.classic && 
+                       (themeType == ThemeType.nature || themeType == ThemeType.neon || themeType == ThemeType.ice || themeType == ThemeType.volcano);
+
+    if (usePath) {
+      _drawSmoothBodyPath(canvas, snake, progress, opacity);
+    }
+
+    // ── Draw segments (for all skins/themes) ─────────────────────
     for (int i = snake.length - 1; i >= 1; i--) {
       final colorProgress = 1 - (i / snake.length) * 0.6;
       final bodyColor =
           Color.lerp(colors.snakeTail, colors.snakeBody, colorProgress)!
               .withValues(alpha: opacity);
+      
       Position prevPos = (i + 1 < snake.length)
           ? snake[i + 1]
           : (engine.trail.isNotEmpty ? engine.trail.first : snake[i]);
+      
       Rect rect = _interpolatedRect(snake[i], prevPos, progress);
 
-      // Apply food bulge
-      if (engine.foodBulges.contains(i)) {
-        rect = rect.inflate(cellSize * 0.18);
-      }
-
-      if (skin == SnakeSkin.ghost) {
-        canvas.drawCircle(rect.center, cellSize * 0.45,
-            Paint()..color = Colors.white.withValues(alpha: 0.3 * opacity));
-        canvas.drawCircle(
-            rect.center,
-            cellSize * 0.2,
-            Paint()
-              ..color =
-                  Colors.lightBlueAccent.withValues(alpha: 0.5 * opacity));
-      } else if (skin == SnakeSkin.skeleton) {
-        canvas.drawRect(
-            Rect.fromCenter(
-                center: rect.center,
-                width: cellSize * 0.6,
-                height: cellSize * 0.2),
-            Paint()..color = Colors.white.withValues(alpha: opacity));
-        canvas.drawRect(
-            Rect.fromCenter(
-                center: rect.center,
-                width: cellSize * 0.2,
-                height: cellSize * 0.6),
-            Paint()..color = Colors.white.withValues(alpha: opacity));
-      } else if (skin == SnakeSkin.robot) {
-        canvas.drawRect(rect.deflate(1.0),
-            Paint()..color = Colors.grey[700]!.withValues(alpha: opacity));
-        canvas.drawRect(rect.deflate(3.0),
-            Paint()..color = Colors.cyanAccent.withValues(alpha: opacity));
-      } else if (skin == SnakeSkin.rainbow) {
-        final rbColor = HSLColor.fromAHSL(
-                1.0,
-                ((i * 15.0) + (DateTime.now().millisecondsSinceEpoch / 5)) %
-                    360,
-                1.0,
-                0.5)
-            .toColor();
-        canvas.drawCircle(rect.center, cellSize * 0.5,
-            Paint()..color = rbColor.withValues(alpha: opacity));
-      } else {
-        if (themeType == ThemeType.retro) {
-          canvas.drawRect(rect.deflate(1.5), Paint()..color = bodyColor);
-        } else if (themeType == ThemeType.nature) {
-          final rr = RRect.fromRectAndRadius(
-              rect.deflate(1.5), Radius.circular(cellSize * 0.35));
-          canvas.drawRRect(rr, Paint()..color = bodyColor);
-        } else if (themeType == ThemeType.arcade) {
-          canvas.drawRRect(
-              RRect.fromRectAndRadius(
-                  rect.deflate(1.0), const Radius.circular(2)),
-              Paint()..color = bodyColor);
-        } else if (themeType == ThemeType.neon) {
-          // Glow layer
-          canvas.drawRRect(
-              RRect.fromRectAndRadius(
-                  rect.inflate(1.0), Radius.circular(cellSize * 0.3)),
-              Paint()
-                ..color = bodyColor.withValues(alpha: 0.6)
-                ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4));
-          // Core bright segment
-          canvas.drawRRect(
-              RRect.fromRectAndRadius(
-                  rect.deflate(1.0), Radius.circular(cellSize * 0.3)),
-              Paint()..color = Colors.white.withValues(alpha: opacity * 0.9));
-        } else {
-          // Default: rounded segments with gradient shimmer
-          final rr = RRect.fromRectAndRadius(
-              rect.deflate(1.5), Radius.circular(cellSize * 0.3));
-          canvas.drawRRect(rr, Paint()..color = bodyColor);
-          // Subtle top-left highlight for 3D feel
-          canvas.drawRRect(
-              RRect.fromRectAndRadius(
-                  Rect.fromLTWH(rect.left + 2, rect.top + 2, rect.width * 0.5,
-                      rect.height * 0.4),
-                  Radius.circular(cellSize * 0.2)),
-              Paint()..color = Colors.white.withValues(alpha: 0.12 * opacity));
+      // ── Dynamic Food Bulge (Moving down the body) ───────────────
+      double bulgeScale = 0.0;
+      for (final bulgeIdx in engine.foodBulges) {
+        // If bulge is at i, it's moving from i to i+1
+        if (bulgeIdx == i - 1) {
+          // Bulge just entered this segment from above
+          bulgeScale = 0.18 * progress;
+        } else if (bulgeIdx == i) {
+          // Bulge is leaving this segment
+          bulgeScale = 0.18 * (1.0 - progress);
         }
       }
+      if (bulgeScale > 0) {
+        rect = rect.inflate(cellSize * bulgeScale);
+      }
+
+      // If we are using a smooth path, we might only draw highlights or specific skin features here
+      if (usePath) {
+        // Just draw a subtle highlight for 3D feel
+        if (themeType != ThemeType.retro && !isGhost && i % 2 == 0) {
+          canvas.drawCircle(
+            rect.center + Offset(-cellSize * 0.1, -cellSize * 0.1),
+            cellSize * 0.15,
+            Paint()..color = Colors.white.withValues(alpha: 0.08 * opacity),
+          );
+        }
+        continue; 
+      }
+
+      // Drop shadow
+      if (themeType != ThemeType.retro && !isGhost) {
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(rect.shift(const Offset(1.5, 1.5)), Radius.circular(cellSize * 0.3)),
+          Paint()
+            ..color = Colors.black.withValues(alpha: 0.25)
+            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2),
+        );
+      }
+
+      _drawSkinSegment(canvas, rect, i, opacity, bodyColor);
     }
 
-    // Draw head
+    // ── Draw head ────────────────────────────────────────────────
     Position headPrev = snake.length > 1 ? snake[1] : snake.first;
     final headRect = _interpolatedRect(snake.first, headPrev, progress);
     final headColor = colors.snakeHead.withValues(alpha: opacity);
 
+    _drawSkinHead(canvas, headRect, headColor, opacity);
+    
+    // ── Tongue Flicker (Juice) ───────────────────────────────────
+    if (skin != SnakeSkin.robot && skin != SnakeSkin.skeleton && !isGhost) {
+      _drawTongue(canvas, headRect, progress);
+    }
+  }
+
+  void _drawSmoothBodyPath(Canvas canvas, List<Position> snake, double progress, double opacity) {
+    final path = Path();
+    final headCenter = _cellRect(snake.first).center;
+    final tailCenter = _cellRect(snake.last).center;
+    
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..strokeWidth = cellSize * 0.85
+      ..shader = ui.Gradient.linear(
+        tailCenter,
+        headCenter,
+        [colors.snakeTail.withValues(alpha: opacity), colors.snakeBody.withValues(alpha: opacity)],
+      );
+
+    if (themeType == ThemeType.neon) {
+      paint.maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
+      // Outer glow for neon path
+      final glowPaint = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round
+        ..strokeWidth = cellSize * 1.1
+        ..color = colors.snakeBody.withValues(alpha: 0.3 * opacity)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
+      
+      _buildSnakePath(path, snake, progress);
+      canvas.drawPath(path, glowPaint);
+      paint.color = Colors.white.withValues(alpha: 0.9 * opacity);
+      paint.strokeWidth = cellSize * 0.6;
+    } else {
+      _buildSnakePath(path, snake, progress);
+    }
+
+    canvas.drawPath(path, paint);
+    
+    // Gradient overlay for the path
+    if (themeType == ThemeType.ice || themeType == ThemeType.volcano) {
+      final gradientPaint = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round
+        ..strokeWidth = cellSize * 0.7
+        ..shader = ui.Gradient.linear(
+          _cellRect(snake.first).center,
+          _cellRect(snake.last).center,
+          [colors.snakeHead.withValues(alpha: opacity), colors.snakeTail.withValues(alpha: opacity)],
+        );
+      canvas.drawPath(path, gradientPaint);
+    }
+  }
+
+  void _buildSnakePath(Path path, List<Position> snake, double progress) {
+    if (snake.length < 2) return;
+
+    Position headPrev = snake.length > 1 ? snake[1] : snake.first;
+    final headCenter = _interpolatedRect(snake.first, headPrev, progress).center;
+    path.moveTo(headCenter.dx, headCenter.dy);
+
+    for (int i = 1; i < snake.length; i++) {
+      Position prevPos = (i + 1 < snake.length)
+          ? snake[i + 1]
+          : (engine.trail.isNotEmpty ? engine.trail.first : snake[i]);
+      final currentCenter = _interpolatedRect(snake[i], prevPos, progress).center;
+      
+      // Check for wrap-around (don't draw line across screen)
+      if ((snake[i].x - snake[i-1].x).abs() > 1 || (snake[i].y - snake[i-1].y).abs() > 1) {
+        path.moveTo(currentCenter.dx, currentCenter.dy);
+      } else {
+        // Use a midpoint for smooth quadratic bezier
+        if (i < snake.length - 1) {
+          Position nextPrev = (i + 2 < snake.length)
+              ? snake[i + 2]
+              : (engine.trail.isNotEmpty ? engine.trail.first : snake[i+1]);
+          final nextCenter = _interpolatedRect(snake[i+1], nextPrev, progress).center;
+          final midPoint = Offset((currentCenter.dx + nextCenter.dx) / 2, (currentCenter.dy + nextCenter.dy) / 2);
+          path.quadraticBezierTo(currentCenter.dx, currentCenter.dy, midPoint.dx, midPoint.dy);
+        } else {
+          path.lineTo(currentCenter.dx, currentCenter.dy);
+        }
+      }
+    }
+  }
+
+  void _drawMovementParticles(Canvas canvas, List<Position> snake, double progress, double opacity) {
+    final tailPos = snake.last;
+    final center = _cellRect(tailPos).center;
+    
+    // Deterministic random based on time and position
+    final seed = (tailPos.x * 1000 + tailPos.y + (engine.gameTimeMs ~/ 100)).toInt();
+    final random = Random(seed);
+    
+    if (random.nextDouble() > 0.4) return; // Only some frames
+
+    final pPaint = Paint()
+      ..color = colors.snakeTail.withValues(alpha: 0.3 * opacity)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2);
+
+    for (int i = 0; i < 3; i++) {
+      final offX = (random.nextDouble() - 0.5) * cellSize * 0.8;
+      final offY = (random.nextDouble() - 0.5) * cellSize * 0.8;
+      final size = random.nextDouble() * cellSize * 0.15;
+      canvas.drawCircle(center + Offset(offX, offY), size, pPaint);
+    }
+  }
+
+  void _drawSkinSegment(Canvas canvas, Rect rect, int i, double opacity, Color bodyColor) {
+    if (skin == SnakeSkin.ghost) {
+      canvas.drawCircle(rect.center, cellSize * 0.45,
+          Paint()..color = Colors.white.withValues(alpha: 0.3 * opacity));
+      canvas.drawCircle(
+          rect.center,
+          cellSize * 0.2,
+          Paint()
+            ..color =
+                Colors.lightBlueAccent.withValues(alpha: 0.5 * opacity));
+    } else if (skin == SnakeSkin.skeleton) {
+      canvas.drawRect(
+          Rect.fromCenter(
+              center: rect.center,
+              width: cellSize * 0.6,
+              height: cellSize * 0.2),
+          Paint()..color = Colors.white.withValues(alpha: opacity));
+      canvas.drawRect(
+          Rect.fromCenter(
+              center: rect.center,
+              width: cellSize * 0.2,
+              height: cellSize * 0.6),
+          Paint()..color = Colors.white.withValues(alpha: opacity));
+    } else if (skin == SnakeSkin.robot) {
+      canvas.drawRect(rect.deflate(1.0),
+          Paint()..color = Colors.grey[700]!.withValues(alpha: opacity));
+      canvas.drawRect(rect.deflate(3.0),
+          Paint()..color = Colors.cyanAccent.withValues(alpha: opacity));
+    } else if (skin == SnakeSkin.rainbow) {
+      final rbColor = HSLColor.fromAHSL(
+              1.0,
+              ((i * 15.0) + (DateTime.now().millisecondsSinceEpoch / 5)) %
+                  360,
+              1.0,
+              0.5)
+          .toColor();
+      canvas.drawCircle(rect.center, cellSize * 0.5,
+          Paint()..color = rbColor.withValues(alpha: opacity));
+    } else {
+      if (themeType == ThemeType.retro) {
+        canvas.drawRect(rect.deflate(1.5), Paint()..color = bodyColor);
+      } else if (themeType == ThemeType.nature) {
+        final rr = RRect.fromRectAndRadius(
+            rect.deflate(1.5), Radius.circular(cellSize * 0.35));
+        canvas.drawRRect(rr, Paint()..color = bodyColor);
+      } else if (themeType == ThemeType.arcade) {
+        canvas.drawRRect(
+            RRect.fromRectAndRadius(
+                rect.deflate(1.0), const Radius.circular(2)),
+            Paint()..color = bodyColor);
+      } else if (themeType == ThemeType.neon) {
+        // Glow layer
+        canvas.drawRRect(
+            RRect.fromRectAndRadius(
+                rect.inflate(1.0), Radius.circular(cellSize * 0.3)),
+            Paint()
+              ..color = bodyColor.withValues(alpha: 0.6)
+              ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4));
+        // Core bright segment
+        canvas.drawRRect(
+            RRect.fromRectAndRadius(
+                rect.deflate(1.0), Radius.circular(cellSize * 0.3)),
+            Paint()..color = Colors.white.withValues(alpha: opacity * 0.9));
+      } else {
+        // Default: rounded segments with gradient shimmer
+        final rr = RRect.fromRectAndRadius(
+            rect.deflate(1.5), Radius.circular(cellSize * 0.3));
+        canvas.drawRRect(rr, Paint()..color = bodyColor);
+        // Subtle top-left highlight for 3D feel
+        canvas.drawRRect(
+            RRect.fromRectAndRadius(
+                Rect.fromLTWH(rect.left + 2, rect.top + 2, rect.width * 0.5,
+                    rect.height * 0.4),
+                Radius.circular(cellSize * 0.2)),
+            Paint()..color = Colors.white.withValues(alpha: 0.12 * opacity));
+      }
+    }
+  }
+
+  void _drawSkinHead(Canvas canvas, Rect headRect, Color headColor, double opacity) {
     if (skin == SnakeSkin.ghost) {
       canvas.drawCircle(headRect.center, cellSize * 0.5,
           Paint()..color = Colors.white.withValues(alpha: 0.5 * opacity));
@@ -2056,21 +2309,18 @@ class _SnakePainter extends CustomPainter {
 
     if (themeType == ThemeType.retro) {
       canvas.drawRect(headRect.deflate(1.5), Paint()..color = headColor);
-      // Pixel-art eyes — bright LCD dots on dark head
       _drawEyes(canvas, headRect,
           eyeColor: colors.snakeHead, glowColor: colors.background);
       return;
     }
 
     if (themeType == ThemeType.neon) {
-      // Outer glow
       canvas.drawRRect(
           RRect.fromRectAndRadius(
               headRect.inflate(2.0), Radius.circular(cellSize * 0.35)),
           Paint()
             ..color = headColor.withValues(alpha: 0.5)
             ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8));
-      // Bright core
       canvas.drawRRect(
           RRect.fromRectAndRadius(
               headRect.deflate(0.5), Radius.circular(cellSize * 0.35)),
@@ -2103,7 +2353,71 @@ class _SnakePainter extends CustomPainter {
       );
       return;
     }
+
+    // Default head
+    canvas.drawRRect(
+        RRect.fromRectAndRadius(
+            headRect.deflate(1.0), Radius.circular(cellSize * 0.35)),
+        Paint()..color = headColor);
+    _drawEyes(canvas, headRect);
   }
+
+  void _drawTongue(Canvas canvas, Rect headRect, double progress) {
+    // Tongue flickers out based on a sine wave pulse
+    final double flickerVal = sin(DateTime.now().millisecondsSinceEpoch / 60.0) * 0.5 + 0.5;
+    // Only show tongue if flicker value is high enough to make it feel "staccato"
+    if (flickerVal < 0.4) return;
+
+    final tonguePaint = Paint()
+      ..color = const Color(0xFFFF5252)
+      ..strokeWidth = cellSize * 0.08
+      ..strokeCap = StrokeCap.round;
+
+    final headCenter = headRect.center;
+    final double length = cellSize * 0.45 * flickerVal;
+    final double forkSize = cellSize * 0.15;
+
+    Offset start;
+    Offset end;
+    bool isHorizontal = true;
+
+    switch (engine.currentDirection) {
+      case Direction.up:
+        start = headCenter + Offset(0, -cellSize * 0.4);
+        end = start + Offset(0, -length);
+        isHorizontal = false;
+        break;
+      case Direction.down:
+        start = headCenter + Offset(0, cellSize * 0.4);
+        end = start + Offset(0, length);
+        isHorizontal = false;
+        break;
+      case Direction.left:
+        start = headCenter + Offset(-cellSize * 0.4, 0);
+        end = start + Offset(-length, 0);
+        isHorizontal = true;
+        break;
+      case Direction.right:
+        start = headCenter + Offset(cellSize * 0.4, 0);
+        end = start + Offset(length, 0);
+        isHorizontal = true;
+        break;
+    }
+
+    canvas.drawLine(start, end, tonguePaint);
+    
+    // Draw the forked tip
+    if (isHorizontal) {
+      final sign = engine.currentDirection == Direction.right ? 1 : -1;
+      canvas.drawLine(end, end + Offset(sign * forkSize, -forkSize), tonguePaint);
+      canvas.drawLine(end, end + Offset(sign * forkSize, forkSize), tonguePaint);
+    } else {
+      final sign = engine.currentDirection == Direction.down ? 1 : -1;
+      canvas.drawLine(end, end + Offset(-forkSize, sign * forkSize), tonguePaint);
+      canvas.drawLine(end, end + Offset(forkSize, sign * forkSize), tonguePaint);
+    }
+  }
+
 
   void _drawTrail(Canvas canvas) {
     // Draw skin-based interactive trail (from TailTrailService)
@@ -2264,7 +2578,7 @@ class _SnakePainter extends CustomPainter {
     }
   }
 
-  void _drawEffects(Canvas canvas) {
+  void _drawEffects(Canvas canvas, Size size) {
     if (engine.effects.isEmpty) return;
     final now = DateTime.now().millisecondsSinceEpoch;
 
@@ -2301,6 +2615,89 @@ class _SnakePainter extends CustomPainter {
             canvas,
             Offset(
                 center.dx - tp.width / 2, center.dy - tp.height / 2 - offset));
+      } else if (effect.type == EffectType.scorePop && effect.value != null) {
+        // Score pop: fly up and scale down
+        final tp = TextPainter(
+          text: TextSpan(
+            text: effect.value,
+            style: TextStyle(
+              color: Colors.yellowAccent.withValues(alpha: opacity),
+              fontSize: 12 * (1.0 + (1.0 - opacity) * 0.5),
+              fontWeight: FontWeight.bold,
+              fontFamily: 'Orbitron',
+            ),
+          ),
+          textDirection: TextDirection.ltr,
+        )..layout();
+        tp.paint(canvas, Offset(center.dx - tp.width / 2, center.dy - tp.height / 2 - offset * 1.5));
+      } else if (effect.type == EffectType.speedUp && effect.value != null) {
+        // Speed up toast: center of screen, large and glowing with pulse
+        final tp = TextPainter(
+          text: TextSpan(
+            text: effect.value,
+            style: TextStyle(
+              color: Colors.cyanAccent.withValues(alpha: opacity),
+              fontSize: 28 + (pulse * 6),
+              fontWeight: FontWeight.w900,
+              fontFamily: 'Orbitron',
+              letterSpacing: 4,
+              shadows: [
+                Shadow(color: Colors.cyan.withValues(alpha: opacity), blurRadius: 20 * pulse),
+                Shadow(color: Colors.white.withValues(alpha: opacity * 0.5), blurRadius: 5),
+              ],
+            ),
+          ),
+          textDirection: TextDirection.ltr,
+        )..layout();
+        // Draw in screen center
+        final screenCenter = Offset(size.width / 2, size.height * 0.3 - offset);
+        tp.paint(canvas, screenCenter - Offset(tp.width / 2, tp.height / 2));
+      } else if (effect.type == EffectType.biomeDiscovery && effect.value != null) {
+        // Biome discovery cutscene style overlay
+        final tp = TextPainter(
+          text: TextSpan(
+            text: effect.value,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: opacity),
+              fontSize: 20,
+              fontWeight: FontWeight.w900,
+              fontFamily: 'Orbitron',
+              letterSpacing: 8,
+              shadows: [
+                Shadow(color: Colors.white.withValues(alpha: opacity * 0.5), blurRadius: 20),
+              ],
+            ),
+          ),
+          textDirection: TextDirection.ltr,
+        )..layout();
+        
+        // Draw a dark band across middle
+        final bandPaint = Paint()..color = Colors.black.withValues(alpha: opacity * 0.7);
+        canvas.drawRect(Rect.fromLTWH(0, size.height * 0.45, size.width, size.height * 0.1), bandPaint);
+        
+        final screenCenter = Offset(size.width / 2, size.height * 0.5);
+        tp.paint(canvas, screenCenter - Offset(tp.width / 2, tp.height / 2));
+      } else if (effect.type == EffectType.foodBurst) {
+        // Enhanced collection particles
+        final random = Random(effect.startTimeMs);
+        final pPaint = Paint();
+        for (int i = 0; i < 12; i++) {
+          final pAngle = (pi * 2 / 12) * i + (random.nextDouble() * 0.4);
+          final speedMult = 0.8 + random.nextDouble() * 1.5;
+          final pDist = (elapsed / 800) * cellSize * 3.5 * speedMult;
+          final pOffset = Offset(cos(pAngle) * pDist, sin(pAngle) * pDist);
+          
+          final color = Color.lerp(const Color(0xFFFF3D00), Colors.orangeAccent, random.nextDouble())!;
+          pPaint.color = color.withValues(alpha: opacity);
+          
+          final pSize = cellSize * 0.12 * opacity * (0.4 + random.nextDouble());
+          canvas.drawCircle(center + pOffset, pSize, pPaint);
+          
+          // Tiny sparkle core for some particles
+          if (random.nextDouble() > 0.7) {
+            canvas.drawCircle(center + pOffset, pSize * 0.5, Paint()..color = Colors.white.withValues(alpha: opacity));
+          }
+        }
       } else if (effect.type == EffectType.shadowPoof) {
         // Draw glitchy poof particles
         final random = Random(effect.startTimeMs);
@@ -2402,24 +2799,27 @@ class _SnakePainter extends CustomPainter {
     }
 
     if (themeType == ThemeType.neon || themeType == ThemeType.arcade) {
-      canvas.drawCircle(
-          Offset(lx1, ly1),
-          eyeRadius * 3,
-          Paint()
-            ..color = glowPaint.color
-            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4));
-      canvas.drawCircle(
-          Offset(lx2, ly2),
-          eyeRadius * 3,
-          Paint()
-            ..color = glowPaint.color
-            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4));
+      final glowPaintLarge = Paint()
+        ..color = glowPaint.color.withValues(alpha: 0.3)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
+      canvas.drawCircle(Offset(lx1, ly1), eyeRadius * 3.5, glowPaintLarge);
+      canvas.drawCircle(Offset(lx2, ly2), eyeRadius * 3.5, glowPaintLarge);
     }
 
-    canvas.drawCircle(Offset(lx1, ly1), eyeRadius * 1.5, glowPaint);
-    canvas.drawCircle(Offset(lx2, ly2), eyeRadius * 1.5, glowPaint);
-    canvas.drawCircle(Offset(lx1, ly1), eyeRadius, eyePaint);
-    canvas.drawCircle(Offset(lx2, ly2), eyeRadius, eyePaint);
+    // Blink logic
+    final isBlinking = (DateTime.now().millisecondsSinceEpoch % 4000) < 150;
+    if (isBlinking) {
+      final blinkPaint = Paint()
+        ..color = eyeColor ?? Colors.black
+        ..strokeWidth = 1.0;
+      canvas.drawLine(Offset(lx1 - eyeRadius, ly1), Offset(lx1 + eyeRadius, ly1), blinkPaint);
+      canvas.drawLine(Offset(lx2 - eyeRadius, ly2), Offset(lx2 + eyeRadius, ly2), blinkPaint);
+    } else {
+      canvas.drawCircle(Offset(lx1, ly1), eyeRadius * 1.5, glowPaint);
+      canvas.drawCircle(Offset(lx2, ly2), eyeRadius * 1.5, glowPaint);
+      canvas.drawCircle(Offset(lx1, ly1), eyeRadius, eyePaint);
+      canvas.drawCircle(Offset(lx2, ly2), eyeRadius, eyePaint);
+    }
   }
 
   Rect _interpolatedRect(Position current, Position previous, double progress) {

@@ -1,7 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'home_screen.dart' as home;
-import 'cold_open_screen.dart';
 import '../services/storage_service.dart';
 import '../services/analytics_service.dart';
 
@@ -48,13 +47,10 @@ class _SplashScreenState extends State<SplashScreen>
 
     Future.delayed(Duration(milliseconds: reducedMotion ? 700 : 3000), () {
       if (mounted) {
-        final bool tutorialCompleted = StorageService().tutorialCompleted;
-        final Widget nextScreen = tutorialCompleted
-            ? const home.HomeScreen()
-            : const ColdOpenScreen();
-
-        if (!tutorialCompleted) {
-          AnalyticsService().logTutorialStarted();
+        // Skip ColdOpenScreen (onboarding intro) and go straight to menu
+        final Widget nextScreen = const home.HomeScreen();
+        if (!StorageService().tutorialCompleted) {
+          StorageService().setTutorialCompleted(true);
         }
 
         // Log experiment assignments on every launch (no-op if already logged)

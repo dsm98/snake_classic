@@ -1,6 +1,5 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
-import '../../core/models/position.dart';
 import '../../core/enums/biome_type.dart';
 
 class Particle {
@@ -79,28 +78,70 @@ class ParticleSystemState extends State<ParticleSystem> with SingleTickerProvide
     if (dt <= 0) return;
 
     // Emit weather
-    if (_activeWeather == BiomeType.swamp) {
-      for (int i = 0; i < 3; i++) {
+    if (_activeWeather == BiomeType.swamp || _activeWeather == BiomeType.jungle) {
+      // Rain / Drip
+      if (_random.nextDouble() < 0.3) {
         _particles.add(Particle(
           x: _random.nextDouble() * 1.2 - 0.1,
           y: -0.1,
-          vx: 0.2,
-          vy: 1.5 + _random.nextDouble(),
-          life: 1.0,
-          color: Colors.blueAccent.withValues(alpha: 0.5),
+          vx: 0.15,
+          vy: 1.8 + _random.nextDouble(),
+          life: 0.8,
+          color: Colors.lightBlueAccent.withValues(alpha: 0.4),
           size: _random.nextDouble() * 2 + 1,
         ));
       }
-    } else if (_activeWeather == BiomeType.desert) {
-      for (int i = 0; i < 4; i++) {
+    } else if (_activeWeather == BiomeType.desert || _activeWeather == BiomeType.savanna) {
+      // Sand drift
+      if (_random.nextDouble() < 0.4) {
         _particles.add(Particle(
           x: -0.1,
           y: _random.nextDouble() * 1.2 - 0.1,
-          vx: 1.5 + _random.nextDouble(),
-          vy: 0.1,
-          life: 1.5,
-          color: Colors.orangeAccent.withValues(alpha: 0.4),
+          vx: 2.0 + _random.nextDouble() * 1.5,
+          vy: 0.2,
+          life: 1.2,
+          color: Colors.orangeAccent.withValues(alpha: 0.25),
           size: _random.nextDouble() * 3 + 1,
+        ));
+      }
+    } else if (_activeWeather == BiomeType.tundra || _activeWeather == BiomeType.frozenLake) {
+      // Snow flakes
+      if (_random.nextDouble() < 0.5) {
+        _particles.add(Particle(
+          x: _random.nextDouble() * 1.2 - 0.1,
+          y: -0.1,
+          vx: _random.nextDouble() * 0.4 - 0.2,
+          vy: 0.8 + _random.nextDouble() * 0.4,
+          life: 2.0,
+          color: Colors.white.withValues(alpha: 0.6),
+          size: _random.nextDouble() * 2 + 1.5,
+        ));
+      }
+    } else if (_activeWeather == BiomeType.lavaField || _activeWeather == BiomeType.ashlands) {
+      // Ash and Embers
+      if (_random.nextDouble() < 0.4) {
+        final isEmber = _random.nextDouble() < 0.3;
+        _particles.add(Particle(
+          x: _random.nextDouble(),
+          y: 1.1,
+          vx: _random.nextDouble() * 0.6 - 0.3,
+          vy: -0.5 - _random.nextDouble() * 0.5,
+          life: 1.5,
+          color: isEmber ? Colors.deepOrange : Colors.grey[600]!,
+          size: isEmber ? 2.5 : 2.0,
+        ));
+      }
+    } else if (_activeWeather == BiomeType.crystalCave) {
+      // Floating sparkles
+      if (_random.nextDouble() < 0.2) {
+        _particles.add(Particle(
+          x: _random.nextDouble(),
+          y: _random.nextDouble(),
+          vx: _random.nextDouble() * 0.2 - 0.1,
+          vy: _random.nextDouble() * 0.2 - 0.1,
+          life: 1.0,
+          color: Colors.purpleAccent.withValues(alpha: 0.4),
+          size: 2.0,
         ));
       }
     }
@@ -110,6 +151,10 @@ class ParticleSystemState extends State<ParticleSystem> with SingleTickerProvide
     setState(() {
       for (int i = _particles.length - 1; i >= 0; i--) {
         _particles[i].update(dt);
+        // Add some drift/physics based on life
+        if (_activeWeather == BiomeType.tundra) {
+          _particles[i].vx += sin(now * 2 + i) * 0.01;
+        }
         if (_particles[i].life <= 0) {
           _particles.removeAt(i);
         }
@@ -129,20 +174,15 @@ class ParticleSystemState extends State<ParticleSystem> with SingleTickerProvide
     super.dispose();
   }
 
-  /// Fire a burst of particles from a specific grid coordinate
-  void fireBurst(Position pos, Color color, {int count = 12}) {
-    // We defer calculation to get actual screen size in paint, but we can store 
-    // fractional coordinates for resolution independence.
-    final fractionalX = (pos.x + 0.5) / widget.gridWidth;
-    final fractionalY = (pos.y + 0.5) / widget.gridHeight;
-
+  /// Fire a burst of particles from fractional coordinates (0.0 to 1.0)
+  void fireBurst(double fx, double fy, Color color, {int count = 12}) {
     for (int i = 0; i < count; i++) {
       final angle = _random.nextDouble() * 2 * pi;
       // fractional velocity
-      final speed = _random.nextDouble() * 0.5 + 0.2; 
+      final speed = _random.nextDouble() * 0.4 + 0.15; 
       _particles.add(Particle(
-        x: fractionalX,
-        y: fractionalY,
+        x: fx,
+        y: fy,
         vx: cos(angle) * speed,
         vy: sin(angle) * speed,
         life: _random.nextDouble() * 0.4 + 0.2, // 0.2-0.6 seconds
@@ -177,11 +217,22 @@ class _ParticlePainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     for (final p in particles) {
       final opacity = (p.life / p.initialLife).clamp(0.0, 1.0);
-      final paint = Paint()..color = p.color.withValues(alpha: opacity);
+      final paint = Paint()
+        ..color = p.color.withValues(alpha: opacity)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
       canvas.drawCircle(
         Offset(p.x * size.width, p.y * size.height),
         p.size,
         paint,
+      );
+      
+      // Draw core to make it look like a glowing ember
+      final corePaint = Paint()
+        ..color = Colors.white.withValues(alpha: opacity * 0.8);
+      canvas.drawCircle(
+        Offset(p.x * size.width, p.y * size.height),
+        p.size * 0.4,
+        corePaint,
       );
     }
   }

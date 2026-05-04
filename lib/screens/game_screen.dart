@@ -31,11 +31,15 @@ import '../widgets/game/game_hud.dart';
 import '../widgets/game/swipe_controller.dart';
 import '../widgets/game/particle_system.dart';
 import '../widgets/game/screen_shake_wrapper.dart';
+import '../services/screen_shake_service.dart';
 import '../services/ad_service.dart';
 import '../services/analytics_service.dart';
 import 'game_over_screen.dart';
 import 'home_screen.dart';
 import 'altar_screen.dart';
+import '../widgets/game/crt_filter.dart';
+import '../widgets/game/floating_scores.dart';
+import '../core/models/position.dart';
 
 class GameScreen extends StatefulWidget {
   final GameMode mode;
@@ -70,7 +74,6 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   bool _started = false;
   int _countdown = 3;
   int _revivesUsed = 0;
-  double _eatFlash = 0.0; // 0..1 screen flash overlay
   bool _isDead = false;
   late final GlobalKey<ParticleSystemState> _particleKey = GlobalKey();
   late AnimationController _countdownController;
@@ -79,6 +82,21 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   int _tutorialStep = 0;
   bool _tutorialCompleted = false;
   final Set<int> _loggedTutorialSteps = <int>{};
+  final List<FloatingScore> _floatingScores = [];
+
+  void _addFloatingScore(String text, Position pos, Color color) {
+    if (!mounted) return;
+    setState(() {
+      _floatingScores.add(FloatingScore(text: text, gridPosition: pos, color: color));
+    });
+    Future.delayed(const Duration(seconds: 1), () {
+      if (mounted) {
+        setState(() {
+          if (_floatingScores.isNotEmpty) _floatingScores.removeAt(0);
+        });
+      }
+    });
+  }
 
   AppThemeColors get colors {
     switch (widget.themeType) {
@@ -143,39 +161,49 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   void _wireEngineCallbacks() {
     _engine.onFoodEaten = () {
       AudioService().play(SoundEffect.eat);
-      _particleKey.currentState?.fireBurst(_engine.snake.first, colors.food);
-      // Brief screen flash
-      if (mounted) {
-        setState(() => _eatFlash = 1.0);
-        Future.delayed(const Duration(milliseconds: 200), () {
-          if (mounted) setState(() => _eatFlash = 0.0);
-        });
-      }
+      _burstAt(_engine.snake.first, colors.food);
+      _addFloatingScore('+${10 * _engine.combo}', _engine.snake.first, colors.food);
+      ScreenShakeService().eatSmall();
     };
     _engine.onPowerUpCollected = () {
       AudioService().play(SoundEffect.powerUp);
-      _particleKey.currentState
-          ?.fireBurst(_engine.snake.first, colors.powerUp, count: 20);
+      _burstAt(_engine.snake.first, colors.powerUp, count: 20);
+      ScreenShakeService().powerUp();
     };
     _engine.onPoisonEaten = () {
-      _shakeController.forward(from: 0);
-      _particleKey.currentState
-          ?.fireBurst(_engine.snake.first, Colors.purple, count: 30);
+      ScreenShakeService().shake(magnitude: 8.0, durationMs: 400);
+      _burstAt(_engine.snake.first, Colors.purple, count: 30);
+      _addFloatingScore('-50', _engine.snake.first, Colors.purple);
     };
     _engine.onComboDropped = () {
-      _shakeController.forward(from: 0);
+      ScreenShakeService().shake(magnitude: 4.0, durationMs: 250);
     };
     _engine.onHighScoreReached = () {
       AudioService().play(SoundEffect.highScore);
-      _particleKey.currentState
-          ?.fireBurst(_engine.snake.first, Colors.amber, count: 100);
-      // Optional: Add notification or visual text
+      _burstAt(_engine.snake.first, Colors.amber, count: 100);
     };
     _engine.onGameOver = _onGameOverTriggered;
   }
 
+  void _burstAt(Position pos, Color color, {int count = 12}) {
+    double fx, fy;
+    if (widget.mode == GameMode.explore) {
+      fx = (pos.x - _engine.cameraX + 0.5) / AppConstants.exploreViewportCols;
+      fy = (pos.y - _engine.cameraY + 0.5) / AppConstants.exploreViewportRows;
+    } else {
+      fx = (pos.x + 0.5) / AppConstants.gridColumns;
+      fy = (pos.y + 0.5) / AppConstants.gridRows;
+    }
+    _particleKey.currentState?.fireBurst(fx, fy, color, count: count);
+  }
+
   void _onEngineUpdate() {
     _particleKey.currentState?.setWeather(_engine.currentBiome);
+
+    if (_engine.score > _engine.highestScoreOnRecord && !_engine.isHighScoreCelebrated) {
+      _engine.isHighScoreCelebrated = true;
+      VibrationService().levelUp();
+    }
 
     if (!widget.tutorialMode || _tutorialCompleted) return;
 
@@ -186,13 +214,16 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       _logTutorialStep(1);
     }
 
-    if (_engine.snake.length >= 6 && _tutorialStep < 2) {
+    final isShortTutorial = StorageService().expTutorialVariant == 1;
+    final targetLength = isShortTutorial ? 6 : 8;
+
+    if (_engine.snake.length >= 6 && _tutorialStep < 2 && !isShortTutorial) {
       _tutorialStep = 2;
       changed = true;
       _logTutorialStep(2);
     }
-
-    if (_engine.snake.length >= 8 && !_tutorialCompleted) {
+    
+    if (_engine.snake.length >= targetLength && !_tutorialCompleted) {
       _tutorialCompleted = true;
       _tutorialStep = 3;
       _engine.pause();
@@ -214,34 +245,27 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   bool _handleKeyEvent(KeyEvent event) {
     if (event is! KeyDownEvent) return false;
     Direction? dir;
-    switch (event.logicalKey) {
-      case LogicalKeyboardKey.arrowUp:
-      case LogicalKeyboardKey.keyW:
-        dir = Direction.up;
-        break;
-      case LogicalKeyboardKey.arrowDown:
-      case LogicalKeyboardKey.keyS:
-        dir = Direction.down;
-        break;
-      case LogicalKeyboardKey.arrowLeft:
-      case LogicalKeyboardKey.keyA:
-        dir = Direction.left;
-        break;
-      case LogicalKeyboardKey.arrowRight:
-      case LogicalKeyboardKey.keyD:
-        dir = Direction.right;
-        break;
-      case LogicalKeyboardKey.escape:
-      case LogicalKeyboardKey.keyP:
-        if (_started && !_engine.isGameOver) {
-          if (_engine.isPaused) {
-            _engine.resume();
-          } else {
-            _engine.pause();
-            _showPauseDialog();
-          }
+    final key = event.logicalKey;
+    final label = key.keyLabel.toLowerCase();
+
+    if (key == LogicalKeyboardKey.arrowUp || label == 'w') {
+      dir = Direction.up;
+    } else if (key == LogicalKeyboardKey.arrowDown || label == 's') {
+      dir = Direction.down;
+    } else if (key == LogicalKeyboardKey.arrowLeft || label == 'a') {
+      dir = Direction.left;
+    } else if (key == LogicalKeyboardKey.arrowRight || label == 'd') {
+      dir = Direction.right;
+    } else if (key == LogicalKeyboardKey.escape || label == 'p') {
+      if (_started && !_engine.isGameOver) {
+        if (_engine.isPaused) {
+          _engine.resume();
+        } else {
+          _engine.pause();
+          _showPauseDialog();
         }
-        return true;
+      }
+      return true;
     }
     if (dir != null && _started) {
       _onDirectionChanged(dir);
@@ -289,7 +313,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       return;
     }
 
-    _shakeController.forward(from: 0);
+    VibrationService().vibrate(duration: 300, amplitude: 255);
     Future.delayed(const Duration(milliseconds: 400), () {
       if (!mounted) return;
       if (_revivesUsed < AppConstants.maxRevivesPerRun) {
@@ -701,18 +725,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                             onTapDown: (_) => _engine.setBoosting(true),
                             onTapUp: (_) => _engine.setBoosting(false),
                             onTapCancel: () => _engine.setBoosting(false),
-                            child: AnimatedBuilder(
-                              animation: _shakeController,
-                              builder: (context, child) {
-                                final shakeDist = math.sin(
-                                        _shakeController.value * math.pi * 6) *
-                                    12.0 *
-                                    (1 - _shakeController.value);
-                                return Transform.translate(
-                                  offset: Offset(shakeDist, 0),
-                                  child: child,
-                                );
-                              },
+                            child: ScreenShakeWrapper(
                               child: Container(
                                 color: flashRed
                                     ? Colors.red.withValues(alpha: 0.12)
@@ -743,6 +756,21 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                 ListenableBuilder(
                   listenable: _engine,
                   builder: (context, _) => _buildEventBanner(),
+                ),
+                // ── Vignette Overlay (Atmosphere) ──────────────────
+                IgnorePointer(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: RadialGradient(
+                        colors: [
+                          Colors.transparent,
+                          Colors.black.withValues(alpha: 0.15),
+                          Colors.black.withValues(alpha: 0.45),
+                        ],
+                        stops: const [0.5, 0.85, 1.0],
+                      ),
+                    ),
+                  ),
                 ),
               ],
             );
@@ -957,27 +985,51 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
             : BorderRadius.circular(10),
         child: Stack(
           children: [
-            ScreenShakeWrapper(
-              child: ParticleSystem(
-                key: _particleKey,
-                gridWidth: 20,
-                gridHeight: 28,
-                child: GameBoard(
-                  engine: _engine,
-                  themeType: widget.themeType,
-                  skin: skin,
-                ),
-              ),
-            ),
-            if (_eatFlash > 0)
-              Positioned.fill(
-                child: IgnorePointer(
-                  child: AnimatedOpacity(
-                    opacity: _eatFlash * 0.25,
-                    duration: const Duration(milliseconds: 200),
-                    child: Container(color: colors.food),
+            widget.themeType == ThemeType.retro
+                ? CRTFilter(
+                    child: ParticleSystem(
+                      key: _particleKey,
+                      gridWidth: 20,
+                      gridHeight: 28,
+                      child: GameBoard(
+                        engine: _engine,
+                        themeType: widget.themeType,
+                        skin: skin,
+                      ),
+                    ),
+                  )
+                : ParticleSystem(
+                    key: _particleKey,
+                    gridWidth: 20,
+                    gridHeight: 28,
+                    child: GameBoard(
+                      engine: _engine,
+                      themeType: widget.themeType,
+                      skin: skin,
+                    ),
                   ),
-                ),
+
+            if (_floatingScores.isNotEmpty)
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final isExplore = widget.mode == GameMode.explore;
+                  final int viewCols = isExplore
+                      ? AppConstants.exploreViewportCols
+                      : AppConstants.gridColumns;
+                  final int viewRows = isExplore
+                      ? AppConstants.exploreViewportRows
+                      : AppConstants.gridRows;
+                  final cellW = constraints.maxWidth / viewCols;
+                  final cellH = constraints.maxHeight / viewRows;
+                  final cellSize = math.min(cellW, cellH);
+                  
+                  return IgnorePointer(
+                    child: FloatingScoresOverlay(
+                      scores: _floatingScores,
+                      cellSize: cellSize,
+                    ),
+                  );
+                },
               ),
             if (_isDead)
               Positioned.fill(
@@ -1022,11 +1074,14 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     String title = 'Tutorial';
     String message = 'Swipe to move your snake';
 
+    final isShortTutorial = StorageService().expTutorialVariant == 1;
+    final targetLength = isShortTutorial ? 6 : 8;
+
     if (_tutorialStep == 1) {
       final eaten = (_engine.snake.length - 3).clamp(0, 3);
       message = 'Great. Eat 3 apples ($eaten/3)';
-    } else if (_tutorialStep == 2) {
-      message = 'Now grow to length 8 (${_engine.snake.length}/8)';
+    } else if (_tutorialStep == 2 || (isShortTutorial && _tutorialStep == 1 && _engine.snake.length >= 6)) {
+      message = 'Now grow to length $targetLength (${_engine.snake.length}/$targetLength)';
     } else if (_tutorialStep >= 3) {
       title = 'Tutorial Complete';
       message = 'You are ready to play.';
@@ -1283,13 +1338,36 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                               color: colors.text,
                             ),
                           ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Text(
+                                'Score: ${_engine.score}',
+                                style: TextStyle(
+                                  fontFamily: 'Orbitron',
+                                  fontSize: 12,
+                                  color: colors.accent,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Text(
+                                'Combo: x${_engine.combo}',
+                                style: TextStyle(
+                                  fontFamily: 'Orbitron',
+                                  fontSize: 12,
+                                  color: Colors.amber,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
                           Text(
-                            'Score: ${_engine.score}',
+                            'Apples: ${_engine.foodEatenSession}',
                             style: TextStyle(
                               fontFamily: 'Orbitron',
-                              fontSize: 13,
-                              color: colors.accent,
-                              fontWeight: FontWeight.bold,
+                              fontSize: 11,
+                              color: colors.text.withValues(alpha: 0.6),
                             ),
                           ),
                         ],

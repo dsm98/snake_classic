@@ -98,4 +98,16 @@ class VibrationService {
         pattern: [0, 30, 20, 30, 20, 30],
         intensities: [0, low, 0, mid, 0, peak]);
   }
+
+  /// Ascending triple pulse for level up / floor clear
+  Future<void> levelUp() async {
+    if (!_enabled) return;
+    final peak = _baseAmplitude;
+    final mid = (peak * 0.7).round();
+    final low = (peak * 0.4).round();
+    Vibration.vibrate(
+      pattern: [0, 100, 150, 100, 150, 200],
+      intensities: [0, low, 0, mid, 0, peak],
+    );
+  }
 }

@@ -42,6 +42,7 @@ class UserProvider extends ChangeNotifier {
   UserProvider() {
     _currentDailyEvent = DailyEvent.getEventForDay(DateTime.now());
     _loadFromStorage();
+    _initStreak();
     // Listen to auth changes to sync cloud data
     _auth.authStateChanges.listen((user) async {
       if (user != null) {
@@ -49,6 +50,13 @@ class UserProvider extends ChangeNotifier {
       }
       _loadFromStorage();
     });
+  }
+
+  Future<void> _initStreak() async {
+    final isNewDay = await _storage.checkAndUpdateStreak();
+    if (isNewDay) {
+      _loadFromStorage();
+    }
   }
 
   // Getters
@@ -175,6 +183,42 @@ class UserProvider extends ChangeNotifier {
         await _storage.setDailyStreak(cloudStreak);
       }
 
+      final cloudCoins = data['coins'] as int? ?? 0;
+      if (cloudCoins > _storage.coins) {
+        await _storage.addCoins(cloudCoins - _storage.coins);
+      }
+
+      final cloudSouls = data['snakeSouls'] as int? ?? 0;
+      if (cloudSouls > _storage.snakeSouls) {
+        await _storage.addSnakeSouls(cloudSouls - _storage.snakeSouls);
+      }
+
+      final cloudBestScore = data['bestScore'] as int? ?? 0;
+      if (cloudBestScore > _storage.bestScore) {
+        await _storage.updateBestScore(cloudBestScore);
+      }
+
+      final cloudCampaign = data['highestCampaignLevel'] as int? ?? 1;
+      if (cloudCampaign > _storage.highestCampaignLevel) {
+        await _storage.setHighestCampaignLevel(cloudCampaign);
+      }
+
+      final cloudPrestige = data['prestigeLevel'] as int? ?? 0;
+      if (cloudPrestige > _storage.prestigeLevel) {
+        await _storage.setPrestigeLevel(cloudPrestige);
+      }
+
+      final cloudSkins = data['unlockedSkins'] as List<dynamic>? ?? [];
+      for (final skinName in cloudSkins) {
+        final skin = SnakeSkin.values.firstWhere((s) => s.name == skinName, orElse: () => SnakeSkin.classic);
+        await _storage.unlockSkin(skin);
+      }
+
+      final cloudRelics = data['ownedRelics'] as List<dynamic>? ?? [];
+      for (final relicId in cloudRelics) {
+        await _storage.unlockRelic(relicId as String);
+      }
+
       // 2. Sync Achievements
       final cloudAchs =
           data['unlockedAchievements'] as Map<String, dynamic>? ?? {};
@@ -215,6 +259,13 @@ class UserProvider extends ChangeNotifier {
       await _db.collection('users').doc(_auth.userId).set({
         'totalXp': _storage.totalXp,
         'dailyStreak': _storage.dailyStreak,
+        'coins': _storage.coins,
+        'snakeSouls': _storage.snakeSouls,
+        'bestScore': _storage.bestScore,
+        'highestCampaignLevel': _storage.highestCampaignLevel,
+        'prestigeLevel': _storage.prestigeLevel,
+        'unlockedSkins': _storage.unlockedSkins.map((s) => s.name).toList(),
+        'ownedRelics': _storage.ownedRelics.toList(),
         'lastPlayed': FieldValue.serverTimestamp(),
         'unlockedAchievements': unlocked,
         'updatedAt': FieldValue.serverTimestamp(),
@@ -394,6 +445,12 @@ class UserProvider extends ChangeNotifier {
   }
 
   Future<void> doubleCoinsReward(int amount) async {
+    await _storage.addCoins(amount);
+    _loadFromStorage();
+  }
+
+  /// Manually add coins (e.g. from special rewards)
+  Future<void> addCoinsManually(int amount) async {
     await _storage.addCoins(amount);
     _loadFromStorage();
   }

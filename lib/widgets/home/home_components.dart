@@ -516,8 +516,7 @@ class GhostChallengeCard extends StatelessWidget {
                 ),
                 if (rival != null)
                   IconButton(
-                    onPressed: () => ghostService.setRivalGhost(null
-                        as dynamic), // Clearing via casting null to RivalGhost
+                    onPressed: () => ghostService.setRivalGhost(null),
                     icon: const Icon(Icons.close,
                         size: 18, color: Colors.white24),
                   ),

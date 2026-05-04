@@ -410,6 +410,14 @@ class StorageService {
     final newStreak = (last == yesterday) ? dailyStreak + 1 : 1;
     await _prefs.setInt(_keyDailyStreak, newStreak);
     await _prefs.setString(_keyLastPlayedDate, today);
+
+    // Give reward for new day
+    int baseReward = 20 + (newStreak * 10).clamp(0, 100);
+    if (expStreakRewardVariant == 1) {
+      baseReward = (baseReward * 1.2).round();
+    }
+    await addCoins(baseReward);
+
     return true; // new day
   }
 

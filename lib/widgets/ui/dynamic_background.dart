@@ -123,6 +123,46 @@ class _BackgroundPainter extends CustomPainter {
         _paintIce(canvas, size);
         break;
     }
+
+    if (themeType != ThemeType.retro) {
+      _paintRoamingSnake(canvas, size);
+    }
+  }
+
+  void _paintRoamingSnake(Canvas canvas, Size size) {
+    final double speed = 0.05;
+    final double pathProgress = (progress * speed) % 1.0;
+    final double yBase = size.height * 0.45;
+    
+    final double startX = -size.width * 0.5;
+    final double endX = size.width * 1.5;
+    final double currentX = startX + (endX - startX) * pathProgress;
+
+    // Draw 12 body segments for a full snake look
+    for (int i = 12; i >= 0; i--) {
+      final double x = currentX - (i * 14);
+      final double y = yBase + sin(progress * pi * 2 + x * 0.01) * 45;
+      
+      final double opacity = (0.12 * (1.0 - (i / 15.0))).clamp(0.0, 1.0);
+      final double radius = i == 0 ? 9.0 : 8.0 - (i * 0.3);
+      
+      final paint = Paint()
+        ..color = colors.accent.withValues(alpha: opacity)
+        ..style = PaintingStyle.fill;
+        
+      if (i == 0) {
+        // Head glow
+        canvas.drawCircle(
+          Offset(x, y),
+          radius + 4,
+          Paint()
+            ..color = colors.accent.withValues(alpha: 0.1)
+            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8),
+        );
+      }
+      
+      canvas.drawCircle(Offset(x, y), radius, paint);
+    }
   }
 
   void _paintRetro(Canvas canvas, Size size) {

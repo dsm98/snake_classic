@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'dart:collection';
+import 'package:flutter/material.dart';
 import '../core/models/position.dart';
 import '../core/enums/biome_type.dart';
 import '../core/constants/app_constants.dart';
@@ -394,15 +395,59 @@ class MapGenerator {
       int startX, int startY, int cols, int rows) {
     const clearZone = 4;
     int added = 0;
-    while (added < count) {
+    int attempts = 0;
+    while (added < count && attempts < count * 5) {
+      attempts++;
       final pos = Position(_rng.nextInt(cols), _rng.nextInt(rows));
       if ((pos.x - startX).abs() > clearZone ||
           (pos.y - startY).abs() > clearZone) {
         if (!obstacleSet.contains(pos)) {
+          // Temporarily add and check if still traversable
           obstacleSet.add(pos);
-          added++;
+          if (_isTraversable(obstacleSet, startX, startY, cols, rows)) {
+            added++;
+          } else {
+            obstacleSet.remove(pos);
+          }
         }
       }
     }
+  }
+
+  bool _isTraversable(HashSet<Position> obstacles, int startX, int startY, int cols, int rows) {
+    final start = Position(startX, startY);
+    final visited = HashSet<Position>();
+    final queue = Queue<Position>();
+    
+    queue.add(start);
+    visited.add(start);
+    
+    int emptyCells = 0;
+    for (int x = 0; x < cols; x++) {
+      for (int y = 0; y < rows; y++) {
+        final p = Position(x, y);
+        if (!obstacles.contains(p)) emptyCells++;
+      }
+    }
+
+    while (queue.isNotEmpty) {
+      final curr = queue.removeFirst();
+      for (final dir in [
+        const Offset(0, 1),
+        const Offset(0, -1),
+        const Offset(1, 0),
+        const Offset(-1, 0)
+      ]) {
+        final next = Position(curr.x + dir.dx.toInt(), curr.y + dir.dy.toInt());
+        if (next.x >= 0 && next.x < cols && next.y >= 0 && next.y < rows &&
+            !obstacles.contains(next) && !visited.contains(next)) {
+          visited.add(next);
+          queue.add(next);
+        }
+      }
+    }
+    
+    // Check if we visited at least 95% of empty cells (allows some tiny corners but prevents main splits)
+    return visited.length >= emptyCells * 0.98;
   }
 }

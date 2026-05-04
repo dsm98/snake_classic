@@ -3,7 +3,6 @@ import 'dart:collection';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
-import 'package:vibration/vibration.dart';
 import '../core/constants/app_constants.dart';
 import '../core/enums/direction.dart';
 import '../core/enums/game_mode.dart';
@@ -60,14 +59,7 @@ class GameEngine extends ChangeNotifier {
   final List<Direction> _directionQueue = [];
 
   // Game Feel / Juice
-  bool isNearMissSlowMo = false;
-  int nearMissSlowMoEndMs = 0;
   List<int> foodBulges = [];
-
-  // Graze / Near-Miss combos
-  int grazeMissCount = 0; // consecutive near misses this run
-  int grazeMultiplierEndMs = 0; // window before multiplier resets
-  int get grazeMultiplier => (1 + (grazeMissCount ~/ 3)).clamp(1, 5);
 
   final MapGenerator _mapGenerator = MapGenerator();
   final EntityManager _entityManager = EntityManager();
@@ -106,6 +98,7 @@ class GameEngine extends ChangeNotifier {
   int goldenApplesEatenSession = 0;
   int poisonApplesEatenSession = 0;
   int coinsEarnedSession = 0;
+  int foodEatenSession = 0;
   int mapSeed = 0;
 
   Map<Position, Position> boardPortals = {};
@@ -118,12 +111,12 @@ class GameEngine extends ChangeNotifier {
   bool isCampfirePhase = false;
 
   /// Camera top-left corner in grid cells (updated each tick)
-  int cameraX = 0;
-  int cameraY = 0;
+  double cameraX = 0;
+  double cameraY = 0;
 
   /// Previous camera position for smooth inter-tick interpolation
-  int prevCameraX = 0;
-  int prevCameraY = 0;
+  double prevCameraX = 0;
+  double prevCameraY = 0;
 
   // Hunt Streak (explore-mode combo)
   int huntStreak = 0;
@@ -213,17 +206,6 @@ class GameEngine extends ChangeNotifier {
   bool _shouldSkidNextTick = false;
   Direction? _skidTurnDirection;
 
-  Future<void> _vibrate(int duration, int amplitude) async {
-    try {
-      if (await Vibration.hasVibrator()) {
-        if (await Vibration.hasAmplitudeControl()) {
-          Vibration.vibrate(duration: duration, amplitude: amplitude);
-        } else {
-          Vibration.vibrate(duration: duration);
-        }
-      }
-    } catch (_) {}
-  }
 
   Random _rng = Random();
   int _foodEatenSinceLastPowerUp = 0;
@@ -378,8 +360,8 @@ class GameEngine extends ChangeNotifier {
       Position(startX - 2, startY),
     ];
     snakeSet = HashSet<Position>.from(snake);
-    cameraX = startX - AppConstants.exploreViewportCols ~/ 2;
-    cameraY = startY - AppConstants.exploreViewportRows ~/ 2;
+    cameraX = (startX - AppConstants.exploreViewportCols / 2).toDouble();
+    cameraY = (startY - AppConstants.exploreViewportRows / 2).toDouble();
     prevCameraX = cameraX;
     prevCameraY = cameraY;
     currentDirection = Direction.right;
@@ -445,6 +427,7 @@ class GameEngine extends ChangeNotifier {
     powerUpsCollectedSession = 0;
     goldenApplesEatenSession = 0;
     poisonApplesEatenSession = 0;
+    foodEatenSession = 0;
 
     obstacleSet.clear();
     boardPortals.clear();
@@ -496,8 +479,8 @@ class GameEngine extends ChangeNotifier {
         Position((rx - 2).clamp(0, gridCols - 1), ry),
       ];
       snakeSet = HashSet<Position>.from(snake);
-      cameraX = rx - AppConstants.exploreViewportCols ~/ 2;
-      cameraY = ry - AppConstants.exploreViewportRows ~/ 2;
+      cameraX = (rx - AppConstants.exploreViewportCols / 2).toDouble();
+      cameraY = (ry - AppConstants.exploreViewportRows / 2).toDouble();
       prevCameraX = cameraX;
       prevCameraY = cameraY;
       currentFloor = resume.floor;
@@ -574,8 +557,8 @@ class GameEngine extends ChangeNotifier {
       Position(startX - 2, startY),
     ];
     snakeSet = HashSet<Position>.from(snake);
-    cameraX = startX - AppConstants.exploreViewportCols ~/ 2;
-    cameraY = startY - AppConstants.exploreViewportRows ~/ 2;
+    cameraX = (startX - AppConstants.exploreViewportCols / 2).toDouble();
+    cameraY = (startY - AppConstants.exploreViewportRows / 2).toDouble();
     prevCameraX = cameraX;
     prevCameraY = cameraY;
     currentDirection = Direction.right;
@@ -598,6 +581,7 @@ class GameEngine extends ChangeNotifier {
     // Make the game slightly faster
     currentTickMs = max((currentTickMs * 0.95).round(), AppConstants.speedMin);
 
+    VibrationService().levelUp();
     notifyListeners();
     start();
   }
@@ -645,13 +629,6 @@ class GameEngine extends ChangeNotifier {
       currentDelay = (currentDelay * 0.7).round();
     } else if (isBoosting) {
       currentDelay = (currentDelay * 0.5).round();
-    }
-
-    if (isNearMissSlowMo) {
-      currentDelay = (currentDelay * 2.5).round(); // Matrix slow-mo!
-      if (gameTimeMs > nearMissSlowMoEndMs) {
-        isNearMissSlowMo = false;
-      }
     }
 
     if (_lastTickTime == Duration.zero ||
@@ -824,52 +801,7 @@ class GameEngine extends ChangeNotifier {
     snake.insert(0, newHead);
     snakeSet.add(newHead);
 
-    // Near Miss Matrix Dodge Logic
-    if (!isNearMissSlowMo) {
-      int dangerCount = 0;
-      final neighbors = [
-        Position(newHead.x + 1, newHead.y),
-        Position(newHead.x - 1, newHead.y),
-        Position(newHead.x, newHead.y + 1),
-        Position(newHead.x, newHead.y - 1),
-      ];
-      for (var n in neighbors) {
-        if (n == head) continue;
-        if (!_isValidPosition(n)) dangerCount++;
-      }
 
-      if (dangerCount >= 2) {
-        isNearMissSlowMo = true;
-        final nowMs = gameTimeMs;
-        nearMissSlowMoEndMs = nowMs + 600;
-
-        // Graze mechanic: count consecutive near misses for multiplier
-        if (nowMs < grazeMultiplierEndMs) {
-          grazeMissCount++;
-        } else {
-          grazeMissCount = 1;
-        }
-        grazeMultiplierEndMs = nowMs + 3000; // 3s window
-
-        final int grazeBonus = 15 * grazeMultiplier;
-        score += grazeBonus;
-
-        VibrationService().vibrate(duration: 50, amplitude: 255);
-        ScreenShakeService().nearMiss();
-        AudioService().play(SoundEffect.eat);
-
-        final label = grazeMissCount >= 3
-            ? 'GRAZE x$grazeMultiplier! +$grazeBonus'
-            : 'DODGE! +$grazeBonus';
-
-        effects.add(GameEffect(
-          position: newHead,
-          type: EffectType.comboBurst,
-          value: label,
-          startTimeMs: nowMs,
-        ));
-      }
-    }
 
     // Move food bulges down the snake
     for (int i = 0; i < foodBulges.length; i++) {
@@ -1116,43 +1048,45 @@ class GameEngine extends ChangeNotifier {
     prevCameraX = cameraX;
     prevCameraY = cameraY;
     final head = snake.first;
-    final halfW = AppConstants.exploreViewportCols ~/ 2;
-    final halfH = AppConstants.exploreViewportRows ~/ 2;
-    cameraX =
-        (head.x - halfW).clamp(0, gridCols - AppConstants.exploreViewportCols);
-    cameraY =
-        (head.y - halfH).clamp(0, gridRows - AppConstants.exploreViewportRows);
+    final viewCols = AppConstants.exploreViewportCols;
+    final viewRows = AppConstants.exploreViewportRows;
+    
+    // Smooth sub-cell tracking: keep head centered with a small deadzone
+    final double targetX = head.x - (viewCols / 2);
+    final double targetY = head.y - (viewRows / 2);
+    
+    // We can use a simple lerp or just snap for now, but double allows sub-pixel offset in the painter
+    cameraX = targetX;
+    cameraY = targetY;
+
+    cameraX = cameraX.clamp(0.0, (gridCols - viewCols).toDouble());
+    cameraY = cameraY.clamp(0.0, (gridRows - viewRows).toDouble());
   }
 
   void _onFoodEaten() {
     AudioService().play(SoundEffect.eat);
+    foodEatenSession++;
     final now = gameTimeMs;
 
     if (now - comboLastFoodMs <= AppConstants.comboWindow * 1000) {
       combo = min(combo + 1, AppConstants.comboMultiplierMax);
       if (combo >= 3) {
         VibrationService().heartbeat();
-        ScreenShakeService().eatGolden();
         effects.add(GameEffect(
             position: snake.first,
             type: EffectType.comboBurst,
             value: 'x$combo STREAK!',
             startTimeMs: now));
-      } else {
-        VibrationService().vibrate(duration: 30, amplitude: 64);
-        ScreenShakeService().eatSmall();
       }
     } else {
       if (combo > 1) {
         onComboDropped?.call();
       }
       combo = 1;
-      VibrationService().vibrate(duration: 20, amplitude: 32);
-      ScreenShakeService().eatSmall();
     }
     if (activeShadow != null) {
       activeShadow!.wins++;
-      if (activeShadow!.wins >= 3) {
+      if (activeShadow!.wins >= 2) {
         int shadowBonus = equippedSkin == SnakeSkin.vampire ? 150 : 50;
         coinsEarnedSession += (shadowBonus * (1 + (greedLevel * 0.2))).round();
         VibrationService().ripple();
@@ -1165,8 +1099,8 @@ class GameEngine extends ChangeNotifier {
             startTimeMs: now));
         activeShadow = null;
       }
-    } else if (Random().nextDouble() < 0.05) {
-      // 5% chance to spawn shadow on food eaten if not active
+    } else if (Random().nextDouble() < 0.02) {
+      // 2% chance to spawn shadow on food eaten if not active
       // Spawn slightly safely
       Position spawnPos = Position(
         AppConstants.gridColumns - 1 - snake.last.x,
@@ -1193,7 +1127,7 @@ class GameEngine extends ChangeNotifier {
         feverEndMs = now + feverDurationMs;
         feverMeter = 0;
         AudioService().play(SoundEffect.powerUp);
-        VibrationService().vibrate(duration: 500, amplitude: 255);
+        VibrationService().ripple(); // Dual-pulse for fever/power-up
         ScreenShakeService().feverStart();
         effects.add(GameEffect(
             position: snake.first,
@@ -1203,6 +1137,15 @@ class GameEngine extends ChangeNotifier {
       }
     }
 
+    // Smooth impact shake & particles
+    ScreenShakeService().eatSmall();
+    effects.add(GameEffect(
+      position: snake.first,
+      type: EffectType.foodBurst,
+      startTimeMs: now,
+    ));
+    
+    final head = snake.first;
     int points = AppConstants.baseScore;
     points = (points * (1 + combo * 0.5)).round();
     points = (points * difficulty.scoreMultiplier).round();
@@ -1211,11 +1154,23 @@ class GameEngine extends ChangeNotifier {
     if (hasWraithsEye) points *= 3;
     if (equippedSkin == SnakeSkin.skeleton) points = (points * 1.05).round();
 
+    // Food Juice: Burst and Score Pop
+    effects.add(GameEffect(
+      position: head,
+      type: EffectType.foodBurst,
+      startTimeMs: now,
+    ));
+    effects.add(GameEffect(
+      position: head,
+      type: EffectType.scorePop,
+      value: '+$points',
+      startTimeMs: now,
+    ));
+
     if (food?.type == FoodType.boss) {
       points *= 10;
       coinsEarnedSession += (25 * (1 + (greedLevel * 0.2))).round();
       VibrationService().ripple();
-      ScreenShakeService().eatBoss();
       effects.add(GameEffect(
           position: snake.first,
           type: EffectType.comboBurst,
@@ -1224,7 +1179,6 @@ class GameEngine extends ChangeNotifier {
     } else if (food?.type == FoodType.golden) {
       points *= (equippedSkin == SnakeSkin.dragon) ? 8 : 5;
       goldenApplesEatenSession++;
-      ScreenShakeService().eatGolden();
     } else if (food?.type == FoodType.poison) {
       points = -100;
       invertControlsUntilMs = now + 5000;
@@ -1330,6 +1284,16 @@ class GameEngine extends ChangeNotifier {
     if (newSpeed != currentTickMs &&
         !_hasPowerUp(PowerUpType.speedBoost) &&
         !_hasPowerUp(PowerUpType.slowMotion)) {
+      if (newSpeed < currentTickMs) {
+        // Speed up effect
+        VibrationService().levelUp();
+        effects.add(GameEffect(
+          position: snake.first,
+          type: EffectType.speedUp,
+          value: '⚡ SPEED UP!',
+          startTimeMs: gameTimeMs,
+        ));
+      }
       currentTickMs = newSpeed;
     }
   }
@@ -1390,7 +1354,12 @@ class GameEngine extends ChangeNotifier {
       }
       attempts++;
     }
-    food = FoodModel(position: pos, type: t, expiresAtMs: expires);
+    food = FoodModel(
+      position: pos,
+      type: t,
+      expiresAtMs: expires,
+      spawnTimeMs: gameTimeMs,
+    );
   }
 
   void _moveBossFood() {
@@ -1537,10 +1506,10 @@ class GameEngine extends ChangeNotifier {
     isGameOver = true;
     isPlaying = false;
     VibrationService().impact();
+    VibrationService().vibrate(duration: 400, amplitude: 255); // Heavy rumble
     AudioService().play(SoundEffect.gameOver);
     ScreenShakeService().gameOver();
     TailTrailService().clear();
-    _vibrate(200, 255);
     _ticker?.stop();
     _timeAttackTimer?.cancel();
     if (gameMode == GameMode.explore) {
@@ -1607,6 +1576,7 @@ class GameEngine extends ChangeNotifier {
     }
 
     snake = newSnake;
+    snakeSet = HashSet<Position>.from(snake);
     currentDirection = Direction.right;
 
     // Remove any ghost mode that was tied to the old system just in case
@@ -1763,7 +1733,11 @@ class GameEngine extends ChangeNotifier {
         preyCaughtThisFloor >= 2 &&
         _rng.nextInt(100) < 30) {
       hasShrineSpawnedThisFloor = true;
-      preyList.add(FoodModel(position: pos, type: FoodType.shrine));
+      preyList.add(FoodModel(
+        position: pos,
+        type: FoodType.shrine,
+        spawnTimeMs: gameTimeMs,
+      ));
       return;
     }
 
@@ -1793,13 +1767,19 @@ class GameEngine extends ChangeNotifier {
     switch (type) {
       case FoodType.rabbit:
         preyList.add(FoodModel(
-            position: pos, type: FoodType.rabbit, dashChargesLeft: 3));
+          position: pos,
+          type: FoodType.rabbit,
+          dashChargesLeft: 3,
+          spawnTimeMs: gameTimeMs,
+        ));
         break;
       case FoodType.lizard:
         preyList.add(FoodModel(
-            position: pos,
-            type: FoodType.lizard,
-            stillTicksLeft: 3 + _rng.nextInt(4)));
+          position: pos,
+          type: FoodType.lizard,
+          stillTicksLeft: 3 + _rng.nextInt(4),
+          spawnTimeMs: gameTimeMs,
+        ));
         break;
       case FoodType.butterfly:
         // monarchWyrm skin doubles butterfly lifespan
@@ -1807,10 +1787,12 @@ class GameEngine extends ChangeNotifier {
             equippedSkin == SnakeSkin.monarchWyrm ? 30000 : 15000;
         final expires = gameTimeMs + butterflyMs;
         preyList.add(FoodModel(
-            position: pos,
-            type: FoodType.butterfly,
-            expiresAtMs: expires,
-            sinAngle: 0.0));
+          position: pos,
+          type: FoodType.butterfly,
+          expiresAtMs: expires,
+          sinAngle: 0.0,
+          spawnTimeMs: gameTimeMs,
+        ));
         break;
       case FoodType.croc:
         final body = [
@@ -1818,24 +1800,36 @@ class GameEngine extends ChangeNotifier {
           Position(pos.x - 1, pos.y),
           Position(pos.x - 2, pos.y)
         ];
-        preyList
-            .add(FoodModel(position: pos, type: FoodType.croc, crocBody: body));
+        preyList.add(FoodModel(
+          position: pos,
+          type: FoodType.croc,
+          crocBody: body,
+          spawnTimeMs: gameTimeMs,
+        ));
         break;
       case FoodType.elite:
         preyList.add(FoodModel(
-            position: pos,
-            type: FoodType.elite,
-            expiresAtMs: gameTimeMs + 22000,
-            dashChargesLeft: 2));
+          position: pos,
+          type: FoodType.elite,
+          expiresAtMs: gameTimeMs + 22000,
+          dashChargesLeft: 2,
+          spawnTimeMs: gameTimeMs,
+        ));
         break;
       case FoodType.fruit:
         preyList.add(FoodModel(
-            position: pos,
-            type: FoodType.fruit,
-            expiresAtMs: gameTimeMs + 20000));
+          position: pos,
+          type: FoodType.fruit,
+          expiresAtMs: gameTimeMs + 20000,
+          spawnTimeMs: gameTimeMs,
+        ));
         break;
       default:
-        preyList.add(FoodModel(position: pos, type: FoodType.mouse));
+        preyList.add(FoodModel(
+          position: pos,
+          type: FoodType.mouse,
+          spawnTimeMs: gameTimeMs,
+        ));
     }
   }
 
@@ -1954,7 +1948,7 @@ class GameEngine extends ChangeNotifier {
     }
 
     AudioService().play(SoundEffect.eat);
-    VibrationService().vibrate(duration: 30, amplitude: 64);
+    
     final now = gameTimeMs;
 
     final basePoints = _preyBasePoints(prey.type);
@@ -2036,6 +2030,19 @@ class GameEngine extends ChangeNotifier {
     }
     score += points;
 
+    // Food Juice: Burst and Score Pop
+    effects.add(GameEffect(
+      position: snake.first,
+      type: EffectType.foodBurst,
+      startTimeMs: now,
+    ));
+    effects.add(GameEffect(
+      position: snake.first,
+      type: EffectType.scorePop,
+      value: '+$points',
+      startTimeMs: now,
+    ));
+
     // Greed Skill: Flat coin bonus per prey
     if (greedLevel > 0) {
       coinsEarnedSession += greedLevel;
@@ -2054,8 +2061,8 @@ class GameEngine extends ChangeNotifier {
         coinsEarnedSession += 30;
         effects.add(GameEffect(
             position: snake.first,
-            type: EffectType.comboBurst,
-            value: 'NEW BIOME! +1💎',
+            type: EffectType.biomeDiscovery,
+            value: '${room.emoji} NEW BIOME: ${room.displayName.toUpperCase()}',
             startTimeMs: now));
       }
     }
@@ -2135,6 +2142,7 @@ class GameEngine extends ChangeNotifier {
   void _activateShrine(FoodModel prey) {
     AudioService().play(SoundEffect.powerUp);
     VibrationService().vibrate(duration: 500, amplitude: 255);
+    ScreenShakeService().gameOver(); // Massive shake for sacrifice
 
     // Sacrifice 5 segments (if possible) for massive points and coins
     int sacrifice = min(5, max(0, snake.length - 3));
@@ -2169,6 +2177,7 @@ class GameEngine extends ChangeNotifier {
 
     AudioService().play(SoundEffect.powerUp);
     VibrationService().ripple();
+    ScreenShakeService().feverStart(); // Strong shake for biome event
 
     switch (biome) {
       case BiomeType.lavaField:
@@ -2371,8 +2380,19 @@ class GameEngine extends ChangeNotifier {
       gridRows: gridRows,
       isGhostMode: _hasPowerUp(PowerUpType.ghostMode),
       onKill: () {
-        killerType = 'Shadow Hunter';
-        _triggerGameOver();
+        if (wallHitsLeft > 0) {
+          wallHitsLeft--;
+          activeShadow = null;
+          VibrationService().vibrate(duration: 200, amplitude: 255);
+          effects.add(GameEffect(
+              position: snake.first,
+              type: EffectType.comboBurst,
+              value: 'SHIELDED!',
+              startTimeMs: DateTime.now().millisecondsSinceEpoch));
+        } else {
+          killerType = 'Shadow Hunter';
+          _triggerGameOver();
+        }
       },
       onFoodStolen: () {
         food = null;
@@ -2382,7 +2402,14 @@ class GameEngine extends ChangeNotifier {
   }
 }
 
-enum EffectType { comboBurst, shadowPoof }
+enum EffectType { 
+  comboBurst, 
+  shadowPoof, 
+  foodBurst, 
+  scorePop, 
+  speedUp, 
+  biomeDiscovery 
+}
 
 class GameEffect {
   final Position position;

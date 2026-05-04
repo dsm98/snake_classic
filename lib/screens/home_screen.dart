@@ -9,6 +9,7 @@ import '../core/utils/layout_util.dart';
 import '../providers/settings_provider.dart';
 import '../providers/user_provider.dart';
 import '../services/storage_service.dart';
+import '../services/audio_service.dart';
 import '../widgets/ui/dynamic_background.dart';
 import 'game_screen.dart';
 import 'loadout_screen.dart';
@@ -42,6 +43,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   late AnimationController _bgController;
   late AnimationController _pulseController;
   int _currentIndex = 2; // Default to PLAY
+  late PageController _pageController;
 
   List<RivalGhost> _topGhosts = [];
   bool _ghostsLoading = false;
@@ -58,6 +60,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       duration: const Duration(milliseconds: 1500),
     )..repeat(reverse: true);
 
+    _pageController = PageController(initialPage: _currentIndex);
     WidgetsBinding.instance
         .addPostFrameCallback((_) => _maybeShowStreakPopup());
   }
@@ -78,7 +81,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   void _maybeShowStreakPopup() {
     final storage = StorageService();
     final streak = storage.dailyStreak;
-    if (streak < 2) return; // only show from day 2+
+    if (streak < 1) return; // only show if we have a streak
     final shownDate = storage.streakRewardShownDate;
     if (shownDate == storage.todayString()) return; // already shown today
     storage.markStreakRewardShown();
@@ -100,36 +103,77 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('🔥', style: TextStyle(fontSize: 48)),
-            const SizedBox(height: 8),
+            const Text('🔥', style: TextStyle(fontSize: 56))
+                .animate(onPlay: (c) => c.repeat())
+                .scale(duration: 1.seconds, begin: const Offset(1, 1), end: const Offset(1.1, 1.1), curve: Curves.easeInOut),
+            const SizedBox(height: 12),
             Text(
               '$streak DAY STREAK!',
               style: TextStyle(
                 fontFamily: AppTypography.modernFont,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
+                fontSize: 22,
+                fontWeight: FontWeight.w900,
                 color: accent,
+                letterSpacing: 1.5,
               ),
             ),
-            const SizedBox(height: 8),
-            Text(
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.amber.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('💰', style: TextStyle(fontSize: 18)),
+                  const SizedBox(width: 8),
+                  Text(
+                    '+${20 + (streak * 10).clamp(0, 100)} COINS',
+                    style: const TextStyle(
+                      color: Colors.amber,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                ],
+              ),
+            ).animate().slideY(begin: 0.2, end: 0, delay: 200.ms).fadeIn(),
+            const SizedBox(height: 16),
+            const Text(
               'You\'re on fire! Keep your streak alive to earn bigger coin rewards.',
               textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.white70, fontSize: 13),
+              style: TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
             ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(context),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: accent,
-                foregroundColor: Colors.black,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                onPressed: () async {
+                  AudioService().play(SoundEffect.click);
+                  final reward = 20 + (streak * 10).clamp(0, 100);
+                  await context.read<UserProvider>().addCoinsManually(reward);
+                  if (context.mounted) Navigator.pop(context);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: accent,
+                  foregroundColor: Colors.black,
+                  elevation: 8,
+                  shadowColor: accent.withValues(alpha: 0.5),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
                 ),
+                child: const Text('CLAIM REWARD',
+                    style: TextStyle(
+                        fontFamily: AppTypography.modernFont,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1)),
               ),
-              child: const Text('AWESOME!',
-                  style: TextStyle(
-                      fontFamily: AppTypography.modernFont, fontSize: 13)),
             ),
           ],
         ),
@@ -139,6 +183,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   @override
   void dispose() {
+    _pageController.dispose();
     _bgController.dispose();
     _pulseController.dispose();
     super.dispose();
@@ -179,8 +224,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       body: DynamicBackground(
         themeType: settings.theme,
         child: SafeArea(
-          child: IndexedStack(
-            index: _currentIndex,
+          child: PageView(
+            controller: _pageController,
+            onPageChanged: (index) => setState(() => _currentIndex = index),
+            physics: const NeverScrollableScrollPhysics(), // Only navigate via bottom nav
             children: [
               _buildShopTab(colors, font, settings),
               _buildEventsTab(colors, font, userProvider, seasonal, settings),
@@ -212,7 +259,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       ),
       child: BottomNavigationBar(
         currentIndex: _currentIndex,
-        onTap: (index) => setState(() => _currentIndex = index),
+        onTap: (index) {
+          _pageController.animateToPage(
+            index,
+            duration: const Duration(milliseconds: 350),
+            curve: Curves.easeOutQuint,
+          );
+          setState(() => _currentIndex = index);
+        },
         backgroundColor: Colors.transparent,
         elevation: 0,
         type: BottomNavigationBarType.fixed,
@@ -377,6 +431,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             colors: colors,
             font: font,
             onTap: () {
+              _pageController.animateToPage(
+                2,
+                duration: const Duration(milliseconds: 400),
+                curve: Curves.easeOutCubic,
+              );
               setState(() {
                 _selectedMode = seasonal.suggestedMode;
                 _currentIndex = 2; // Jump to play tab

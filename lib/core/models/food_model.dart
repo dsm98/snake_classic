@@ -108,10 +108,13 @@ class FoodModel {
   /// Croc: list of body segment positions (length 3: head + 2 body).
   final List<Position> crocBody;
 
+  final int spawnTimeMs;
+
   const FoodModel({
     required this.position,
     this.type = FoodType.standard,
     this.expiresAtMs,
+    this.spawnTimeMs = 0,
     this.dashChargesLeft = 0,
     this.stillTicksLeft = 0,
     this.sinAngle = 0.0,
@@ -125,12 +128,14 @@ class FoodModel {
     int? dashChargesLeft,
     int? stillTicksLeft,
     double? sinAngle,
+    int? spawnTimeMs,
     List<Position>? crocBody,
   }) {
     return FoodModel(
       position: position ?? this.position,
       type: type ?? this.type,
       expiresAtMs: expiresAtMs ?? this.expiresAtMs,
+      spawnTimeMs: spawnTimeMs ?? this.spawnTimeMs,
       dashChargesLeft: dashChargesLeft ?? this.dashChargesLeft,
       stillTicksLeft: stillTicksLeft ?? this.stillTicksLeft,
       sinAngle: sinAngle ?? this.sinAngle,

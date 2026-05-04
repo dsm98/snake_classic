@@ -16,6 +16,15 @@ class HowToPlayScreen extends StatefulWidget {
 }
 
 class _HowToPlayScreenState extends State<HowToPlayScreen> {
+  final PageController _pageController = PageController();
+  int _currentPage = 0;
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
   AppThemeColors _colors(ThemeType t) {
     switch (t) {
       case ThemeType.retro:
@@ -122,6 +131,24 @@ class _HowToPlayScreenState extends State<HowToPlayScreen> {
       ),
     ];
 
+    final tipGroups = [
+      // Page 1: Basics
+      [tips[0], tips[1], tips[3]],
+      // Page 2: Power-Ups & Modes
+      [tips[2], tips[4], tips[10]],
+      // Page 3: Explore Mode
+      [tips[5], tips[6]],
+      // Page 4: Biomes & Events
+      [tips[7], tips[8], tips[9]],
+    ];
+
+    final pageTitles = [
+      'BASICS',
+      'POWER-UPS & MODES',
+      'EXPLORE MODE',
+      'BIOMES & EVENTS',
+    ];
+
     return Scaffold(
       backgroundColor: colors.background,
       body: SafeArea(
@@ -140,14 +167,14 @@ class _HowToPlayScreenState extends State<HowToPlayScreen> {
               child: Row(
                 children: [
                   IconButton(
-                    icon: Icon(Icons.arrow_back_ios_new_rounded,
-                        color: colors.text, size: 20),
+                    icon: Icon(Icons.close_rounded,
+                        color: colors.text, size: 24),
                     onPressed: () {
                       if (widget.firstRun) {
                         _finishFirstRun(context);
-                        return;
+                      } else {
+                        Navigator.of(context).pop();
                       }
-                      Navigator.of(context).pop();
                     },
                   ),
                   Expanded(
@@ -156,68 +183,173 @@ class _HowToPlayScreenState extends State<HowToPlayScreen> {
                       children: [
                         const Text('📖', style: TextStyle(fontSize: 20)),
                         const SizedBox(width: 10),
-                        Text(
-                          'HOW TO PLAY',
-                          style: TextStyle(
-                            fontFamily: font,
-                            fontSize: 13,
-                            color: colors.text,
-                            fontWeight: FontWeight.bold,
-                          ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'HOW TO PLAY',
+                              style: TextStyle(
+                                fontFamily: font,
+                                fontSize: 13,
+                                color: colors.text,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Text(
+                              pageTitles[_currentPage],
+                              style: TextStyle(
+                                fontFamily: 'Orbitron',
+                                fontSize: 10,
+                                color: colors.powerUp,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(width: 48),
+                  if (widget.firstRun)
+                    TextButton(
+                      onPressed: () => _finishFirstRun(context),
+                      child: Text(
+                        'SKIP',
+                        style: TextStyle(
+                          color: colors.text.withValues(alpha: 0.6),
+                          fontFamily: 'Orbitron',
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                    )
+                  else
+                    const SizedBox(width: 48),
                 ],
               ),
             ),
 
             // ── Content ───────────────────────────────────────────
             Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-                physics: const BouncingScrollPhysics(),
-                itemCount: tips.length,
-                itemBuilder: (context, i) {
-                  return _TipCard(
-                    tip: tips[i],
-                    colors: colors,
-                    index: i,
-                  )
-                      .animate(delay: Duration(milliseconds: i * 60))
-                      .fadeIn()
-                      .slideY(begin: 0.08, end: 0);
+              child: PageView.builder(
+                controller: _pageController,
+                onPageChanged: (index) {
+                  setState(() => _currentPage = index);
+                },
+                itemCount: tipGroups.length,
+                itemBuilder: (context, pageIndex) {
+                  final group = tipGroups[pageIndex];
+                  return ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                    physics: const BouncingScrollPhysics(),
+                    itemCount: group.length,
+                    itemBuilder: (context, i) {
+                      return _TipCard(
+                        tip: group[i],
+                        colors: colors,
+                        index: i,
+                      )
+                          .animate(delay: Duration(milliseconds: i * 60))
+                          .fadeIn()
+                          .slideX(begin: 0.05, end: 0);
+                    },
+                  );
                 },
               ),
             ),
 
-            if (widget.firstRun)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                child: SizedBox(
-                  width: double.infinity,
-                  height: 56,
-                  child: ElevatedButton(
+            // ── Bottom Navigation ─────────────────────────────────
+            Container(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+              decoration: BoxDecoration(
+                color: colors.hudBg.withValues(alpha: 0.4),
+                border: Border(
+                  top: BorderSide(
+                      color: colors.buttonBorder.withValues(alpha: 0.1)),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // Back / Previous button
+                  TextButton(
+                    onPressed: _currentPage == 0
+                        ? (widget.firstRun
+                            ? () => _finishFirstRun(context)
+                            : () => Navigator.pop(context))
+                        : () {
+                            _pageController.previousPage(
+                                duration: const Duration(milliseconds: 300),
+                                curve: Curves.easeInOut);
+                          },
+                    child: Text(
+                      _currentPage == 0
+                          ? (widget.firstRun ? 'SKIP' : 'BACK')
+                          : 'PREVIOUS',
+                      style: TextStyle(
+                        color: colors.text.withValues(alpha: 0.6),
+                        fontFamily: 'Orbitron',
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+
+                  // Page dots
+                  Row(
+                    children: List.generate(
+                      tipGroups.length,
+                      (index) => AnimatedContainer(
+                        duration: const Duration(milliseconds: 250),
+                        margin: const EdgeInsets.symmetric(horizontal: 4),
+                        width: _currentPage == index ? 24 : 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: _currentPage == index
+                              ? colors.powerUp
+                              : colors.text.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // Next / Start button
+                  ElevatedButton(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: colors.buttonBorder,
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),
                       ),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 24, vertical: 12),
                     ),
-                    onPressed: () => _finishFirstRun(context),
-                    child: const Text(
-                      'START PLAYING',
-                      style: TextStyle(
+                    onPressed: () {
+                      if (_currentPage == tipGroups.length - 1) {
+                        if (widget.firstRun) {
+                          _finishFirstRun(context);
+                        } else {
+                          Navigator.pop(context);
+                        }
+                      } else {
+                        _pageController.nextPage(
+                            duration: const Duration(milliseconds: 300),
+                            curve: Curves.easeInOut);
+                      }
+                    },
+                    child: Text(
+                      _currentPage == tipGroups.length - 1
+                          ? (widget.firstRun ? 'START' : 'DONE')
+                          : 'NEXT',
+                      style: const TextStyle(
                         fontFamily: 'Orbitron',
                         fontWeight: FontWeight.bold,
-                        letterSpacing: 1.4,
+                        letterSpacing: 1.2,
                       ),
                     ),
                   ),
-                ),
+                ],
               ),
+            ),
           ],
         ),
       ),

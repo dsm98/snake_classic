@@ -97,10 +97,14 @@ class GhostRacingService extends ChangeNotifier {
   }
 
   // ── Rival ghost management ────────────────────────────────────────
-  Future<void> setRivalGhost(RivalGhost ghost) async {
+  Future<void> setRivalGhost(RivalGhost? ghost) async {
     activeRivalGhost = ghost;
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_keyRivalGhost, jsonEncode(ghost.toJson()));
+    if (ghost == null) {
+      await prefs.remove(_keyRivalGhost);
+    } else {
+      await prefs.setString(_keyRivalGhost, jsonEncode(ghost.toJson()));
+    }
     notifyListeners();
   }
 

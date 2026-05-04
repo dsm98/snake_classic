@@ -27,6 +27,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
     GameMode.classic,
     GameMode.timeAttack,
     GameMode.endless,
+    GameMode.explore,
   ];
 
   late GameMode _selectedMode;
